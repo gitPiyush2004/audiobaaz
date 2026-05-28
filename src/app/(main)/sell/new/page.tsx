@@ -2,6 +2,7 @@
 
 import { useState, useRef, useCallback } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { formatPrice } from '@/lib/utils/formatting';
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -160,7 +161,9 @@ export default function NewListingPage() {
   const [photoError, setPhotoError] = useState<string | null>(null);
   const [priceWarning, setPriceWarning] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const router = useRouter();
 
   const update = useCallback(<K extends keyof Draft>(key: K, value: Draft[K]) => {
     setDraft(prev => ({ ...prev, [key]: value }));
@@ -225,11 +228,46 @@ export default function NewListingPage() {
 
   async function handleSubmit() {
     setSubmitting(true);
-    // TODO (next session): POST to /api/listings — saves draft, sets status → 'pending',
-    // triggers Telegram notification to admin.
-    await new Promise(r => setTimeout(r, 800));
-    setSubmitting(false);
-    alert('Submitted for review! (Supabase wiring coming next session)');
+    setSubmitError(null);
+
+    try {
+      // 1. Upload photos
+      const photoUrls: string[] = [];
+      for (const photo of draft.photos) {
+        const fd = new FormData();
+        fd.append('file', photo.file);
+        const res = await fetch('/api/upload', { method: 'POST', body: fd });
+        const json = await res.json();
+        if (json.error) throw new Error(json.error.message);
+        photoUrls.push(json.data.url);
+      }
+
+      // 2. Create listing (status → pending)
+      const res = await fetch('/api/listings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          productTypeId:     draft.productTypeId,
+          productBrand:      draft.productBrand,
+          productName:       draft.productName,
+          grade:             draft.grade,
+          conditionChecks:   draft.conditionChecks,
+          inclusions:        draft.inclusions,
+          photoUrls,
+          askingPricePaise:  draft.askingPricePaise,
+          negotiationEnabled: draft.negotiationEnabled,
+          floorPricePaise:   draft.floorPricePaise,
+          autoAcceptPaise:   draft.autoAcceptPaise,
+        }),
+      });
+      const json = await res.json();
+      if (json.error) throw new Error(json.error.message);
+
+      router.push('/dashboard?submitted=1');
+    } catch (e) {
+      setSubmitError(e instanceof Error ? e.message : 'Something went wrong. Please try again.');
+      setSubmitting(false);
+    }
   }
 
   const checks       = CONDITION_CHECKS[draft.productTypeId] ?? CONDITION_CHECKS.other;
@@ -587,7 +625,7 @@ export default function NewListingPage() {
                   ].join(' ')}
                 >
                   <span className={[
-                    'absolute top-0.5 h-5 w-5 rounded-full transition-transform',
+                    'absolute left-0 top-0.5 h-5 w-5 rounded-full transition-transform',
                     draft.negotiationEnabled ? 'translate-x-5 bg-black' : 'translate-x-0.5 bg-foreground',
                   ].join(' ')} />
                 </button>
@@ -647,7 +685,12 @@ export default function NewListingPage() {
         )}
 
         {/* ── Navigation ── */}
-        <div className="mt-10 flex items-center justify-between border-t border-border pt-6">
+        {submitError && (
+          <p className="mt-6 rounded-lg border border-error/30 bg-error/10 px-4 py-3 text-sm text-error">
+            {submitError}
+          </p>
+        )}
+        <div className="mt-6 flex items-center justify-between border-t border-border pt-6">
           {step > 0 ? (
             <button
               onClick={() => setStep(s => s - 1)}

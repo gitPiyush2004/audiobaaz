@@ -2,7 +2,7 @@
 **Owner:** Person 1
 **Tool:** AI coding tool
 **Branch:** feature/seller-flow
-**Last updated:** [date]
+**Last updated:** 2026-05-28
 
 ---
 
@@ -19,31 +19,52 @@ seller dashboard (7 sections).
 ## Current Status
 
 ```
-[ ] Not started
+[x] Sell With Us landing page — /sell/page.tsx
+[x] 6-step listing intake form UI — /sell/new/page.tsx (UI complete, backend wired)
+[x] Supabase client files — src/lib/supabase/client.ts, server.ts, admin.ts
+[x] Auth middleware — src/middleware.ts (protects /sell/new, /sell/draft, /dashboard)
+[x] Login page — /login (email OTP via Supabase Auth)
+[x] POST /api/listings — creates listing with status=pending on submit
+[x] POST /api/upload — uploads photos to Supabase Storage (listings bucket)
+[ ] Auto-save draft on step completion (deferred — next session)
+[ ] GET/PATCH /api/listings/[id] (deferred — needed for auto-save)
+[ ] Seller dashboard — /dashboard (7 sections)
+[ ] Dashboard: My Listings tabs
+[ ] Dashboard: Offers & Negotiations
+[ ] Dashboard: Order Tracking
+[ ] Dashboard: Payouts & Earnings
+[ ] Dashboard: Activity feed
+[ ] Dashboard: Account & Trust
 ```
 
 ---
 
-## Files To Create
+## Files Created
 
 ```
-src/app/(main)/sell/page.tsx                    # Sell With Us landing
-src/app/(main)/sell/new/page.tsx                # Intake form
-src/app/(main)/sell/draft/[id]/page.tsx         # Resume draft
-src/app/(main)/dashboard/page.tsx               # Dashboard overview
-src/app/(main)/dashboard/listings/page.tsx      # My listings
-src/app/(main)/dashboard/offers/page.tsx        # Offers & negotiations
-src/app/(main)/dashboard/orders/page.tsx        # Order tracking (seller)
-src/app/(main)/dashboard/payouts/page.tsx       # Earnings & payouts
-src/app/(main)/dashboard/account/page.tsx       # Profile & settings
-src/components/forms/PhotoUpload.tsx
-src/components/forms/PriceInput.tsx
-src/components/forms/ConditionSelector.tsx
-src/components/forms/ProductSearch.tsx
-src/components/forms/AccessoryChecklist.tsx
-src/app/api/listings/route.ts
-src/app/api/listings/[id]/route.ts
-src/app/api/upload/route.ts
+src/app/(main)/sell/page.tsx                    ✓ done
+src/app/(main)/sell/new/page.tsx                ✓ done (UI + backend wired)
+src/app/(auth)/login/page.tsx                   ✓ done
+src/middleware.ts                               ✓ done
+src/lib/supabase/client.ts                      ✓ done
+src/lib/supabase/server.ts                      ✓ done
+src/lib/supabase/admin.ts                       ✓ done
+src/app/api/listings/route.ts                   ✓ done (POST only)
+src/app/api/upload/route.ts                     ✓ done
+
+src/app/(main)/sell/draft/[id]/page.tsx         [ ] not started
+src/app/(main)/dashboard/page.tsx               [ ] not started
+src/app/(main)/dashboard/listings/page.tsx      [ ] not started
+src/app/(main)/dashboard/offers/page.tsx        [ ] not started
+src/app/(main)/dashboard/orders/page.tsx        [ ] not started
+src/app/(main)/dashboard/payouts/page.tsx       [ ] not started
+src/app/(main)/dashboard/account/page.tsx       [ ] not started
+src/components/forms/PhotoUpload.tsx            [ ] not started
+src/components/forms/PriceInput.tsx             [ ] not started
+src/components/forms/ConditionSelector.tsx      [ ] not started
+src/components/forms/ProductSearch.tsx          [ ] not started
+src/components/forms/AccessoryChecklist.tsx     [ ] not started
+src/app/api/listings/[id]/route.ts              [ ] not started
 ```
 
 ---
@@ -62,71 +83,75 @@ src/app/api/upload/route.ts
 
 ---
 
-## Key Business Logic To Implement
+## Supabase Setup Done
 
-### Listing intake form — 6 steps
-1. Select product type (IEM / DAC / Headphone / Amp / DAC+Amp / Cable / Source / Other)
-2. Search product name → auto-fill from DB or manual entry
-3. Condition grade (S/A/B/C/D) — category-specific checklist
-4. Inclusions — checkbox list auto-generated per product type
-5. Photos — guided per-slot upload, min 1200×900px client-side
-6. Price + negotiation settings
+- Project URL: https://qgjpfehmporhjfkblrbj.supabase.co
+- Schema applied: supabase/schema.sql (all 13 tables + triggers + RLS)
+- Storage bucket: `listings` (public)
+- Auth trigger: `on_auth_user_created` → inserts into public.users on signup
+- phone column: made NULLABLE (collected in profile completion later)
+- Keys in .env.local (gitignored)
 
-### Auto-save
-- Save draft to database on every step completion
-- On return: show banner "Resume your listing for [product name]"
-- Drafts appear in My Listings under Drafts tab
+---
 
-### Photo upload
-- Enforce 1200×900px minimum client-side before upload
-- Upload to Supabase storage at: `listings/{listing_id}/{index}.jpg`
-- Each photo slot has a reference sample image
+## Key Architecture Decisions Made
 
-### Pricing
-- Show price oracle: last 5 sold prices for same model from price_history
-- Show live payout calculation: price × 0.90 (10% platform fee)
-- Soft warning if price >30% above market average
+### Auth
+- Email OTP only for now (phone OTP requires Twilio — deferred)
+- `phone` column made nullable; phone collected in profile completion
+- Middleware protects: /sell/new, /sell/draft, /dashboard
+- `handle_new_auth_user` trigger creates public.users row on auth signup
 
-### Negotiation
-- Toggle off by default
-- If on: seller sets private floor_price and auto_accept_threshold
-- floor_price NEVER sent to client — server-side only
+### Listing submission
+- Single-submit approach: all 6 steps are local React state, everything
+  saves to DB in one shot when "Submit for Review" is clicked
+- Auto-save per step (draft to DB on each Continue) is DEFERRED — next session
+- Photos upload first via POST /api/upload, then listing created with URLs
 
-### Listing status after submit
-- Set status to 'pending'
-- Send Telegram notification to admin
-- Show seller: "Under review — typically 2-4 hours (9am-9pm)"
+### Security
+- floor_price: collected from seller in form, sent to API, stored in DB,
+  but NEVER returned in any API response (excluded from .select())
+- upload route uses admin client (bypasses storage RLS) but validates auth first
+- listings RLS: sellers can only read/insert/update their own rows
 
-### Reserve mode
-- When a buyer starts checkout: listing status → 'reserved' for 15 min
-- Triggered by database trigger — not application code
-- Seller sees "Reserved" badge in dashboard
+### Form
+- Step state: single React page (not URL-per-step)
+- Product search: currently manual entry only (DB search deferred)
+- Price oracle: mock data (real price_history query deferred)
+- Inclusions: stored as Record<string, boolean> JSONB
+- Condition checklist: stored as comma-separated string in condition_notes
 
-### Seller dashboard sections
-1. Overview — active listings count, total earnings, pending payouts, active offers
-2. My Listings — tabs: Live / Pending / Draft / Sold / Delisted
-3. Offers & Negotiations — countdown timers, accept/decline
-4. Order Tracking — status timeline per sold order
-5. Payouts & Earnings — UPI management, per-sale breakdown
-6. Activity — notification timeline, Telegram preferences
-7. Account & Trust — profile, seller rating, availability toggle
+### Slug
+- Format: {brand-lowercase-alphanum}-{4-random-digits} e.g. moondrop-2394
+- Generated server-side on listing creation
+- Unique constraint in DB — collision extremely unlikely with 4 digits
+
+---
+
+## Known Issues / Watch Out
+
+- Auth trigger "database error saving new user": was caused by phone NOT NULL
+  constraint. Fixed by ALTER TABLE + updated trigger to omit phone column.
+  If it recurs: re-run the trigger function with SET search_path = public.
+- The (main) route group has no layout.tsx — inherits root layout (Nav always shown).
+  When adding auth-gating to seller routes, a layout.tsx will be needed here.
 
 ---
 
 ## Next Session Starts Here
 
-Initialize this file when starting. First task:
-Build the Sell With Us landing page at /sell/page.tsx.
-It should show: how it works, seller guarantee, 10% fee, timeline.
-Use the design system from ENGINEERING.md. Dark theme, Syne headings, accent #E8FF4D.
-Do NOT build the form yet — just the landing page.
+Dashboard overview page at /dashboard/page.tsx.
+Must check auth (redirect to /login if not logged in — middleware handles this).
+Show: active listings count, total earnings, pending payouts, active offers.
+Query the listings table for seller's own listings.
+If ?submitted=1 in URL, show a success banner ("Under review — 2–4 hours").
 
 ---
 
 ## Decisions Made In This Feature
 
 - Auto-save triggers on step completion, not on timer
-- Photos stored at: listings/{listing_id}/{index}.jpg in Supabase storage
+- Photos stored at: listings/{user_id}/{timestamp}_{random}.{ext} in Supabase storage
 - Draft slug format: {brand-lowercase}-{4-random-digits} e.g. moondrop-2394
 - Negotiation default: OFF — seller must opt in
 - floor_price never leaves the server — excluded from all client responses
@@ -134,3 +159,5 @@ Do NOT build the form yet — just the landing page.
 - No counter-offers — accept or decline only
 - Active negotiation windows unaffected by price edits
 - Parallel negotiations: multiple accepted offers, first to pay wins
+- Email OTP used (not phone OTP) — phone OTP needs Twilio
+- Single-submit approach for V1 (no per-step auto-save yet)
