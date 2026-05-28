@@ -81,11 +81,12 @@ git push origin feature/seller-flow
 
 ## Rules
 
-1. Never commit directly to `main` or `dev`
+1. Never commit directly to `main` or `dev` — use PRs for code, docs-only direct commits to dev are OK
 2. Always pull from `dev` before starting work
 3. One PR per completed feature/sub-feature — not one giant PR
 4. Update your context file before every PR
-5. If you touch a SHARED component — announce it to the team
+5. Sync your context file to dev at the end of every session (see ENGINEERING.md end routine)
+6. If you touch a SHARED component — announce it to the team
 
 ---
 
@@ -95,7 +96,33 @@ Components in these folders are used by everyone:
 - `src/components/ui/`
 - `src/components/shared/`
 - `src/components/listing/`
+
 If you create or modify a shared component:
 1. Document its props clearly with TypeScript
-2. Post in team chat: "Added ListingCard — import from components/listing/ListingCard"
-3. Update your context file's "What other features can use from here" section
+2. Add it to the Shared Components Registry in `ENGINEERING.md`
+3. Post in team chat: "Modified Nav.tsx — now auth-aware, check ENGINEERING.md shared registry"
+4. Update your context file's "What other features can use from here" section
+
+---
+
+## AI Session Start Protocol
+
+When starting a AI coding tool session, give this prompt first:
+
+```
+Read the following files in this exact order before writing any code:
+1. ENGINEERING.md — project rules, stack, design system, API conventions
+2. docs/BRANCHING.md — branching rules, shared components registry, PR protocol
+3. docs/context/[your-feature].md — current status, decisions, next steps
+4. Any files you will modify today
+
+Confirm the current git branch. Summarize what you understand before proceeding.
+```
+
+Replace `[your-feature]` with:
+- `seller-flow` — Person 1
+- `buyer-flow` — Person 2
+- `admin-panel` — Person 3
+- `payments-shipping` — Person 4
+
+If your feature interacts with another feature's domain, read that context file too.

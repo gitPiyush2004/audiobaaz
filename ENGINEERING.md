@@ -220,20 +220,64 @@ These are final. Do not suggest alternatives.
 
 ---
 
+## AI Session Start Protocol
+
+**Every person, every session — give this prompt to your AI agent:**
+
+> Read the following files in this exact order before writing any code:
+> 1. `ENGINEERING.md` — project rules, stack, design system, API conventions, money rules
+> 2. `docs/BRANCHING.md` — branching rules, shared components registry, PR protocol
+> 3. `docs/context/[your-feature].md` — your feature's current status, decisions, next steps
+> 4. Any files you will modify today
+>
+> Confirm the current git branch. Summarize what you understand before proceeding.
+
+**Feature context files:**
+- Person 1 (seller): `docs/context/seller-flow.md`
+- Person 2 (buyer): `docs/context/buyer-flow.md`
+- Person 3 (admin): `docs/context/admin-panel.md`
+- Person 4 (payments): `docs/context/payments-shipping.md`
+
+**If your feature touches another person's domain** (e.g. admin reading listings, buyer making offers), also read that feature's context file.
+
+---
+
 ## How to Start Each Session
 
-1. Read this file (ENGINEERING.md)
-2. Read your feature context file from `docs/context/`
-3. Read any files you'll be modifying today
-4. Tell me what you understand before writing code
-5. Run `git pull origin dev` before starting work
+1. `git checkout feature/[your-branch]`
+2. `git pull origin dev`
+3. Give the AI the session start prompt above
+4. AI reads files, summarises, confirms branch — then you proceed
 
 ## How to End Each Session
 
-1. Update your feature context file in `docs/context/`
-2. Update the "Current Build Status" table above
+1. Update `docs/context/[your-feature].md` with current status + next session pointer
+2. Update "Current Build Status" table in this file
 3. Commit and push to your feature branch
-4. Never leave uncommitted changes overnight
+4. Sync docs to dev (docs-only direct commit is allowed):
+   ```bash
+   git checkout dev
+   git checkout feature/[your-branch] -- ENGINEERING.md docs/context/[your-feature].md
+   git add ENGINEERING.md docs/context/[your-feature].md
+   git commit -m "docs: sync [feature] context to dev"
+   git push origin dev
+   git checkout feature/[your-branch]
+   ```
+5. Never leave uncommitted changes overnight
+
+---
+
+## Shared Components Registry
+
+Components modified or created that affect multiple features. If you use or modify these, read the notes and announce changes in team chat.
+
+| Component | Path | Owner | Notes |
+|-----------|------|-------|-------|
+| `Nav` | `src/components/layout/Nav.tsx` | Person 1 | Auth-aware — shows Dashboard + New Listing when logged in, Log in + Sell With Us when logged out. Imports `createClient` from supabase/server (server component). |
+| `ListingForm` | `src/components/forms/ListingForm.tsx` | Person 1 | 6-step listing intake form. Accepts `draftId?` and `initialData?` props. Used by `/sell/new` and `/sell/draft/[id]`. |
+| `DashboardNav` | `src/components/layout/DashboardNav.tsx` | Person 1 | Seller dashboard sidebar. Client component, uses `usePathname`. |
+| `Button` | `src/components/ui/Button.tsx` | Scaffold | Primary, secondary, ghost, danger variants. sm/md/lg sizes. |
+| `Card` | `src/components/ui/Card.tsx` | Scaffold | Basic surface card. Accepts all div props. |
 
 ---
 
