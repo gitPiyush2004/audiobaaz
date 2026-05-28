@@ -196,7 +196,7 @@ These are final. Do not suggest alternatives.
 |--------|------|---------|--------|
 | Person 1 | AI coding tool | Seller flow + dashboard | COMPLETE — all V1 features done, see docs/context/seller-flow.md |
 | Person 2 | Kiro | Buyer flow + listing page | NOT STARTED |
-| Person 3 | - | Admin panel | NOT STARTED |
+| Person 3 | - | Admin panel | IN PROGRESS — core panel complete (listings, disputes, users, payouts), orders stub pending. See docs/context/admin-panel.md |
 | Person 4 | AI coding tool | Payments + shipping | IN PROGRESS — payment + shipping APIs done, see docs/context/payments-shipping.md |
 
 > Update this table when features change status.
