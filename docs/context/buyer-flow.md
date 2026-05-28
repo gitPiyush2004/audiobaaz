@@ -173,6 +173,10 @@ export async function getBrowseListings(
 ): Promise<ListingCardData[]>
 ```
 
+`ListingCardData`, `BrowseFilters`, and the rest of the contract types
+live in `src/lib/listings/types.ts` (see §11). Access-function files
+import them; they never define them.
+
 The function returns `ListingCardData` by construction so server-only fields
 (`floor_price`, `auto_accept_threshold`, `seller_score`, `buyer_score`)
 cannot leak through this boundary even if the underlying source is wrong.
@@ -233,6 +237,34 @@ agreement.
 The point is that the directory shape (route groups, shared layouts) is a
 multi-feature decision. It changes once, deliberately, with both owners
 present — never as an incidental tidy-up inside a feature PR.
+
+### 11. Buyer view-models live in `src/lib/listings/types.ts`
+There is exactly one canonical home for every type that crosses an access
+boundary into the UI: `src/lib/listings/types.ts`. `ListingCardData`,
+`ListingDetailData`, `SellerCardData`, `BrowseFilters`, `BrowseSort`, and
+`PriceBucket` are all defined there. Component files only define their own
+`*Props` (which take a view-model as a field).
+
+Rules enforced by this module:
+
+- **One import path per type.** No `export type { … }` re-exports from
+  component or access-function files. Every consumer imports from
+  `@/lib/listings/types` directly. Two valid paths is the seed of drift.
+- **View-models are intentionally lossy.** The transformation
+  `DB row → access boundary → view-model` throws information away on
+  purpose. Server-only fields (`floor_price`, `auto_accept_threshold`,
+  `seller_score`, `buyer_score`, contact data) cannot be members of any
+  type in this file. The compiler is the guardrail.
+- **Field names describe what the UI shows, not what the DB column is
+  called.** Where the mapping is non-obvious, `types.ts` documents the
+  source of record inline (e.g. `member_since ← users.created_at`).
+- **New buyer view-models go here, not adjacent to a component.**
+
+`ListingDetailData extends ListingCardData` because every card field is
+also part of the detail surface; the detail surface adds richer copy and
+inclusions. The seller field is unified on `SellerCardData` across both —
+the card UI ignores fields it doesn't render. This is the only inheritance
+in the module today.
 
 ---
 
@@ -495,3 +527,4 @@ Buyer browse surface is shipping. The next slice is the listing detail page —
 - Browse filter and sort state lives in URL search params, never client state
 - Homepage and `/browse` consume the same `getBrowseListings()` boundary by design
 - Directory-shape changes (route groups, shared layouts) are multi-feature decisions — coordinate with seller-flow before introducing one
+- Buyer view-models live in `src/lib/listings/types.ts` — one canonical home, one import path per type, no re-exports from component or access-function files
