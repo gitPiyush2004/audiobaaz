@@ -17,7 +17,7 @@
  * Supabase Storage URLs (already whitelisted in `next.config.mjs`).
  */
 
-import type { ListingCardData } from "@/components/listing/ListingCard";
+import type { ListingCardData } from "@/lib/listings/types";
 import type { ProductCategory } from "@/types";
 import { mockSellers, type MockSeller, type MockSellerId } from "./users";
 

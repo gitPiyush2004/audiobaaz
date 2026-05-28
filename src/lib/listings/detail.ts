@@ -12,37 +12,15 @@
  * `seller_score`, `buyer_score`) by construction so they cannot leak
  * into the client surface even if the underlying source is wrong.
  *
+ * Type contracts (`ListingDetailData`, `SellerCardData`) live in
+ * `@/lib/listings/types`.
+ *
  * See `docs/context/buyer-flow.md` §4 for the boundary rules.
  */
 
-import type { ListingCardData } from "@/components/listing/ListingCard";
-import type { SellerCardData } from "@/components/listing/SellerCard";
-import type { ConditionGrade, ProductCategory } from "@/types";
+import type { ConditionGrade } from "@/types";
+import type { ListingDetailData } from "@/lib/listings/types";
 import { mockListings } from "@/lib/mock/listings";
-
-/**
- * View-model for the listing detail page.
- *
- * Extends `ListingCardData` with the additional fields the detail page
- * needs (richer seller info via `SellerCardData`, condition notes, defects,
- * inclusions, category). Anything server-only stays absent.
- */
-export interface ListingDetailData
-  extends Omit<ListingCardData, "seller"> {
-  category: ProductCategory;
-  /** Free-text condition notes from the seller, if provided. */
-  condition_notes?: string;
-  /** Free-text disclosure of any known defects, if provided. */
-  known_defects?:   string;
-  /** `{ "Stock cable": true, "Carrying case": false }` — empty if not specified. */
-  inclusions:       Record<string, boolean>;
-  /**
-   * Richer seller view-model. Distinct from `ListingCardData.seller`
-   * because the detail page shows `member_since`. Whatever fields are
-   * absent stay absent — the SellerCard component handles fallbacks.
-   */
-  seller?: SellerCardData;
-}
 
 /**
  * Fetch a single listing by id OR slug.
@@ -84,9 +62,7 @@ export async function getListingDetail(
       city:         found.seller.city,
       rating:       found.seller.rating,
       rating_count: found.seller.rating_count,
-      // `member_since` exists on the mock seller but is typed away from
-      // ListingCardData.seller — read it off the structural value safely.
-      member_since: (found.seller as { member_since?: string }).member_since,
+      member_since: found.seller.member_since,
     },
   };
 

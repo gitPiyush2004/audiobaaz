@@ -9,33 +9,19 @@
  * The return type is `ListingCardData` so server-only fields like
  * `floor_price`, `auto_accept_threshold`, and trust scores can never leak
  * into client bundles.
+ *
+ * Type contracts (`ListingCardData`, `BrowseFilters`, `BrowseSort`,
+ * `PriceBucket`) live in `@/lib/listings/types`.
  */
 
-import type { ListingCardData } from "@/components/listing/ListingCard";
+import type {
+  BrowseFilters,
+  BrowseSort,
+  ListingCardData,
+  PriceBucket,
+} from "@/lib/listings/types";
 import type { ConditionGrade, ProductCategory } from "@/types";
 import { mockListings, type MockListing } from "@/lib/mock/listings";
-
-export type BrowseSort =
-  | "rating_desc"   // default — higher-rated sellers first
-  | "newest"
-  | "price_asc"
-  | "price_desc"
-  | "most_viewed";
-
-/** Coarse price buckets shown on the filter sidebar. Values are in PAISE. */
-export type PriceBucket = "under_5k" | "5k_15k" | "15k_30k" | "30k_plus";
-
-export interface BrowseFilters {
-  /** Empty array = no category filter. */
-  categories?: ProductCategory[];
-  /** Empty array = no condition filter. */
-  conditions?: ConditionGrade[];
-  priceBucket?: PriceBucket;
-  negotiableOnly?: boolean;
-  sort?: BrowseSort;
-  /** Optional limit (e.g. for the homepage featured strip). */
-  limit?: number;
-}
 
 const PRICE_BUCKETS: Record<PriceBucket, { min: number; max: number }> = {
   under_5k:  { min: 0,        max: 500_000 },     // < ₹5,000

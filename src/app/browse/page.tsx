@@ -20,9 +20,8 @@ import {
   VALID_CONDITIONS,
   VALID_PRICE_BUCKETS,
   VALID_SORTS,
-  type BrowseSort,
-  type PriceBucket,
 } from "@/lib/listings/browse";
+import type { BrowseSort, PriceBucket } from "@/lib/listings/types";
 import { ListingCard } from "@/components/listing/ListingCard";
 import { ListingGrid } from "@/components/listing/ListingGrid";
 import { cn } from "@/lib/utils/cn";

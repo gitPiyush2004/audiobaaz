@@ -1,25 +1,6 @@
 import { Star, MapPin, Calendar } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
-
-/**
- * Public seller view-model for the listing detail surface.
- *
- * Strict subset — never accept a raw `User` row. The fields below are the
- * only public-facing data points. Internal trust scores (`seller_score`,
- * `buyer_score`), contact data (`phone`, `email`, `upi_id`,
- * `telegram_chat_id`), and admin/availability flags must never reach this
- * shape. The access boundary maps DB rows → `SellerCardData` and that is
- * the only place the conversion happens.
- */
-export interface SellerCardData {
-  full_name?:    string;
-  city?:         string;
-  /** Public 0–5 rating. Distinct from internal `seller_score` (0–200). */
-  rating?:       number;
-  rating_count?: number;
-  /** ISO timestamp of when the user account was created. */
-  member_since?: string;
-}
+import type { SellerCardData } from "@/lib/listings/types";
 
 export interface SellerCardProps {
   seller:    SellerCardData;

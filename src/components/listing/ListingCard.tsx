@@ -4,38 +4,7 @@ import { Star } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { formatPrice } from "@/lib/utils/formatting";
 import { ConditionBadge } from "./ConditionBadge";
-import type { ConditionGrade } from "@/types";
-
-/**
- * Minimum data shape the card needs to render.
- *
- * This is intentionally a structural type, not `Listing` directly, so callers
- * can use it with API responses that omit server-only fields like `floor_price`.
- * Whatever you pass MUST satisfy this contract — never spread a raw DB row that
- * could leak `floor_price`, `auto_accept_threshold`, or score fields.
- */
-export interface ListingCardData {
-  id:              string;
-  slug?:           string;
-  product_name:    string;
-  brand:           string;
-  condition_grade: ConditionGrade;
-  /** Asking price in PAISE (₹ × 100). */
-  asking_price:    number;
-  is_negotiable:   boolean;
-  /** Ordered photo URLs. First is the cover. */
-  photos:          string[];
-  seller?: {
-    full_name?: string;
-    city?:      string;
-    /**
-     * Public-facing seller rating (0–5). Distinct from the internal
-     * `seller_score` (0–200) which is never exposed.
-     */
-    rating?:       number;
-    rating_count?: number;
-  };
-}
+import type { ListingCardData } from "@/lib/listings/types";
 
 export interface ListingCardProps {
   listing: ListingCardData;
