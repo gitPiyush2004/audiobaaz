@@ -117,7 +117,7 @@ export default async function ListingPage({ params }: ListingPageProps) {
 
             {listing.is_negotiable && (
               <Link
-                href="/login"
+                href={`/offer/new/${listing.slug ?? listing.id}`}
                 className="inline-flex h-11 w-full items-center justify-center rounded-lg border border-border bg-surface text-sm font-medium text-foreground transition-all hover:bg-surface-2"
               >
                 Make an offer
