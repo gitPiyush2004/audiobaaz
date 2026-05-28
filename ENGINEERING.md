@@ -194,10 +194,10 @@ These are final. Do not suggest alternatives.
 
 | Person | Tool | Feature | Status |
 |--------|------|---------|--------|
-| Person 1 | AI coding tool | Seller flow + dashboard | IN PROGRESS — core flow complete, see docs/context/seller-flow.md |
+| Person 1 | AI coding tool | Seller flow + dashboard | COMPLETE — all V1 features done, see docs/context/seller-flow.md |
 | Person 2 | Kiro | Buyer flow + listing page | IN PROGRESS — `cn` utility extracted, shared components scaffold (ConditionBadge, ListingCard, ListingGrid). See docs/context/buyer-flow.md |
 | Person 3 | - | Admin panel | NOT STARTED |
-| Person 4 | - | Payments + shipping | NOT STARTED |
+| Person 4 | AI coding tool | Payments + shipping | IN PROGRESS — payment + shipping APIs done, see docs/context/payments-shipping.md |
 
 > Update this table when features change status.
 
