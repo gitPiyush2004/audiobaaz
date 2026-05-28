@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { formatPrice } from '@/lib/utils/formatting';
@@ -57,44 +57,49 @@ const PHOTO_SLOTS = [
   { key: 'extra',  label: 'Additional angle' },
 ];
 
-const MOCK_PRICE_HISTORY = [14500000, 13200000, 15000000, 12800000, 14000000];
-
 // ── Types ────────────────────────────────────────────────────────────────────
 
-// Unified photo entry: existing storage photos have storageUrl set, new uploads have file set.
 interface PhotoEntry {
   file?:       File;
-  previewUrl:  string; // blob URL or storage URL — always used for display
-  storageUrl?: string; // set for pre-existing photos, used as-is on submit
+  previewUrl:  string;
+  storageUrl?: string;
 }
 
 interface Draft {
-  productTypeId:     string;
-  productBrand:      string;
-  productName:       string;
-  grade:             string;
-  conditionChecks:   Record<string, boolean>;
-  inclusions:        Record<string, boolean>;
-  photos:            PhotoEntry[];
-  askingPricePaise:  number | null;
+  productTypeId:      string;
+  productBrand:       string;
+  productName:        string;
+  grade:              string;
+  conditionChecks:    Record<string, boolean>;
+  inclusions:         Record<string, boolean>;
+  photos:             PhotoEntry[];
+  askingPricePaise:   number | null;
   negotiationEnabled: boolean;
-  floorPricePaise:   number | null;
-  autoAcceptPaise:   number | null;
+  floorPricePaise:    number | null;
+  autoAcceptPaise:    number | null;
+}
+
+interface ProductSuggestion {
+  id:       string;
+  name:     string;
+  brand:    string;
+  model:    string;
+  category: string;
 }
 
 export interface ListingFormInitialData {
-  productTypeId?:    string;
-  productBrand?:     string;
-  productName?:      string;
-  grade?:            string;
-  inclusions?:       Record<string, boolean>;
+  productTypeId?:     string;
+  productBrand?:      string;
+  productName?:       string;
+  grade?:             string;
+  inclusions?:        Record<string, boolean>;
   existingPhotoUrls?: string[];
-  askingPricePaise?: number;
+  askingPricePaise?:  number;
   negotiationEnabled?: boolean;
 }
 
 interface Props {
-  draftId?:     string;                 // if set: editing a draft, PATCH on submit
+  draftId?:     string;
   initialData?: ListingFormInitialData;
 }
 
@@ -108,38 +113,119 @@ function parseRupees(raw: string): number | null {
 
 function initDraft(initial?: ListingFormInitialData): Draft {
   return {
-    productTypeId:    initial?.productTypeId    ?? '',
-    productBrand:     initial?.productBrand     ?? '',
-    productName:      initial?.productName      ?? '',
-    grade:            initial?.grade            ?? '',
-    conditionChecks:  {},
-    inclusions:       initial?.inclusions       ?? {},
-    photos:           (initial?.existingPhotoUrls ?? []).map(url => ({
+    productTypeId:     initial?.productTypeId     ?? '',
+    productBrand:      initial?.productBrand      ?? '',
+    productName:       initial?.productName       ?? '',
+    grade:             initial?.grade             ?? '',
+    conditionChecks:   {},
+    inclusions:        initial?.inclusions        ?? {},
+    photos:            (initial?.existingPhotoUrls ?? []).map(url => ({
       previewUrl: url,
       storageUrl: url,
     })),
-    askingPricePaise:  initial?.askingPricePaise  ?? null,
+    askingPricePaise:   initial?.askingPricePaise   ?? null,
     negotiationEnabled: initial?.negotiationEnabled ?? false,
-    floorPricePaise:   null,
-    autoAcceptPaise:   null,
+    floorPricePaise:    null,
+    autoAcceptPaise:    null,
   };
 }
 
 // ── Component ────────────────────────────────────────────────────────────────
 
 export function ListingForm({ draftId, initialData }: Props) {
-  const [step,        setStep]        = useState(0);
-  const [draft,       setDraft]       = useState<Draft>(() => initDraft(initialData));
-  const [photoError,  setPhotoError]  = useState<string | null>(null);
-  const [priceWarning,setPriceWarning]= useState<string | null>(null);
-  const [submitting,  setSubmitting]  = useState(false);
-  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [step,           setStep]          = useState(0);
+  const [draft,          setDraft]         = useState<Draft>(() => initDraft(initialData));
+  const [photoError,     setPhotoError]    = useState<string | null>(null);
+  const [priceWarning,   setPriceWarning]  = useState<string | null>(null);
+  const [submitting,     setSubmitting]    = useState(false);
+  const [submitError,    setSubmitError]   = useState<string | null>(null);
+  const [autoSaveStatus, setAutoSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [priceHistory,   setPriceHistory]  = useState<number[]>([]);
+  const [productQuery,   setProductQuery]  = useState('');
+  const [suggestions,    setSuggestions]   = useState<ProductSuggestion[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // Ref so autoSave always reads the latest saved draft id without stale closure issues
+  const savedDraftIdRef = useRef<string | null>(draftId ?? null);
   const router = useRouter();
 
   const update = useCallback(<K extends keyof Draft>(key: K, value: Draft[K]) => {
     setDraft(prev => ({ ...prev, [key]: value }));
   }, []);
+
+  // ── Product search — debounced 300 ms ──────────────────────────────────────
+  useEffect(() => {
+    if (productQuery.length < 2) { setSuggestions([]); return; }
+    const timer = setTimeout(async () => {
+      try {
+        const qs  = new URLSearchParams({ q: productQuery });
+        if (draft.productTypeId) qs.set('category', draft.productTypeId);
+        const res  = await fetch(`/api/products/search?${qs}`);
+        const json = await res.json();
+        if (!json.error) setSuggestions(json.data ?? []);
+      } catch { /* ignore */ }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [productQuery, draft.productTypeId]);
+
+  // ── Price oracle — fetch on entering step 5 ───────────────────────────────
+  useEffect(() => {
+    if (step !== 5 || !draft.productName) return;
+    fetch(`/api/price-oracle?model=${encodeURIComponent(draft.productName)}&brand=${encodeURIComponent(draft.productBrand)}`)
+      .then(r => r.json())
+      .then(json => {
+        if (json.data?.length > 0) {
+          setPriceHistory(json.data.map((d: { sold_price: number }) => d.sold_price));
+        }
+      })
+      .catch(() => {});
+  }, [step, draft.productName, draft.productBrand]);
+
+  // ── Auto-save draft after steps 1, 2, 3 ──────────────────────────────────
+  const autoSave = useCallback(async (currentDraft: Draft, afterStep: number) => {
+    if (afterStep < 1 || afterStep > 3) return;
+    setAutoSaveStatus('saving');
+    // Yield to the browser so the 'saving' state paints before the fetch starts
+    await new Promise<void>(resolve => setTimeout(resolve, 0));
+    try {
+      const payload: Record<string, unknown> = {
+        productTypeId: currentDraft.productTypeId,
+        productBrand:  currentDraft.productBrand,
+        productName:   currentDraft.productName,
+        ...(afterStep >= 2 && {
+          grade:           currentDraft.grade,
+          conditionChecks: currentDraft.conditionChecks,
+        }),
+        ...(afterStep >= 3 && { inclusions: currentDraft.inclusions }),
+      };
+
+      if (!savedDraftIdRef.current) {
+        const res  = await fetch('/api/listings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...payload, saveAsDraft: true }),
+        });
+        const json = await res.json();
+        if (!json.error) savedDraftIdRef.current = json.data.id;
+      } else {
+        await fetch(`/api/listings/${savedDraftIdRef.current}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...payload, saveDraft: true }),
+        });
+      }
+      setAutoSaveStatus('saved');
+      setTimeout(() => setAutoSaveStatus('idle'), 4000);
+    } catch {
+      setAutoSaveStatus('error');
+      setTimeout(() => setAutoSaveStatus('idle'), 3000);
+    }
+  }, []);
+
+  function handleContinue() {
+    autoSave(draft, step); // fire-and-forget
+    setStep(s => s + 1);
+  }
 
   function canAdvance(): boolean {
     switch (step) {
@@ -156,8 +242,8 @@ export function ListingForm({ draftId, initialData }: Props) {
   function handlePhotoAdd(files: FileList | null) {
     if (!files) return;
     setPhotoError(null);
-    const slots  = PHOTO_SLOTS.length - draft.photos.length;
-    const toAdd  = Array.from(files).slice(0, slots);
+    const slots = PHOTO_SLOTS.length - draft.photos.length;
+    const toAdd = Array.from(files).slice(0, slots);
     if (fileInputRef.current) fileInputRef.current.value = '';
     toAdd.forEach(file => {
       const previewUrl = URL.createObjectURL(file);
@@ -186,8 +272,8 @@ export function ListingForm({ draftId, initialData }: Props) {
   function handlePriceChange(raw: string) {
     const paise = parseRupees(raw);
     update('askingPricePaise', paise);
-    if (paise && MOCK_PRICE_HISTORY.length > 0) {
-      const avg = MOCK_PRICE_HISTORY.reduce((a, b) => a + b, 0) / MOCK_PRICE_HISTORY.length;
+    if (paise && priceHistory.length > 0) {
+      const avg = priceHistory.reduce((a, b) => a + b, 0) / priceHistory.length;
       setPriceWarning(
         paise > avg * 1.3
           ? `Your price is more than 30% above the recent average of ${formatPrice(Math.round(avg))}.`
@@ -200,7 +286,7 @@ export function ListingForm({ draftId, initialData }: Props) {
     setSubmitting(true);
     setSubmitError(null);
     try {
-      // Upload new photos only (entries without a storageUrl)
+      // Upload new photos (entries without a storageUrl)
       const photoUrls: string[] = [];
       for (const photo of draft.photos) {
         if (photo.storageUrl) {
@@ -216,22 +302,22 @@ export function ListingForm({ draftId, initialData }: Props) {
       }
 
       const payload = {
-        productTypeId:     draft.productTypeId,
-        productBrand:      draft.productBrand,
-        productName:       draft.productName,
-        grade:             draft.grade,
-        conditionChecks:   draft.conditionChecks,
-        inclusions:        draft.inclusions,
+        productTypeId:      draft.productTypeId,
+        productBrand:       draft.productBrand,
+        productName:        draft.productName,
+        grade:              draft.grade,
+        conditionChecks:    draft.conditionChecks,
+        inclusions:         draft.inclusions,
         photoUrls,
-        askingPricePaise:  draft.askingPricePaise,
+        askingPricePaise:   draft.askingPricePaise,
         negotiationEnabled: draft.negotiationEnabled,
-        floorPricePaise:   draft.floorPricePaise,
-        autoAcceptPaise:   draft.autoAcceptPaise,
+        floorPricePaise:    draft.floorPricePaise,
+        autoAcceptPaise:    draft.autoAcceptPaise,
       };
 
-      if (draftId) {
-        // Editing a draft → PATCH
-        const res  = await fetch(`/api/listings/${draftId}`, {
+      const effectiveDraftId = savedDraftIdRef.current;
+      if (effectiveDraftId) {
+        const res  = await fetch(`/api/listings/${effectiveDraftId}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ ...payload, resubmit: true }),
@@ -239,7 +325,6 @@ export function ListingForm({ draftId, initialData }: Props) {
         const json = await res.json();
         if (json.error) throw new Error(json.error.message);
       } else {
-        // New listing → POST
         const res  = await fetch('/api/listings', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -256,11 +341,13 @@ export function ListingForm({ draftId, initialData }: Props) {
     }
   }
 
-  const checks      = CONDITION_CHECKS[draft.productTypeId] ?? CONDITION_CHECKS.other;
-  const inclusions  = INCLUSIONS[draft.productTypeId]       ?? INCLUSIONS.other;
-  const payout      = draft.askingPricePaise ? Math.floor(draft.askingPricePaise * 0.9) : null;
-  const priceAvg    = Math.round(MOCK_PRICE_HISTORY.reduce((a, b) => a + b, 0) / MOCK_PRICE_HISTORY.length);
-  const productLabel= PRODUCT_TYPES.find(p => p.id === draft.productTypeId)?.label ?? '';
+  const checks       = CONDITION_CHECKS[draft.productTypeId] ?? CONDITION_CHECKS.other;
+  const inclusions   = INCLUSIONS[draft.productTypeId]       ?? INCLUSIONS.other;
+  const payout       = draft.askingPricePaise ? Math.floor(draft.askingPricePaise * 0.9) : null;
+  const priceAvg     = priceHistory.length > 0
+    ? Math.round(priceHistory.reduce((a, b) => a + b, 0) / priceHistory.length)
+    : null;
+  const productLabel = PRODUCT_TYPES.find(p => p.id === draft.productTypeId)?.label ?? '';
 
   const inputCls = [
     'w-full rounded-lg border border-border bg-surface px-4 py-3 text-sm text-foreground',
@@ -276,10 +363,23 @@ export function ListingForm({ draftId, initialData }: Props) {
           <span className="font-heading text-sm font-semibold text-foreground">
             {draftId ? 'Edit listing' : 'New listing'}
           </span>
-          <Link href={draftId ? '/dashboard/listings?tab=draft' : '/sell'}
-            className="text-sm text-muted-foreground transition-colors hover:text-foreground">
-            Cancel
-          </Link>
+          <div className="flex items-center gap-3">
+            {autoSaveStatus === 'saving' && (
+              <span className="text-xs text-muted-foreground">Saving…</span>
+            )}
+            {autoSaveStatus === 'saved' && (
+              <span className="text-xs text-success">Draft saved</span>
+            )}
+            {autoSaveStatus === 'error' && (
+              <span className="text-xs text-error">Save failed</span>
+            )}
+            <Link
+              href={draftId ? '/dashboard/listings?tab=draft' : '/sell'}
+              className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+            >
+              Cancel
+            </Link>
+          </div>
         </div>
       </div>
 
@@ -296,11 +396,15 @@ export function ListingForm({ draftId, initialData }: Props) {
                 >
                   <span className={[
                     'flex h-5 w-5 shrink-0 items-center justify-center rounded-full border text-[10px] font-bold',
-                    i === step ? 'border-accent bg-accent text-black'
-                      : i < step ? 'border-accent/40 bg-accent/10 text-accent'
+                    i === step
+                      ? 'border-accent bg-accent text-black'
+                      : i < step
+                        ? 'border-accent/40 bg-accent/10 text-accent'
                         : 'border-border bg-surface-2 text-dim-foreground',
                   ].join(' ')}>{i + 1}</span>
-                  <span className={i === step ? 'text-foreground' : i < step ? 'text-muted-foreground' : 'text-dim-foreground'}>
+                  <span className={
+                    i === step ? 'text-foreground' : i < step ? 'text-muted-foreground' : 'text-dim-foreground'
+                  }>
                     {label}
                   </span>
                 </button>
@@ -322,11 +426,19 @@ export function ListingForm({ draftId, initialData }: Props) {
             <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
               {PRODUCT_TYPES.map(pt => (
                 <button key={pt.id}
-                  onClick={() => { update('productTypeId', pt.id); update('conditionChecks', {}); update('inclusions', {}); }}
+                  onClick={() => {
+                    update('productTypeId', pt.id);
+                    update('conditionChecks', {});
+                    update('inclusions', {});
+                  }}
                   className={['flex flex-col items-start rounded-xl border p-4 text-left transition-all',
-                    draft.productTypeId === pt.id ? 'border-accent bg-accent/5' : 'border-border bg-surface hover:border-border-2 hover:bg-surface-2',
+                    draft.productTypeId === pt.id
+                      ? 'border-accent bg-accent/5'
+                      : 'border-border bg-surface hover:border-border-2 hover:bg-surface-2',
                   ].join(' ')}>
-                  <span className={['font-heading text-base font-semibold', draft.productTypeId === pt.id ? 'text-accent' : 'text-foreground'].join(' ')}>
+                  <span className={['font-heading text-base font-semibold',
+                    draft.productTypeId === pt.id ? 'text-accent' : 'text-foreground',
+                  ].join(' ')}>
                     {pt.label}
                   </span>
                   <span className="mt-1 text-xs text-muted-foreground">{pt.desc}</span>
@@ -340,8 +452,47 @@ export function ListingForm({ draftId, initialData }: Props) {
         {step === 1 && (
           <div>
             <h2 className="font-heading text-2xl font-bold text-foreground">Which product is it?</h2>
-            <p className="mt-2 text-sm text-muted-foreground">Enter the brand and model name exactly as sold.</p>
-            <div className="mt-8 space-y-4">
+            <p className="mt-2 text-sm text-muted-foreground">Search our catalogue or enter brand and model manually.</p>
+
+            {/* Catalogue search */}
+            <div className="relative mt-8">
+              <label className="mb-1.5 block text-sm font-medium text-foreground">
+                Search catalogue
+                <span className="ml-1.5 text-xs font-normal text-muted-foreground">(optional)</span>
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. Moondrop Aria, HD 660S, Topping D90"
+                value={productQuery}
+                onChange={e => { setProductQuery(e.target.value); setShowSuggestions(true); }}
+                onFocus={() => setShowSuggestions(true)}
+                onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
+                className={inputCls}
+              />
+              {showSuggestions && suggestions.length > 0 && (
+                <div className="absolute top-full z-10 mt-1 w-full overflow-hidden rounded-lg border border-border bg-surface shadow-lg">
+                  {suggestions.map(s => (
+                    <button
+                      key={s.id}
+                      type="button"
+                      onMouseDown={() => {
+                        update('productBrand', s.brand);
+                        update('productName', s.name);
+                        if (s.category !== draft.productTypeId) update('productTypeId', s.category);
+                        setProductQuery(`${s.brand} ${s.name}`);
+                        setShowSuggestions(false);
+                      }}
+                      className="flex w-full items-center justify-between px-4 py-3 text-left transition-colors hover:bg-surface-2"
+                    >
+                      <span className="text-sm font-medium text-foreground">{s.brand} {s.name}</span>
+                      <span className="ml-4 shrink-0 text-xs uppercase text-muted-foreground">{s.category}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="mt-6 space-y-4">
               <div>
                 <label className="mb-1.5 block text-sm font-medium text-foreground">Brand</label>
                 <input type="text" placeholder="e.g. Moondrop, Sennheiser, Topping"
@@ -355,7 +506,9 @@ export function ListingForm({ draftId, initialData }: Props) {
               {draft.productBrand && draft.productName && (
                 <div className="rounded-xl border border-border bg-surface-2 p-4">
                   <p className="text-xs text-muted-foreground">Listing as</p>
-                  <p className="mt-1 font-heading text-base font-semibold text-foreground">{draft.productBrand} {draft.productName}</p>
+                  <p className="mt-1 font-heading text-base font-semibold text-foreground">
+                    {draft.productBrand} {draft.productName}
+                  </p>
                   <p className="mt-0.5 text-xs text-muted-foreground">{productLabel}</p>
                 </div>
               )}
@@ -372,9 +525,13 @@ export function ListingForm({ draftId, initialData }: Props) {
               {GRADES.map(g => (
                 <button key={g.id} onClick={() => update('grade', g.id)}
                   className={['flex min-w-[130px] flex-col rounded-xl border-2 p-4 text-left transition-all',
-                    draft.grade === g.id ? g.colorClass + ' bg-surface-2' : 'border-border bg-surface text-muted-foreground hover:border-border-2',
+                    draft.grade === g.id
+                      ? g.colorClass + ' bg-surface-2'
+                      : 'border-border bg-surface text-muted-foreground hover:border-border-2',
                   ].join(' ')}>
-                  <span className={['font-heading text-xl font-black', draft.grade !== g.id ? 'text-foreground' : ''].join(' ')}>{g.id}</span>
+                  <span className={['font-heading text-xl font-black',
+                    draft.grade !== g.id ? 'text-foreground' : '',
+                  ].join(' ')}>{g.id}</span>
                   <span className="mt-1 text-sm font-semibold">{g.label}</span>
                   <span className="mt-1 text-xs leading-relaxed opacity-80">{g.desc}</span>
                 </button>
@@ -477,16 +634,26 @@ export function ListingForm({ draftId, initialData }: Props) {
               <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
                 Recent sold prices — {draft.productBrand} {draft.productName}
               </p>
-              <div className="mt-3 flex flex-wrap gap-2">
-                {MOCK_PRICE_HISTORY.map((p, i) => (
-                  <span key={i} className="rounded-md border border-border bg-surface-2 px-3 py-1 font-mono text-sm text-foreground">
-                    {formatPrice(p)}
-                  </span>
-                ))}
-              </div>
-              <p className="mt-3 text-xs text-muted-foreground">
-                Market average: <span className="font-medium text-foreground">{formatPrice(priceAvg)}</span>
-              </p>
+              {priceHistory.length > 0 ? (
+                <>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {priceHistory.map((p, i) => (
+                      <span key={i} className="rounded-md border border-border bg-surface-2 px-3 py-1 font-mono text-sm text-foreground">
+                        {formatPrice(p)}
+                      </span>
+                    ))}
+                  </div>
+                  {priceAvg !== null && (
+                    <p className="mt-3 text-xs text-muted-foreground">
+                      Market average: <span className="font-medium text-foreground">{formatPrice(priceAvg)}</span>
+                    </p>
+                  )}
+                </>
+              ) : (
+                <p className="mt-3 text-sm text-muted-foreground">
+                  No sold listings for this model yet — set a price based on your own research.
+                </p>
+              )}
             </div>
 
             <div className="mt-6">
@@ -529,8 +696,8 @@ export function ListingForm({ draftId, initialData }: Props) {
                 <div className="mt-6 space-y-4 rounded-xl border border-border bg-surface p-5">
                   <p className="text-xs text-muted-foreground">These values are private — buyers never see them.</p>
                   {[
-                    { key: 'floorPricePaise' as const, label: "Floor price (₹) — lowest offer you'll consider" },
-                    { key: 'autoAcceptPaise' as const, label: 'Auto-accept threshold (₹) — offers at or above this auto-accept' },
+                    { key: 'floorPricePaise'  as const, label: "Floor price (₹) — lowest offer you'll consider" },
+                    { key: 'autoAcceptPaise'  as const, label: 'Auto-accept threshold (₹) — offers at or above this auto-accept' },
                   ].map(({ key, label }) => (
                     <div key={key}>
                       <label className="mb-1.5 block text-sm font-medium text-foreground">{label}</label>
@@ -569,7 +736,7 @@ export function ListingForm({ draftId, initialData }: Props) {
           ) : <div />}
 
           {step < STEPS.length - 1 ? (
-            <button onClick={() => setStep(s => s + 1)} disabled={!canAdvance()}
+            <button onClick={handleContinue} disabled={!canAdvance()}
               className="inline-flex h-10 items-center rounded-lg bg-accent px-6 text-sm font-semibold text-black transition-all hover:bg-accent-hover active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40 disabled:active:scale-100">
               Continue
             </button>

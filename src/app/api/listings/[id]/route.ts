@@ -29,13 +29,42 @@ export async function PATCH(
     status?: string;
     asking_price?: number;
     resubmit?: boolean;
-    // draft resubmit fields
+    saveDraft?: boolean;
+    // draft fields (resubmit + saveDraft)
     productTypeId?: string; productBrand?: string; productName?: string;
     grade?: string; conditionChecks?: Record<string, boolean>;
     inclusions?: Record<string, boolean>; photoUrls?: string[];
     askingPricePaise?: number; negotiationEnabled?: boolean;
     floorPricePaise?: number | null; autoAcceptPaise?: number | null;
   };
+
+  // ── Draft auto-save (partial update, keeps status='draft') ───────────────
+  if (body.saveDraft === true) {
+    if (listing.status !== 'draft') {
+      return err('Only drafts can be auto-saved', 'INVALID_STATE');
+    }
+    const updates: Record<string, unknown> = {};
+    if (body.productTypeId)  updates.category        = body.productTypeId;
+    if (body.productBrand)   updates.brand           = body.productBrand;
+    if (body.productName)    updates.product_name    = body.productName;
+    if (body.grade)          updates.condition_grade = body.grade;
+    if (body.conditionChecks) {
+      updates.condition_notes =
+        Object.entries(body.conditionChecks).filter(([, v]) => v).map(([k]) => k).join(', ') || null;
+    }
+    if (body.inclusions !== undefined) updates.inclusions = body.inclusions;
+    if (body.photoUrls  !== undefined) updates.photos     = body.photoUrls;
+
+    const { data, error } = await supabase
+      .from('listings')
+      .update(updates)
+      .eq('id', params.id)
+      .select('id')
+      .single();
+
+    if (error) return err(error.message, error.code ?? 'DB_ERROR', 500);
+    return ok(data);
+  }
 
   // ── Draft resubmission ───────────────────────────────────────────────────
   if (body.resubmit === true) {
