@@ -105,6 +105,46 @@ If you create or modify a shared component:
 
 ---
 
+## Reviewer Ownership — Required Approvals
+
+Some paths in the repo are load-bearing. Changes to them require sign-off from the
+designated reviewer **before** the PR can merge into `dev`. This is not optional.
+The goal is to stop AI-assisted divergence — duplicate components, second utility
+patterns, inconsistent spacing, accidentally leaked server-only fields.
+
+| Scope | Required reviewer | Rationale |
+|-------|-------------------|-----------|
+| `src/components/ui/**` | Design-system owner (currently Person 2) | Visual primitives; one set of variants and sizes for the whole app |
+| `src/components/listing/**` | Listing primitives owner (Person 2) | Marketplace card surface — every page consumes it |
+| `src/components/shared/**` | Cross-feature owner (Person 2) | Touches multiple features by definition |
+| `src/lib/utils/**` | Utilities owner (Person 2) | Things like `cn`, formatting — duplication here is a fast track to chaos |
+| `supabase/schema.sql`, any DB migration | Schema owner (Person 1) | All four features depend on the same shapes |
+| `src/middleware.ts`, `src/lib/supabase/{server,client,admin}.ts`, `(auth)/**`, anything that gates auth or RLS | Auth/security owner (Person 1) | Auth bugs are silent and dangerous |
+| `next.config.mjs`, `tailwind.config.ts`, `src/app/globals.css`, `tsconfig.json`, `package.json` | Whoever opened the PR + one other | Foundation; affects everyone's local build |
+
+### How to request a review
+- Mention the reviewer in the PR description
+- If the reviewer is the same person opening the PR, get a second pair of eyes
+  from any other contributor — "self-merge into a load-bearing path" is the
+  pattern we are explicitly preventing
+
+### What reviewers must check
+- New shared component? It exports an explicit `Props` interface AND accepts `className?: string`
+- View-model props (structural subsets), not raw DB row spreads — no `floor_price`,
+  `seller_score`, `buyer_score`, `auto_accept_threshold` reaching the client
+- Class composition uses the canonical `@/lib/utils/cn` — no inline `twMerge(clsx(...))`
+- No duplicate variants of an existing primitive (e.g. a second `Button`)
+- No new dependencies without team agreement
+- Registry in `ENGINEERING.md` updated for new shared components
+- `tsc`, `lint`, and `next build` all pass on the branch
+
+### When a reviewer is unavailable
+- Time-sensitive fixes can land with a single approver, but the reviewer is
+  pinged immediately after merge and is expected to flag follow-ups
+- Do not normalise this. It is the exception
+
+---
+
 ## AI Session Start Protocol
 
 When starting a AI coding tool session, give this prompt first:
