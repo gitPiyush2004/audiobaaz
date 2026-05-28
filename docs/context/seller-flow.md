@@ -23,18 +23,26 @@ seller dashboard (7 sections).
 [x] 6-step listing intake form UI — /sell/new/page.tsx (UI complete, backend wired)
 [x] Supabase client files — src/lib/supabase/client.ts, server.ts, admin.ts
 [x] Auth middleware — src/middleware.ts (protects /sell/new, /sell/draft, /dashboard)
-[x] Login page — /login (email OTP via Supabase Auth)
+[x] Login page — /login (email magic link via Supabase Auth)
+[x] Auth callback — /auth/callback (exchanges code, redirects to destination)
 [x] POST /api/listings — creates listing with status=pending on submit
+[x] PATCH /api/listings/[id] — delist + status transitions
 [x] POST /api/upload — uploads photos to Supabase Storage (listings bucket)
-[ ] Auto-save draft on step completion (deferred — next session)
-[ ] GET/PATCH /api/listings/[id] (deferred — needed for auto-save)
-[ ] Seller dashboard — /dashboard (7 sections)
-[ ] Dashboard: My Listings tabs
-[ ] Dashboard: Offers & Negotiations
-[ ] Dashboard: Order Tracking
-[ ] Dashboard: Payouts & Earnings
-[ ] Dashboard: Activity feed
-[ ] Dashboard: Account & Trust
+[x] PATCH /api/offers/[id] — accept/decline offers
+[x] PATCH /api/users/me — update profile
+[x] Dashboard layout — shared sidebar with active link highlighting
+[x] Dashboard: Overview — stat cards + recent listings + submitted banner
+[x] Dashboard: My Listings — tabbed (Live/Pending/Draft/Sold/Delisted) + Delist
+[x] Dashboard: Offers — accept/decline, countdown, past offers
+[x] Dashboard: Orders — status timeline
+[x] Dashboard: Payouts — UPI management + earnings history
+[x] Dashboard: Activity — Telegram notification log
+[x] Dashboard: Account — profile form, availability, Telegram prompt, seller rating
+[ ] Auto-save draft on step completion (deferred)
+[ ] Draft resume page — /sell/draft/[id] (deferred)
+[ ] Real price oracle — replace mock with price_history query (deferred)
+[ ] Product search — replace manual entry with DB search (deferred)
+[ ] Telegram notifications (needs bot token)
 ```
 
 ---
@@ -140,11 +148,15 @@ src/app/api/listings/[id]/route.ts              [ ] not started
 
 ## Next Session Starts Here
 
-Dashboard overview page at /dashboard/page.tsx.
-Must check auth (redirect to /login if not logged in — middleware handles this).
-Show: active listings count, total earnings, pending payouts, active offers.
-Query the listings table for seller's own listings.
-If ?submitted=1 in URL, show a success banner ("Under review — 2–4 hours").
+Seller flow is functionally complete for V1. Remaining deferred items:
+1. Auto-save draft on step completion (POST draft after step 2, PATCH on steps 3–4)
+2. Draft resume page at /sell/draft/[id] — show banner to resume in-progress listing
+3. Real price oracle — query price_history WHERE product_name ILIKE % for the model
+4. Product search in step 2 — fuzzy search products table using pg_trgm index
+5. Telegram notifications — wire TELEGRAM_BOT_TOKEN once bot is set up
+
+Check ENGINEERING.md "Current Build Status" table and update Person 1 row to IN PROGRESS
+before starting the next session.
 
 ---
 
