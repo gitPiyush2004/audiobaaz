@@ -195,7 +195,7 @@ These are final. Do not suggest alternatives.
 | Person | Tool | Feature | Status |
 |--------|------|---------|--------|
 | Person 1 | AI coding tool | Seller flow + dashboard | IN PROGRESS — core flow complete, see docs/context/seller-flow.md |
-| Person 2 | Kiro | Buyer flow + listing page | NOT STARTED |
+| Person 2 | Kiro | Buyer flow + listing page | IN PROGRESS — `cn` utility extracted, shared components scaffold (ConditionBadge, ListingCard, ListingGrid). See docs/context/buyer-flow.md |
 | Person 3 | - | Admin panel | NOT STARTED |
 | Person 4 | - | Payments + shipping | NOT STARTED |
 
@@ -281,6 +281,10 @@ Components modified or created that affect multiple features. If you use or modi
 | `DashboardNav` | `src/components/layout/DashboardNav.tsx` | Person 1 | Seller dashboard sidebar. Client component, uses `usePathname`. |
 | `Button` | `src/components/ui/Button.tsx` | Scaffold | Primary, secondary, ghost, danger variants. sm/md/lg sizes. |
 | `Card` | `src/components/ui/Card.tsx` | Scaffold | Basic surface card. Accepts all div props. |
+| `cn` | `src/lib/utils/cn.ts` | Scaffold | Canonical class-name helper (`clsx` + `tailwind-merge`). The ONLY place to import `cn` from. Do not duplicate. |
+| `ConditionBadge` | `src/components/listing/ConditionBadge.tsx` | Person 2 | Color-coded grade pill (S/A/B/C/D). Props: `grade`, `variant?: "compact" \| "full"`, `size?: "sm" \| "md"`, `className?`. Server component. |
+| `ListingCard` | `src/components/listing/ListingCard.tsx` | Person 2 | Listing grid card. Props: `listing: ListingCardData`, `priority?`, `className?`. `ListingCardData` is a structural subset of `Listing` — never pass server-only fields like `floor_price`. Wraps `next/image` (4:3 cover) and links to `/listing/[slug \|\| id]`. Server component. |
+| `ListingGrid` | `src/components/listing/ListingGrid.tsx` | Person 2 | Responsive grid (1/2/3/4 cols). Props: `children?`, `loading?`, `skeletonCount?`, `empty?`, `className?`. Pure layout — no data shape coupling. |
 
 ---
 
