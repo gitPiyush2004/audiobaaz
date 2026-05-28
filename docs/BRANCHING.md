@@ -95,7 +95,6 @@ Components in these folders are used by everyone:
 - `src/components/ui/`
 - `src/components/shared/`
 - `src/components/listing/`
-
 If you create or modify a shared component:
 1. Document its props clearly with TypeScript
 2. Post in team chat: "Added ListingCard — import from components/listing/ListingCard"
