@@ -143,14 +143,28 @@ boundary (API route / server component), not pass them through.
   component cannot meaningfully render without.
 
 ### 4. Listings access boundary — implemented in `src/lib/listings/browse.ts`
-UI must NOT read directly from Supabase or from mock files. All buyer-flow
-listing reads go through `src/lib/listings/*` access functions. The first one,
-`getBrowseListings(filters)`, ships in this session — mock-backed today, swap
-in a Supabase query later, then add caching/pagination, without UI changes.
 
-Sibling files (`detail.ts`, `search.ts`) follow the same pattern. The next
-slice introduces `getListingDetail(idOrSlug)` — same contract, returns a
-view-model.
+The buyer surface reads listings through one indirection. This is the rule
+the codebase is most likely to drift away from, so it is stated as three
+hard constraints, not preferences.
+
+**Three rules:**
+
+1. **No page, component, hook, or route may import mock datasets directly.**
+   Importing from `@/lib/mock/*` outside `src/lib/listings/*` is a code
+   smell that should fail review. The `mock/` folder is an implementation
+   detail of the access boundary, not a public API.
+2. **All listing reads flow through `src/lib/listings/*` access functions.**
+   `getBrowseListings(filters)` ships now; sibling functions (`detail.ts`,
+   `search.ts`, etc.) follow the same pattern. UI never calls Supabase or
+   mock data directly — it calls these functions and consumes the
+   view-model they return.
+3. **The future Supabase migration replaces implementations inside the
+   boundary, never the callers.** When real data lands, the change is
+   confined to the body of `getBrowseListings` (and siblings). UI files,
+   page components, and route handlers keep their imports unchanged. If a
+   migration ever requires touching call sites, the boundary has been
+   bypassed somewhere — find and fix that, don't ship around it.
 
 ```ts
 // src/lib/listings/browse.ts
@@ -160,6 +174,7 @@ export async function getBrowseListings(
 ```
 
 The function returns `ListingCardData` by construction so server-only fields
+(`floor_price`, `auto_accept_threshold`, `seller_score`, `buyer_score`)
 cannot leak through this boundary even if the underlying source is wrong.
 
 ### 5. Mock data must be realistically messy
@@ -201,14 +216,23 @@ shows listing cards must go through the boundary, including marketing pages.
 If a feature ever needs a listing read that doesn't fit the existing access
 functions, add a new one to `src/lib/listings/*` rather than bypassing.
 
-### 10. No `src/app/(main)/` route group exists yet
-Person 1's seller flow was scaffolded under `src/app/(main)/...` (see
-`docs/context/seller-flow.md`). Buyer-flow routes shipped in this slice live
-at the top level (`src/app/page.tsx`, `src/app/browse/page.tsx`) because no
-`(main)/layout.tsx` exists yet — the root layout is fine for now. If a shared
-layout becomes necessary (e.g. for an account-aware header that differs from
-seller routes), introduce `src/app/(main)/layout.tsx` and move buyer pages
-in one focused PR. Coordinate with Person 1 first since `Nav` is theirs.
+### 10. Coordinate with seller-flow before introducing shared layouts
+Buyer-flow and seller-flow each render under their own page tree today
+(`/`, `/browse`, future `/listing/[slug]` for buyer; `/sell/*`, `/dashboard/*`
+for seller — Person 1's). The root layout (`src/app/layout.tsx`) is the only
+shared layout, owned by no single feature.
+
+If buyer-flow ever needs a layout that wraps multiple buyer routes (e.g. an
+account-aware header that differs from seller-flow's, or a buyer-side cart
+strip), introduce it through one coordinated change — not a unilateral
+refactor. The layout decision lives at the same level as `Nav`, which is
+Person 1's domain. Same applies in reverse: seller-flow does not get to add
+a layout that scoops up `/`, `/browse`, or `/listing/*` without buyer-flow
+agreement.
+
+The point is that the directory shape (route groups, shared layouts) is a
+multi-feature decision. It changes once, deliberately, with both owners
+present — never as an incidental tidy-up inside a feature PR.
 
 ---
 
@@ -350,16 +374,6 @@ At the start of each Kiro session:
 
 ## Known Blockers / Watch Out
 
-- **Upstream admin-panel lint failures on `dev`.** Person 3's admin merge
-  shipped with 12 `@typescript-eslint/no-explicit-any` errors and 4
-  `@next/next/no-img-element` warnings, all confined to `src/app/admin/**`
-  and `src/app/api/admin/**`. They block `next build`'s lint phase on `dev`
-  but compilation itself succeeds, and **none are buyer-flow files**. Fix
-  belongs to Person 3 in a separate follow-up PR. Do not patch around them
-  from this branch with `eslint-disable` comments — that masks the underlying
-  process problem (red merges into `dev`). Bigger systemic gap: there is no CI
-  gate enforcing `tsc + lint + build` on PRs into `dev`. Until that exists,
-  the always-green-dev rule depends on developer discipline alone.
 - No real listings exist in the DB yet. UI development runs against mock
   data via `getBrowseListings()` until Person 1's seller flow + Person 3's
   approval queue produce approved listings end-to-end. The mock layer is
@@ -371,9 +385,9 @@ At the start of each Kiro session:
 - Per ENGINEERING.md, middleware protects `/sell/*`, `/dashboard`, and `/admin`.
   Buyer routes that require auth (`/buy/*`, `/orders/*`) need to be added to
   the same middleware — do not create a parallel middleware.
-- Route group `src/app/(main)/` does not exist yet. See decision §10 above.
-  Buyer pages (`/`, `/browse`, future `/listing/[slug]`) live at the top level
-  and inherit the root layout.
+- Cross-feature: there is an upstream `next build` lint failure on `dev`
+  owned by admin-panel. Tracked in ENGINEERING.md "Project-Level Known Issues"
+  and `docs/context/admin-panel.md`. Does not block buyer-flow work.
 
 ---
 
@@ -480,4 +494,4 @@ Buyer browse surface is shipping. The next slice is the listing detail page —
 - `dev` must always pass `tsc`, `lint`, and `next build`
 - Browse filter and sort state lives in URL search params, never client state
 - Homepage and `/browse` consume the same `getBrowseListings()` boundary by design
-- Buyer pages live at the top level of `src/app/` until a `(main)/layout.tsx` is justified
+- Directory-shape changes (route groups, shared layouts) are multi-feature decisions — coordinate with seller-flow before introducing one

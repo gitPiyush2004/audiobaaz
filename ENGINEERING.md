@@ -289,6 +289,32 @@ Components modified or created that affect multiple features. If you use or modi
 
 ---
 
+## Project-Level Known Issues
+
+Cross-feature blockers tracked here so individual feature context files don't
+re-document them. Add to this section only when the issue affects more than
+one feature or the project as a whole.
+
+### `next build` lint phase fails on `dev` (admin-panel)
+
+Owner: Person 3. Files: `src/app/admin/**`, `src/app/api/admin/**`.
+
+Twelve `@typescript-eslint/no-explicit-any` errors plus four
+`@next/next/no-img-element` warnings landed on `dev` via the admin-panel
+merge. Compilation itself passes; only the lint phase of `next build`
+fails. None of the failing files are outside the admin paths.
+
+Fix belongs to Person 3 in a separate follow-up PR. Do not patch with
+`eslint-disable` comments from other branches — that masks the underlying
+process problem.
+
+Systemic root cause: there is no CI gate enforcing `tsc + lint + build` on
+PRs into `dev`. Until that exists, the always-green-dev rule depends on
+developer discipline alone. A CI workflow on PRs into `dev` is the right
+durable fix.
+
+---
+
 ## Contact / Ownership
 
 - Repo: github.com/[repo-url]/audiobaaz

@@ -142,6 +142,20 @@ src/app/api/admin/payouts/[id]/trigger/route.ts       ✓ done
 
 ---
 
+## Known Issues (Owned By This Feature)
+
+- **`next build` lint phase fails on `dev` from this feature's code.**
+  Twelve `@typescript-eslint/no-explicit-any` errors and four
+  `@next/next/no-img-element` warnings across `src/app/admin/**` and
+  `src/app/api/admin/**`. Compilation passes; only lint fails. Detail and
+  exact file:line list in ENGINEERING.md "Project-Level Known Issues". This
+  belongs to Person 3 to fix in a small follow-up PR — replace `any` with
+  proper types for the dispute/payout payload shapes, and switch the four
+  raw `<img>` tags to `next/image` (or add a justified per-file disable if
+  unavoidable, with a comment explaining why).
+
+---
+
 ## Next Session Starts Here
 
 Core admin panel is complete. Remaining work:
