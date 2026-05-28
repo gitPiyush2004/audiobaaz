@@ -38,8 +38,8 @@ seller dashboard (7 sections).
 [x] Dashboard: Payouts — UPI management + earnings history
 [x] Dashboard: Activity — Telegram notification log
 [x] Dashboard: Account — profile form, availability, Telegram prompt, seller rating
+[x] Draft resume page — /sell/draft/[id] (pre-populates form, PATCHes existing row)
 [ ] Auto-save draft on step completion (deferred)
-[ ] Draft resume page — /sell/draft/[id] (deferred)
 [ ] Real price oracle — replace mock with price_history query (deferred)
 [ ] Product search — replace manual entry with DB search (deferred)
 [ ] Telegram notifications (needs bot token)
@@ -133,6 +133,21 @@ src/app/api/listings/[id]/route.ts              [ ] not started
 - Format: {brand-lowercase-alphanum}-{4-random-digits} e.g. moondrop-2394
 - Generated server-side on listing creation
 - Unique constraint in DB — collision extremely unlikely with 4 digits
+
+---
+
+## Key Invariants — Never Break These
+
+- **Draft resume PATCHes the existing row** — never creates a new listing.
+  `created_at` stays from the original submission; `updated_at` reflects the edit.
+  Verified: DB shows 1 row with same UUID after resume + resubmit.
+
+- **Pulled-back listings are invisible to admin** — status transitions from
+  `pending → draft` on pull back. Admin review queue queries `status = 'pending'`
+  only, so pulled-back listings never appear there. No extra logic needed.
+
+- **floor_price never leaves the server** — excluded from all .select() calls
+  in API responses. Seller sets it, it's stored, buyers never see it.
 
 ---
 
