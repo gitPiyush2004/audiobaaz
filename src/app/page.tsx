@@ -21,7 +21,7 @@ export default function HomePage() {
         </h1>
 
         <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-muted-foreground">
-          India's managed secondhand marketplace for headphones, speakers, DACs,
+          India&apos;s managed secondhand marketplace for headphones, speakers, DACs,
           amps, and more. Condition-graded, escrow-protected, and dispute-backed
           — so you never have to guess.
         </p>
