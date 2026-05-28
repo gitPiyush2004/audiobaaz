@@ -3,6 +3,8 @@ import { formatPrice, formatDate } from '@/lib/utils/formatting';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { DelistButton } from './DelistButton';
+import { PullBackButton } from './PullBackButton';
+import { PriceEdit } from './PriceEdit';
 
 export const metadata = { title: 'My Listings — Audiobaaz' };
 
@@ -102,9 +104,13 @@ export default async function ListingsPage({ searchParams }: Props) {
 
                 {/* price + actions */}
                 <div className="flex shrink-0 flex-col items-end gap-2">
-                  <span className="font-mono text-sm font-semibold text-foreground">
-                    {formatPrice(l.asking_price)}
-                  </span>
+                  {activeKey === 'live' ? (
+                    <PriceEdit listingId={l.id} currentPricePaise={l.asking_price} />
+                  ) : (
+                    <span className="font-mono text-sm font-semibold text-foreground">
+                      {formatPrice(l.asking_price)}
+                    </span>
+                  )}
                   <div className="flex gap-2">
                     {activeKey === 'live' && l.slug && (
                       <Link
@@ -114,9 +120,8 @@ export default async function ListingsPage({ searchParams }: Props) {
                         View
                       </Link>
                     )}
-                    {activeKey === 'live' && (
-                      <DelistButton listingId={l.id} />
-                    )}
+                    {activeKey === 'live'    && <DelistButton   listingId={l.id} />}
+                    {activeKey === 'pending' && <PullBackButton listingId={l.id} />}
                   </div>
                 </div>
               </div>

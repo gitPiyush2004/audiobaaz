@@ -25,15 +25,33 @@ export async function PATCH(
   if (fetchErr || !listing) return err('Listing not found', 'NOT_FOUND', 404);
   if (listing.seller_id !== user.id) return err('Forbidden', 'FORBIDDEN', 403);
 
-  const body = await req.json();
+  const body = await req.json() as { status?: string; asking_price?: number };
 
-  // Only allow seller-initiated status transitions
-  const allowedTransitions: Record<string, string[]> = {
-    approved: ['delisted'],
-    rejected: ['draft'],
-  };
+  // ── Price update (approved listings only) ────────────────────────────────
+  if (body.asking_price !== undefined) {
+    if (listing.status !== 'approved') {
+      return err('Price can only be updated on live listings', 'INVALID_STATE');
+    }
+    if (!Number.isInteger(body.asking_price) || body.asking_price <= 0) {
+      return err('asking_price must be a positive integer in paise', 'INVALID_VALUE');
+    }
+    const { data, error } = await supabase
+      .from('listings')
+      .update({ asking_price: body.asking_price })
+      .eq('id', params.id)
+      .select('id, asking_price')
+      .single();
+    if (error) return err(error.message, error.code ?? 'DB_ERROR', 500);
+    return ok(data);
+  }
 
+  // ── Status transition ────────────────────────────────────────────────────
   if (body.status) {
+    const allowedTransitions: Record<string, string[]> = {
+      approved: ['delisted'],
+      rejected: ['draft'],
+      pending:  ['draft'],     // seller pulls back from review
+    };
     const allowed = allowedTransitions[listing.status] ?? [];
     if (!allowed.includes(body.status)) {
       return err(
@@ -41,15 +59,15 @@ export async function PATCH(
         'INVALID_TRANSITION',
       );
     }
+    const { data, error } = await supabase
+      .from('listings')
+      .update({ status: body.status })
+      .eq('id', params.id)
+      .select('id, status')
+      .single();
+    if (error) return err(error.message, error.code ?? 'DB_ERROR', 500);
+    return ok(data);
   }
 
-  const { data, error } = await supabase
-    .from('listings')
-    .update({ status: body.status })
-    .eq('id', params.id)
-    .select('id, status')
-    .single();
-
-  if (error) return err(error.message, error.code ?? 'DB_ERROR', 500);
-  return ok(data);
+  return err('Nothing to update', 'NO_OP');
 }
