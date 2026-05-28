@@ -17,6 +17,8 @@ export interface MockSeller {
   /** Public-facing rating, 0–5. Distinct from internal `seller_score`. */
   rating?:      number;
   rating_count?: number;
+  /** ISO timestamp when the seller account was created. Detail page only. */
+  member_since?: string;
 }
 
 export const mockSellers = [
@@ -26,6 +28,7 @@ export const mockSellers = [
     city:         "Mumbai",
     rating:       4.8,
     rating_count: 47,
+    member_since: "2024-03-12T00:00:00.000Z",
   },
   {
     id:           "seller-002",
@@ -33,6 +36,7 @@ export const mockSellers = [
     city:         "Bangalore",
     rating:       4.9,
     rating_count: 122,
+    member_since: "2023-08-05T00:00:00.000Z",
   },
   {
     id:           "seller-003",
@@ -40,6 +44,7 @@ export const mockSellers = [
     city:         "Pune",
     rating:       4.5,
     rating_count: 18,
+    member_since: "2024-11-20T00:00:00.000Z",
   },
   {
     id:           "seller-004",
@@ -47,6 +52,7 @@ export const mockSellers = [
     city:         "Ahmedabad",
     rating:       4.2,
     rating_count: 9,
+    member_since: "2025-02-14T00:00:00.000Z",
   },
   // No name set yet — show fallback "Verified seller"
   {
@@ -54,6 +60,7 @@ export const mockSellers = [
     city:         "Hyderabad",
     rating:       4.7,
     rating_count: 31,
+    member_since: "2024-06-30T00:00:00.000Z",
   },
   {
     id:           "seller-006",
@@ -61,12 +68,14 @@ export const mockSellers = [
     city:         "Delhi",
     rating:       3.9,
     rating_count: 6,
+    member_since: "2025-04-08T00:00:00.000Z",
   },
-  // New seller — no rating yet (rating undefined, count undefined)
+  // New seller — no rating yet, no listing count, just-joined date
   {
     id:           "seller-007",
     full_name:    "Meera Iyer",
     city:         "Chennai",
+    member_since: "2026-05-12T00:00:00.000Z",
   },
   {
     id:           "seller-008",
@@ -74,6 +83,7 @@ export const mockSellers = [
     city:         "Kolkata",
     rating:       5.0,
     rating_count: 4,
+    member_since: "2025-09-22T00:00:00.000Z",
   },
 ] as const satisfies readonly MockSeller[];
 

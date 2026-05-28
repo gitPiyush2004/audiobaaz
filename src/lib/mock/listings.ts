@@ -22,9 +22,11 @@ import type { ProductCategory } from "@/types";
 import { mockSellers, type MockSeller, type MockSellerId } from "./users";
 
 /**
- * Listing extended slightly for browse-time filtering and sorting.
- * `ListingCardData` is the contract for rendering; these extra fields stay
- * inside the `lib/listings/*` boundary and never reach the component.
+ * Listing extended slightly for browse-time filtering and sorting AND for
+ * the detail-page surface. `ListingCardData` is the contract for the grid;
+ * `ListingDetailData` (defined in `src/lib/listings/detail.ts`) is the
+ * contract for the detail page. Extra fields below stay inside the
+ * `lib/listings/*` boundary and are mapped out at each access function.
  */
 export interface MockListing extends ListingCardData {
   category:      ProductCategory;
@@ -32,17 +34,25 @@ export interface MockListing extends ListingCardData {
   created_at:    string;
   /** Used for `Most viewed` sort. */
   view_count:    number;
+  // ── Detail-page fields (only some listings have them — realistic mess) ──
+  /** Free-text condition notes from the seller. */
+  condition_notes?: string;
+  /** Free-text disclosure of any known defects. */
+  known_defects?:   string;
+  /** Inclusions checklist: `{ "Stock cable": true, "Carrying case": false }`. */
+  inclusions?:     Record<string, boolean>;
 }
 
 const sellerById = (id: MockSellerId) => {
   const s: MockSeller | undefined = mockSellers.find((m) => m.id === id);
   if (!s) throw new Error(`Mock seller not found: ${id}`);
-  // Strip id when handing to ListingCardData.seller — it doesn't need the id.
+  // Strip id when handing to view-models — id is internal mock plumbing.
   return {
     full_name:    s.full_name,
     city:         s.city,
     rating:       s.rating,
     rating_count: s.rating_count,
+    member_since: s.member_since,
   };
 };
 
@@ -63,6 +73,14 @@ export const mockListings: MockListing[] = [
     seller:          sellerById("seller-002"),
     created_at:      "2026-05-27T14:12:00.000Z",
     view_count:      341,
+    condition_notes: "Used for about 4 months. No driver flex, perfect channel balance. Shells are spotless. Pelican-style case it ships with is also unscuffed.",
+    inclusions: {
+      "Stock ear tips (S / M / L)":   true,
+      "Foam tips":                    false,
+      "Carrying case":                true,
+      "Stock cable":                  true,
+      "Documentation / warranty card":true,
+    },
   },
   {
     id:              "lst-002",
@@ -77,6 +95,15 @@ export const mockListings: MockListing[] = [
     seller:          sellerById("seller-001"),
     created_at:      "2026-05-26T09:45:00.000Z",
     view_count:      512,
+    condition_notes: "About a year of weekend listening. Pads have light flattening on the rear edge from headband pressure — replacements are widely available. Sound is unaffected. Box has shelf scuffs.",
+    known_defects:   "Hairline scratch on the left cup near the gimbal hinge — purely cosmetic, took the photo straight on so it shows up worse than in person.",
+    inclusions: {
+      "Carrying case":                false,
+      "Extra ear pads":               false,
+      "Detachable cable":             true,
+      "6.35 mm adapter":              true,
+      "Documentation / warranty card":true,
+    },
   },
   {
     id:              "lst-003",
@@ -91,6 +118,13 @@ export const mockListings: MockListing[] = [
     seller:          sellerById("seller-005"),
     created_at:      "2026-05-28T18:30:00.000Z",
     view_count:      88,
+    condition_notes: "Bought from Headphone Zone, never opened. Still has the warranty seal. Selling because I won the same unit in a giveaway.",
+    inclusions: {
+      "Power adapter":                true,
+      "USB cable":                    true,
+      "Optical cable":                true,
+      "Documentation / warranty card":true,
+    },
   },
   {
     id:              "lst-004",
@@ -149,6 +183,15 @@ export const mockListings: MockListing[] = [
     seller:          sellerById("seller-004"),
     created_at:      "2026-05-20T13:55:00.000Z",
     view_count:      245,
+    condition_notes: "Studio workhorse for 3+ years. Drivers are flawless, headband is what you'd expect — leatherette flaking on the underside, pads are split on both sides. Sounds exactly like a new pair.",
+    known_defects:   "Pads will need replacement (~₹600 aftermarket). One small crack at the swivel joint, glued and stable, hasn't moved in months.",
+    inclusions: {
+      "Carrying case":                false,
+      "Extra ear pads":               false,
+      "Detachable cable":             true,
+      "6.35 mm adapter":              true,
+      "Documentation / warranty card":false,
+    },
   },
   // Sealed listing
   {
@@ -179,6 +222,11 @@ export const mockListings: MockListing[] = [
     seller:          sellerById("seller-007"),
     created_at:      "2026-05-23T10:40:00.000Z",
     view_count:      28,
+    condition_notes: "got these last year, used a couple of times only",
+    inclusions: {
+      "Stock ear tips (S / M / L)":   true,
+      "Carrying case":                true,
+    },
   },
   // Cable — niche category, single photo, very obscure brand
   {
