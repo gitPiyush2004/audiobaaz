@@ -25,12 +25,15 @@ single listing page, checkout, order dashboard, watchlist, saved searches.
 [x] ListingGrid — 1/2/3/4-col responsive layout, loading skeletons, empty slot
 [x] next.config.mjs — images.remotePatterns allows *.supabase.co/storage/v1/object/public/**
 [x] Pre-existing scaffold lint errors fixed (page.tsx apostrophe, Card.tsx empty interface)
-[x] dev is fully buildable: tsc clean, lint clean, prod build green
-[ ] Mock dataset (src/lib/mock/{listings,users,offers}.ts) — realistic, messy, intentionally not "perfect"
-[ ] Listings access boundary (src/lib/listings/browse.ts → getBrowseListings()) — UI must call this, not Supabase or mocks directly
-[ ] /browse page — filter sidebar, sort, ListingGrid integration
-[ ] Homepage integration — wire featured listings via getBrowseListings()
-[ ] Single listing page (/listing/[id])
+[x] Buyer-flow files are tsc + lint clean; production build compiles successfully
+[x] Mock dataset (src/lib/mock/{listings,users}.ts) — realistic, messy, intentionally not "perfect"
+[x] Listings access boundary — src/lib/listings/browse.ts → getBrowseListings()
+[x] /browse page — URL-driven filter sidebar, sort, ListingGrid integration
+[x] Homepage integration — featured strip wired via getBrowseListings({ sort: "newest", limit: 4 })
+[ ] src/lib/mock/offers.ts — offer fixtures for buyer dashboard (defer until needed)
+[ ] Single listing page (/listing/[slug])
+[ ] PhotoGallery, SellerCard, AccessoryList shared components
+[ ] getListingDetail() access boundary
 [ ] Account gate (modals/redirects on watchlist/offer/checkout intent)
 [ ] Checkout, order tracking, watchlist, saved searches, disputes — defer
 ```
@@ -39,6 +42,8 @@ single listing page, checkout, order dashboard, watchlist, saved searches.
 
 ## Files Created This Session
 
+### Foundation slice (primitives + lint + docs)
+
 ```
 src/lib/utils/cn.ts                            ✓ canonical class-name helper
 src/components/listing/ConditionBadge.tsx      ✓ SHARED — see registry
@@ -46,49 +51,65 @@ src/components/listing/ListingCard.tsx         ✓ SHARED — see registry
 src/components/listing/ListingGrid.tsx         ✓ SHARED — see registry
 ```
 
+### Browse slice (mock data + access boundary + UI)
+
+```
+src/lib/mock/users.ts                          ✓ 8 sellers (view-model only — no scores, phone, UPI)
+src/lib/mock/listings.ts                       ✓ 12 listings, ListingCardData-shaped, intentionally messy
+src/lib/listings/browse.ts                     ✓ getBrowseListings() + BrowseFilters/Sort + parseBrowseSearchParams
+src/app/browse/page.tsx                        ✓ Server component, URL-driven filters and sort
+```
+
 ## Files Modified This Session
 
 ```
-next.config.mjs                                ✓ images.remotePatterns for Supabase Storage
+next.config.mjs                                ✓ images.remotePatterns: *.supabase.co/storage + picsum.photos (mock dev)
 src/lib/utils/formatting.ts                    ✓ cn removed; only formatPrice + formatDate
 src/components/{ui/Button,ui/Input,ui/Card,ui/Badge,ui/Spinner,layout/Nav}.tsx  ✓ cn import path updated
-src/app/page.tsx                               ✓ apostrophe escape (lint fix)
+src/app/page.tsx                               ✓ apostrophe escape (lint fix); +"Latest listings" featured strip via getBrowseListings()
 src/components/ui/Card.tsx                     ✓ empty interface → type alias (lint fix)
 ENGINEERING.md                                      ✓ build status + Shared Components Registry
+docs/BRANCHING.md                              ✓ reviewer ownership rules + reviewer checklist
 ```
 
 ---
 
-## Files To Create (next)
+## Files To Create (next slice — listing detail page only)
+
+Strict scope. Do NOT add anything else to this list "while you're there."
 
 ```
-src/lib/mock/listings.ts                       # Realistic, messy listing fixtures
-src/lib/mock/users.ts                          # Seller fixtures referenced by listings
-src/lib/mock/offers.ts                         # Offer fixtures (for buyer dashboard later)
-src/lib/listings/browse.ts                     # getBrowseListings() — abstraction, mock-backed for now
-src/app/(main)/page.tsx                        # Homepage — currently lives at src/app/page.tsx; move under (main) when route group is set up
-src/app/(main)/browse/page.tsx                 # Browse + search + filters
-src/app/(main)/listing/[id]/page.tsx           # Single listing page
-src/app/(main)/listing/search/page.tsx         # Search results
-src/app/(main)/buy/checkout/[listingId]/page.tsx
-src/app/(main)/buy/confirm/[orderId]/page.tsx
-src/app/(main)/orders/page.tsx
-src/app/(main)/orders/[orderId]/page.tsx
-src/app/(main)/orders/watchlist/page.tsx
-src/app/(main)/orders/saved-searches/page.tsx
-src/app/(main)/orders/disputes/page.tsx
-src/components/listing/PriceHistory.tsx        # SHARED — listing detail + maybe seller dashboard
-src/components/listing/PhotoGallery.tsx        # SHARED
-src/components/listing/SellerCard.tsx          # SHARED
-src/components/listing/AccessoryList.tsx       # SHARED — inclusions display
-src/components/shared/TrackingTimeline.tsx     # SHARED — buyer + seller order views
-src/components/shared/DisputeForm.tsx          # SHARED
-src/components/shared/RatingPrompt.tsx         # SHARED
-src/app/api/orders/route.ts
-src/app/api/orders/[id]/route.ts
-src/app/api/watchlist/route.ts
-src/app/api/offers/route.ts
-src/app/api/offers/[id]/route.ts
+src/lib/listings/detail.ts                     # getListingDetail(idOrSlug) — sibling of browse.ts
+src/app/listing/[slug]/page.tsx                # Server component, URL is /listing/<slug>
+src/components/listing/PhotoGallery.tsx        # SHARED — see registry once landed
+src/components/listing/SellerCard.tsx          # SHARED — see registry once landed
+src/components/listing/AccessoryList.tsx       # SHARED — inclusions ✓/✗ display
+```
+
+## Deferred (do NOT pull into the detail-page slice)
+
+These remain valid future work but stay out of the next PR. Each gets its own narrow slice.
+
+```
+src/lib/mock/offers.ts                         # Defer until buyer dashboard work begins
+src/lib/listings/search.ts                     # Defer — /browse covers v1 needs
+src/app/listing/search/page.tsx                # Defer
+src/app/buy/checkout/[listingId]/page.tsx     # Defer (checkout slice)
+src/app/buy/confirm/[orderId]/page.tsx        # Defer
+src/app/orders/page.tsx                       # Defer (orders slice)
+src/app/orders/[orderId]/page.tsx             # Defer
+src/app/orders/watchlist/page.tsx             # Defer (watchlist slice)
+src/app/orders/saved-searches/page.tsx        # Defer (saved-search slice)
+src/app/orders/disputes/page.tsx              # Defer (disputes slice)
+src/components/listing/PriceHistory.tsx        # Defer until price_history table has data
+src/components/shared/TrackingTimeline.tsx     # Defer (orders slice)
+src/components/shared/DisputeForm.tsx          # Defer (disputes slice)
+src/components/shared/RatingPrompt.tsx         # Defer (post-delivery slice)
+src/app/api/orders/route.ts                    # Defer
+src/app/api/orders/[id]/route.ts               # Defer
+src/app/api/watchlist/route.ts                 # Defer
+src/app/api/offers/route.ts                    # Defer
+src/app/api/offers/[id]/route.ts               # Defer
 ```
 
 ---
@@ -121,16 +142,25 @@ boundary (API route / server component), not pass them through.
 - Inputs are optional with sensible defaults; required props are the ones the
   component cannot meaningfully render without.
 
-### 4. Listings access boundary (introduce next session)
+### 4. Listings access boundary — implemented in `src/lib/listings/browse.ts`
 UI must NOT read directly from Supabase or from mock files. All buyer-flow
-listing reads go through `src/lib/listings/browse.ts` (or sibling files like
-`detail.ts`, `search.ts`). Initial implementation can return mock data; later
-swap in Supabase queries, then add caching/pagination, without touching UI.
+listing reads go through `src/lib/listings/*` access functions. The first one,
+`getBrowseListings(filters)`, ships in this session — mock-backed today, swap
+in a Supabase query later, then add caching/pagination, without UI changes.
+
+Sibling files (`detail.ts`, `search.ts`) follow the same pattern. The next
+slice introduces `getListingDetail(idOrSlug)` — same contract, returns a
+view-model.
 
 ```ts
-// src/lib/listings/browse.ts (planned)
-export async function getBrowseListings(filters: BrowseFilters): Promise<ListingCardData[]> { ... }
+// src/lib/listings/browse.ts
+export async function getBrowseListings(
+  filters: BrowseFilters = {}
+): Promise<ListingCardData[]>
 ```
+
+The function returns `ListingCardData` by construction so server-only fields
+cannot leak through this boundary even if the underlying source is wrong.
 
 ### 5. Mock data must be realistically messy
 When building `src/lib/mock/listings.ts`, do not produce sanitised, perfect
@@ -156,6 +186,29 @@ Pre-existing lint errors are fixed in the same PR that surfaces them, not punted
 to a follow-up. `tsc`, `lint`, and `build` must all pass on `feature/*` and
 `dev` at every commit. Do not normalise leaving `dev` red "for a few minutes" —
 that mindset compounds.
+
+### 8. Browse filters live in URL search params, never hidden client state
+The `/browse` page is a server component. Every filter and the sort control
+update the URL via `<Link>` — no `useState`, no client-side filter store. This
+keeps the surface shareable, back-button friendly, and SSR-cacheable. It also
+means `parseBrowseSearchParams()` is the single parser; client islands (when
+they're added) read from the URL and write back to it, never around it.
+
+### 9. Homepage and `/browse` consume the same access boundary
+The homepage's "Latest listings" strip calls `getBrowseListings({ sort: "newest", limit: 4 })` —
+the exact same function `/browse` uses. This is intentional: every place that
+shows listing cards must go through the boundary, including marketing pages.
+If a feature ever needs a listing read that doesn't fit the existing access
+functions, add a new one to `src/lib/listings/*` rather than bypassing.
+
+### 10. No `src/app/(main)/` route group exists yet
+Person 1's seller flow was scaffolded under `src/app/(main)/...` (see
+`docs/context/seller-flow.md`). Buyer-flow routes shipped in this slice live
+at the top level (`src/app/page.tsx`, `src/app/browse/page.tsx`) because no
+`(main)/layout.tsx` exists yet — the root layout is fine for now. If a shared
+layout becomes necessary (e.g. for an account-aware header that differs from
+seller routes), introduce `src/app/(main)/layout.tsx` and move buyer pages
+in one focused PR. Coordinate with Person 1 first since `Nav` is theirs.
 
 ---
 
@@ -275,8 +328,11 @@ Build them generically and document their props clearly:
 | `ConditionBadge` | `src/components/listing/ConditionBadge.tsx` | Color-coded grade pill (S/A/B/C/D). Props: `grade`, `variant?: "compact" \| "full"`, `size?: "sm" \| "md"`, `className?`. Server component, no client hooks. |
 | `ListingCard` | `src/components/listing/ListingCard.tsx` | Listing grid card. Accepts `ListingCardData` (NOT raw `Listing` — view-model subset that excludes `floor_price`, scores, etc). Wraps `next/image` (4:3) and links to `/listing/[slug \|\| id]`. Server component. |
 | `ListingGrid` | `src/components/listing/ListingGrid.tsx` | Pure responsive grid. No data shape coupling. Has `loading` skeletons and customisable `empty` slot. |
+| `getBrowseListings()` | `src/lib/listings/browse.ts` | Canonical access function for any surface that shows a listing grid. Returns `ListingCardData[]`. Filters: `categories[]`, `conditions[]`, `priceBucket`, `negotiableOnly`, `sort`, `limit`. Mock-backed today; will swap to Supabase. |
+| `parseBrowseSearchParams()` | `src/lib/listings/browse.ts` | Parse a Next `searchParams` object into typed `BrowseFilters`. Use this in any server component that shows filtered listings — do not roll your own URL parsing. |
+| `BrowseFilters`, `BrowseSort`, `PriceBucket` | `src/lib/listings/browse.ts` | The contract types. Filter UIs in seller dashboard / admin can reuse the price-bucket and sort enums for consistency. |
 | View-model rule | this file, "Architectural Decisions Made" §2 | Never spread raw DB rows into shared components. Map at the boundary. |
-| Listings access boundary | `src/lib/listings/*` (upcoming) | All listing reads in buyer flow go through this layer. UI does not call Supabase directly. |
+| URL-driven filters rule | this file, §8 | Filter and sort state lives in the URL, not in client state. |
 
 ---
 
@@ -294,52 +350,113 @@ At the start of each Kiro session:
 
 ## Known Blockers / Watch Out
 
-- The `(main)` route group has no `layout.tsx` yet. The current homepage lives
-  at `src/app/page.tsx` — when seller/buyer routes need shared layout
-  (e.g. account-aware header decisions), a `src/app/(main)/layout.tsx` is needed.
-  Coordinate with Person 1 (owns `Nav`) before introducing it.
-- No real listings exist in the DB yet. UI development will run against mock
+- **Upstream admin-panel lint failures on `dev`.** Person 3's admin merge
+  shipped with 12 `@typescript-eslint/no-explicit-any` errors and 4
+  `@next/next/no-img-element` warnings, all confined to `src/app/admin/**`
+  and `src/app/api/admin/**`. They block `next build`'s lint phase on `dev`
+  but compilation itself succeeds, and **none are buyer-flow files**. Fix
+  belongs to Person 3 in a separate follow-up PR. Do not patch around them
+  from this branch with `eslint-disable` comments — that masks the underlying
+  process problem (red merges into `dev`). Bigger systemic gap: there is no CI
+  gate enforcing `tsc + lint + build` on PRs into `dev`. Until that exists,
+  the always-green-dev rule depends on developer discipline alone.
+- No real listings exist in the DB yet. UI development runs against mock
   data via `getBrowseListings()` until Person 1's seller flow + Person 3's
-  approval queue produce approved listings end-to-end.
+  approval queue produce approved listings end-to-end. The mock layer is
+  the development substrate, not a fallback — when real data lands, swap
+  the implementation inside `browse.ts` and `detail.ts`, not the call sites.
 - `PATCH /api/offers/[id]` exists but is currently seller-side only (accept /
   decline). Buyer-side offer cancel needs new RLS policies — coordinate with
   Person 1 before adding.
-- Per ENGINEERING.md, middleware protects `/sell/*` and `/dashboard`. Buyer routes
-  that require auth (`/buy/*`, `/orders/*`) need to be added to the same
-  middleware — do not create a parallel middleware.
+- Per ENGINEERING.md, middleware protects `/sell/*`, `/dashboard`, and `/admin`.
+  Buyer routes that require auth (`/buy/*`, `/orders/*`) need to be added to
+  the same middleware — do not create a parallel middleware.
+- Route group `src/app/(main)/` does not exist yet. See decision §10 above.
+  Buyer pages (`/`, `/browse`, future `/listing/[slug]`) live at the top level
+  and inherit the root layout.
 
 ---
 
 ## Next Session Starts Here
 
-Foundation is in place and `dev` is buildable. Do these in order:
+Buyer browse surface is shipping. The next slice is the listing detail page —
+**strict scope, no scope creep, no "while I'm here" refactors.**
 
-1. **Mock data infrastructure** — create:
-   - `src/lib/mock/users.ts` — 6–8 sellers with mixed ratings (incl. 0/new), cities, names; one or two without `full_name`
-   - `src/lib/mock/listings.ts` — ~12 listings of `ListingCardData` shape; mixed S/A/B/C/D, mixed negotiable, mixed photo counts (1 to 6), one or two with empty inclusions, realistic Indian-market brands. **Do not make them perfect** — see "Mock data must be realistically messy" above.
-   - `src/lib/mock/offers.ts` — a few offer fixtures for the buyer dashboard later (defer if blocked)
+### In scope (this slice only)
 
-2. **Access boundary** — `src/lib/listings/browse.ts`:
-   - Export `getBrowseListings(filters: BrowseFilters): Promise<ListingCardData[]>`
-   - Initial impl returns mock data; signature is the contract
-   - Define `BrowseFilters` type colocated here (category[], condition[], priceBucket, negotiableOnly, sort)
-   - UI calls this function only — never the mock files or Supabase directly
+1. **`src/lib/listings/detail.ts`** — sibling of `browse.ts`. Export:
+   ```ts
+   export async function getListingDetail(idOrSlug: string): Promise<ListingDetailData | null>
+   ```
+   - Mock-backed initially; reads from `mockListings` plus richer fields
+     (inclusions, condition_notes, known_defects, more photos)
+   - Define `ListingDetailData` colocated — extends `ListingCardData` with
+     the additional view-model fields the detail page needs
+   - **MUST exclude `floor_price`, `auto_accept_threshold`, and any scores**
+     even if those fields end up on the underlying record. View-model maps
+     them out at the boundary.
+   - Returns `null` for not-found (callers translate to a Next 404)
 
-3. **`/browse` page** — `src/app/(main)/browse/page.tsx`:
-   - Server component, calls `getBrowseListings()` with filters parsed from URL `searchParams`
-   - Filter sidebar: category multi-select, condition multi-select, price bucket, negotiable toggle
-   - Sort control: default Seller rating ↓
-   - Renders `<ListingGrid>` with `<ListingCard>` children
-   - Empty state when filters return zero results
+2. **`src/components/listing/PhotoGallery.tsx`** — SHARED
+   - Server component shell + tiny client island for active-photo state
+   - Props: `photos: string[]`, `alt: string`, `className?`
+   - Renders one main image + a thumbnail strip; click to swap
+   - No zoom/lightbox in this slice — defer
 
-4. **Wire homepage** to a small "Featured" strip using the same boundary
-   (limit + sort by newest), to validate the abstraction in two places.
+3. **`src/components/listing/SellerCard.tsx`** — SHARED
+   - Server component
+   - Props: `seller: SellerCardData` (subset of `User` — `full_name`, `city`,
+     `rating`, `rating_count`, `member_since`; absolutely no `seller_score`,
+     `phone`, `email`, `upi_id`, `telegram_chat_id`, internal flags)
+   - Compact card — used on detail page and possibly profile page later
 
-5. Update `ENGINEERING.md` build status row + Shared Components Registry as new
-   primitives land. Sync to `dev` at end of session.
+4. **`src/components/listing/AccessoryList.tsx`** — SHARED
+   - Server component
+   - Props: `inclusions: Record<string, boolean>`, `className?`
+   - Renders ✓/✗ visual checklist of expected items (e.g. original_box,
+     stock_cable, spare_tips)
 
-**Do not** start checkout, watchlist, saved searches, or any auth-gated buyer
-flow until inventory display is solid against realistic mock data.
+5. **`src/app/listing/[slug]/page.tsx`** — server component
+   - Calls `getListingDetail(slug)`; `notFound()` if null
+   - Renders `<PhotoGallery>` + heading + `<ConditionBadge variant="full">` +
+     asking price + condition notes + `<AccessoryList>` + `<SellerCard>`
+   - Negotiation slider only renders if `is_negotiable` — slider itself is a
+     stub button for this slice ("Make an offer" → links to `/login` for now)
+   - No price-history chart yet (defer until `price_history` has data)
+   - No similar-listings strip yet (can add as a follow-up using
+     `getBrowseListings({ categories: [listing.category], limit: 4 })`)
+
+6. **Mock data extensions** — in `src/lib/mock/listings.ts`, augment a few
+   listings with realistic `condition_notes`, `known_defects`, and
+   `inclusions` so the detail page renders plausibly. Do not perfect every
+   listing; match the existing intentional mess.
+
+7. **Update ENGINEERING.md** Shared Components Registry with `PhotoGallery`,
+   `SellerCard`, `AccessoryList`. Build-status row stays IN PROGRESS.
+
+### Explicitly out of scope (do NOT touch this slice)
+
+- Watchlist save button or any auth-gated interactivity
+- Account gate / login modal
+- Pricing engine, negotiation slider logic, real offer submission
+- Checkout flow, orders, disputes, ratings
+- Auth or middleware changes
+- Admin code (Person 3's domain) — including the upstream lint failures
+- Refactors to existing primitives "while you're there"
+- `src/app/(main)/layout.tsx` introduction (separate, coordinated PR)
+- Real Supabase reads — the boundary stays mock-backed for one more slice
+
+### How to start the session
+
+1. `git checkout feature/buyer-flow && git pull origin dev`
+2. Re-read ENGINEERING.md, BRANCHING.md, this file
+3. Confirm branch + summarize before writing code (per session protocol)
+4. Implement in the order above; tsc + lint + build between commits
+5. Two small commits ideal:
+   - `feat(buyer): getListingDetail + detail-page primitives`
+   - `feat(buyer): /listing/[slug] page`
+6. Open PR into `dev` immediately when the slice is shippable —
+   do not stack the next slice on this branch.
 
 ---
 
@@ -361,3 +478,6 @@ flow until inventory display is solid against realistic mock data.
 - Listing reads in buyer flow go through `src/lib/listings/*` access functions, not Supabase calls in UI
 - Mock data must be intentionally messy — incomplete inclusions, varied condition, mixed cities/brands
 - `dev` must always pass `tsc`, `lint`, and `next build`
+- Browse filter and sort state lives in URL search params, never client state
+- Homepage and `/browse` consume the same `getBrowseListings()` boundary by design
+- Buyer pages live at the top level of `src/app/` until a `(main)/layout.tsx` is justified

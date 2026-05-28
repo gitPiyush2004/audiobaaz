@@ -195,7 +195,7 @@ These are final. Do not suggest alternatives.
 | Person | Tool | Feature | Status |
 |--------|------|---------|--------|
 | Person 1 | AI coding tool | Seller flow + dashboard | COMPLETE — all V1 features done, see docs/context/seller-flow.md |
-| Person 2 | Kiro | Buyer flow + listing page | IN PROGRESS — `cn` utility extracted, shared components scaffold (ConditionBadge, ListingCard, ListingGrid). See docs/context/buyer-flow.md |
+| Person 2 | Kiro | Buyer flow + listing page | IN PROGRESS — `/browse` and homepage featured strip live against mock data via `getBrowseListings()` boundary. URL-driven filters and sort working. Next: `/listing/[slug]` detail page. See docs/context/buyer-flow.md |
 | Person 3 | - | Admin panel | IN PROGRESS — core panel complete (listings, disputes, users, payouts), orders stub pending. See docs/context/admin-panel.md |
 | Person 4 | AI coding tool | Payments + shipping | IN PROGRESS — payment + shipping APIs done, see docs/context/payments-shipping.md |
 
