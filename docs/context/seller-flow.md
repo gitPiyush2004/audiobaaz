@@ -161,6 +161,23 @@ src/app/api/listings/[id]/route.ts              [ ] not started
 
 ---
 
+## What Other Features Can Use From Here
+
+| What | Path | Notes for other teams |
+|------|------|-----------------------|
+| Listing status flow | `ENGINEERING.md` | draft→pending→approved→reserved→sold→completed. Admin only ever sees `pending`. |
+| Offer status flow | `ENGINEERING.md` | pending→accepted→paid. First buyer to pay wins. |
+| `floor_price` rule | `ENGINEERING.md` | Never returned in any API response. Server-side only. |
+| `PATCH /api/offers/[id]` | `src/app/api/offers/[id]/route.ts` | Buyer flow: cancel offer. Admin: force-expire. Both need new RLS policies. |
+| `POST /api/listings` | `src/app/api/listings/route.ts` | Seller-only. Buyer/admin should never call this. |
+| `PATCH /api/listings/[id]` | `src/app/api/listings/[id]/route.ts` | Admin needs to add `pending→approved` and `pending→rejected` transitions here. |
+| `ListingForm` component | `src/components/forms/ListingForm.tsx` | Accepts `draftId?` + `initialData?`. Don't duplicate — extend if needed. |
+| `Nav` component | `src/components/layout/Nav.tsx` | Auth-aware server component. Discuss before modifying. |
+| Supabase helpers | `src/lib/supabase/client.ts`, `server.ts`, `admin.ts` | Use server.ts in API routes, client.ts in components, admin.ts for service-role only. |
+| Auth middleware | `src/middleware.ts` | Protects `/sell/*` and `/dashboard`. Person 3 needs to add `/admin/*` protection here. |
+
+---
+
 ## Next Session Starts Here
 
 Seller flow is functionally complete for V1. Remaining deferred items:
