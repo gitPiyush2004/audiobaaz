@@ -12,7 +12,7 @@ const btnSecondaryClass = cn(
 
 const btnPrimaryClass = cn(
   "inline-flex items-center rounded-lg bg-accent px-4 py-2 text-sm font-semibold",
-  "text-black transition-all hover:bg-accent-dark active:scale-[0.98]"
+  "text-black transition-all hover:bg-accent-hover active:scale-[0.98]"
 );
 
 export function Nav() {
@@ -26,15 +26,9 @@ export function Nav() {
         </Link>
 
         <nav className="flex items-center gap-2 sm:gap-4">
-          <Link href="/browse" className={navLinkClass}>
-            Browse
-          </Link>
-          <Link href="/auth/login" className={btnSecondaryClass}>
-            Log in
-          </Link>
-          <Link href="/sell" className={btnPrimaryClass}>
-            Sell With Us
-          </Link>
+          <Link href="/browse" className={navLinkClass}>Browse</Link>
+          <Link href="/auth/login" className={btnSecondaryClass}>Log in</Link>
+          <Link href="/sell" className={btnPrimaryClass}>Sell With Us</Link>
         </nav>
       </div>
     </header>

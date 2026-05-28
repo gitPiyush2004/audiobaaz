@@ -5,13 +5,13 @@ import "./globals.css";
 
 const syne = Syne({
   subsets: ["latin"],
-  variable: "--font-syne",
+  variable: "--font-head",
   display: "swap",
 });
 
 const dmSans = DM_Sans({
   subsets: ["latin"],
-  variable: "--font-dm-sans",
+  variable: "--font-body",
   display: "swap",
 });
 
@@ -33,10 +33,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html
-      lang="en"
-      className={`${syne.variable} ${dmSans.variable} ${jetbrainsMono.variable}`}
-    >
+    <html lang="en" className={`${syne.variable} ${dmSans.variable} ${jetbrainsMono.variable}`}>
       <body className="bg-bg font-sans text-foreground antialiased">
         <Nav />
         <main>{children}</main>

@@ -2,17 +2,17 @@ import { forwardRef, type ButtonHTMLAttributes } from "react";
 import { cn } from "@/lib/utils/formatting";
 
 type ButtonVariant = "primary" | "secondary" | "ghost" | "danger";
-type ButtonSize = "sm" | "md" | "lg";
+type ButtonSize    = "sm" | "md" | "lg";
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant;
-  size?: ButtonSize;
+  size?:    ButtonSize;
   loading?: boolean;
 }
 
 const variantStyles: Record<ButtonVariant, string> = {
   primary:
-    "bg-accent text-black font-semibold hover:bg-accent-dark active:scale-[0.98]",
+    "bg-accent text-black font-semibold hover:bg-accent-hover active:scale-[0.98]",
   secondary:
     "bg-surface text-foreground border border-border hover:bg-surface-2 active:scale-[0.98]",
   ghost:
@@ -28,18 +28,7 @@ const sizeStyles: Record<ButtonSize, string> = {
 };
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
-  (
-    {
-      variant = "primary",
-      size = "md",
-      loading = false,
-      className,
-      children,
-      disabled,
-      ...props
-    },
-    ref
-  ) => {
+  ({ variant = "primary", size = "md", loading = false, className, children, disabled, ...props }, ref) => {
     return (
       <button
         ref={ref}

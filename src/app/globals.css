@@ -1,6 +1,6 @@
 /*
- * Fonts: Syne (headings), DM Sans (body), JetBrains Mono (prices/codes)
- * Loaded via next/font/google in layout.tsx — CSS vars injected at runtime.
+ * Fonts loaded via next/font/google in layout.tsx
+ * CSS vars --font-head, --font-body, --font-mono injected by Next.js at runtime
  */
 
 @tailwind base;
@@ -8,30 +8,81 @@
 @tailwind utilities;
 
 :root {
-  /* Surfaces */
+  /* ── Surfaces ─────────────────────────────── */
   --bg:        #0F0F0F;
   --surface:   #1A1A1A;
   --surface-2: #222222;
-  --border:    #333333;
+  --surface-3: #2A2A2A;
 
-  /* Text */
+  /* ── Borders ──────────────────────────────── */
+  --border:   #333333;
+  --border-2: #444444;
+
+  /* ── Text ─────────────────────────────────── */
   --text:   #F0F0F0;
   --text-2: #999999;
+  --text-3: #555555;
 
-  /* Accent */
-  --accent:      #E8FF4D;
-  --accent-dark: #C8E030;
+  /* ── Accent ───────────────────────────────── */
+  --accent:       #E8FF4D;
+  --accent-dim:   rgba(232, 255, 77, 0.1);
+  --accent-hover: #D4EB3A;
 
-  /* Semantic */
-  --success: #4DFF91;
-  --error:   #FF4D4D;
-  --warning: #FFB84D;
+  /* ── Status ───────────────────────────────── */
+  --success:     #4DFF91;
+  --success-dim: rgba(77, 255, 145, 0.1);
+  --error:       #FF4D4D;
+  --error-dim:   rgba(255, 77, 77, 0.1);
+  --warning:     #FFB84D;
+  --warning-dim: rgba(255, 184, 77, 0.1);
+  --info:        #4D9FFF;
+  --info-dim:    rgba(77, 159, 255, 0.1);
 
-  /* Blue (condition grade B + info usage) */
-  --info: #4D9FFF;
+  /* ── Condition Grades ─────────────────────── */
+  --grade-s: #E8FF4D;   /* Sealed    — accent  */
+  --grade-a: #4DFF91;   /* Mint      — green   */
+  --grade-b: #4D9FFF;   /* Excellent — blue    */
+  --grade-c: #FFB84D;   /* Good      — amber   */
+  --grade-d: #FF4D4D;   /* Fair      — red     */
+
+  /* ── Typography Scale ─────────────────────── */
+  --text-xs:   11px;
+  --text-sm:   13px;
+  --text-base: 15px;
+  --text-md:   17px;
+  --text-lg:   20px;
+  --text-xl:   24px;
+  --text-2xl:  32px;
+  --text-3xl:  48px;
+
+  /* ── Font Weights ─────────────────────────── */
+  --weight-regular:  400;
+  --weight-medium:   500;
+  --weight-semibold: 600;
+  --weight-bold:     700;
+  --weight-black:    800;
+
+  /* ── Spacing ──────────────────────────────── */
+  --space-1:  4px;
+  --space-2:  8px;
+  --space-3:  12px;
+  --space-4:  16px;
+  --space-5:  20px;
+  --space-6:  24px;
+  --space-8:  32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  /* ── Border Radius ────────────────────────── */
+  --radius-sm:   6px;
+  --radius-md:   10px;
+  --radius-lg:   14px;
+  --radius-xl:   20px;
+  --radius-full: 9999px;
 
   /*
-   * RGB channel values — required for Tailwind opacity modifiers like bg-success/10.
+   * RGB channels — required for Tailwind opacity modifiers (bg-success/10 etc.)
    * Keep in sync with hex values above.
    */
   --accent-ch:   232 255 77;
@@ -39,12 +90,15 @@
   --error-ch:    255 77  77;
   --warning-ch:  255 184 77;
   --info-ch:     77  159 255;
+  --grade-s-ch:  232 255 77;
+  --grade-a-ch:  77  255 145;
+  --grade-b-ch:  77  159 255;
+  --grade-c-ch:  255 184 77;
+  --grade-d-ch:  255 77  77;
 }
 
 @layer base {
-  *,
-  *::before,
-  *::after {
+  *, *::before, *::after {
     box-sizing: border-box;
   }
 
@@ -56,14 +110,15 @@
   body {
     background-color: var(--bg);
     color: var(--text);
-    font-family: var(--font-dm-sans), "DM Sans", system-ui, sans-serif;
+    font-family: var(--font-body), "DM Sans", system-ui, sans-serif;
+    font-size: var(--text-base);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
 
   h1, h2, h3, h4, h5, h6 {
-    font-family: var(--font-syne), "Syne", system-ui, sans-serif;
-    font-weight: 700;
+    font-family: var(--font-head), "Syne", system-ui, sans-serif;
+    font-weight: var(--weight-bold);
     line-height: 1.1;
     letter-spacing: -0.02em;
   }
@@ -85,19 +140,5 @@
 }
 
 @layer utilities {
-  .text-balance {
-    text-wrap: balance;
-  }
-
-  .font-heading {
-    font-family: var(--font-syne), "Syne", system-ui, sans-serif;
-  }
-
-  .font-body {
-    font-family: var(--font-dm-sans), "DM Sans", system-ui, sans-serif;
-  }
-
-  .font-mono {
-    font-family: var(--font-mono), "JetBrains Mono", monospace;
-  }
+  .text-balance { text-wrap: balance; }
 }
