@@ -2,7 +2,7 @@
 **Owner:** Person 1
 **Tool:** AI coding tool
 **Branch:** feature/seller-flow
-**Last updated:** 2026-05-28
+**Last updated:** 2026-05-29
 
 ---
 
@@ -39,10 +39,10 @@ seller dashboard (7 sections).
 [x] Dashboard: Activity — Telegram notification log
 [x] Dashboard: Account — profile form, availability, Telegram prompt, seller rating
 [x] Draft resume page — /sell/draft/[id] (pre-populates form, PATCHes existing row)
-[ ] Auto-save draft on step completion (deferred)
-[ ] Real price oracle — replace mock with price_history query (deferred)
-[ ] Product search — replace manual entry with DB search (deferred)
-[ ] Telegram notifications (needs bot token)
+[x] Auto-save draft on step completion — fires after steps 1→2, 2→3, 3→4; creates draft on first save, PATCHes on subsequent; uses savedDraftIdRef (no stale closure)
+[x] Real price oracle — GET /api/price-oracle?model=X&brand=Y queries price_history ILIKE; fetched on entering step 5; falls back to empty state gracefully
+[x] Product search — GET /api/products/search?q=X uses ilike on name/brand; autocomplete dropdown in step 1; selecting fills brand/name/category
+[x] Telegram lib — src/lib/telegram/index.ts; wired into POST /api/listings (listing submitted) and PATCH /api/offers/[id] (offer accepted/declined); no-ops if TELEGRAM_BOT_TOKEN is empty
 ```
 
 ---
@@ -57,22 +57,21 @@ src/middleware.ts                               ✓ done
 src/lib/supabase/client.ts                      ✓ done
 src/lib/supabase/server.ts                      ✓ done
 src/lib/supabase/admin.ts                       ✓ done
-src/app/api/listings/route.ts                   ✓ done (POST only)
+src/app/api/listings/route.ts                   ✓ done (POST — full submit + saveAsDraft draft creation + Telegram notify)
+src/app/api/listings/[id]/route.ts              ✓ done (PATCH — resubmit + saveDraft partial update + status transitions + price update)
+src/app/api/offers/[id]/route.ts                ✓ done (PATCH — accept/decline + Telegram notify buyer)
+src/app/api/price-oracle/route.ts               ✓ done (GET — queries price_history ILIKE product_name)
+src/app/api/products/search/route.ts            ✓ done (GET — queries products ilike name/brand)
 src/app/api/upload/route.ts                     ✓ done
+src/lib/telegram/index.ts                       ✓ done (sendTelegramMessage — no-ops if BOT_TOKEN empty)
 
-src/app/(main)/sell/draft/[id]/page.tsx         [ ] not started
-src/app/(main)/dashboard/page.tsx               [ ] not started
-src/app/(main)/dashboard/listings/page.tsx      [ ] not started
-src/app/(main)/dashboard/offers/page.tsx        [ ] not started
-src/app/(main)/dashboard/orders/page.tsx        [ ] not started
-src/app/(main)/dashboard/payouts/page.tsx       [ ] not started
-src/app/(main)/dashboard/account/page.tsx       [ ] not started
-src/components/forms/PhotoUpload.tsx            [ ] not started
-src/components/forms/PriceInput.tsx             [ ] not started
-src/components/forms/ConditionSelector.tsx      [ ] not started
-src/components/forms/ProductSearch.tsx          [ ] not started
-src/components/forms/AccessoryChecklist.tsx     [ ] not started
-src/app/api/listings/[id]/route.ts              [ ] not started
+src/app/(main)/sell/draft/[id]/page.tsx         ✓ done
+src/app/(main)/dashboard/page.tsx               ✓ done
+src/app/(main)/dashboard/listings/page.tsx      ✓ done
+src/app/(main)/dashboard/offers/page.tsx        ✓ done
+src/app/(main)/dashboard/orders/page.tsx        ✓ done
+src/app/(main)/dashboard/payouts/page.tsx       ✓ done
+src/app/(main)/dashboard/account/page.tsx       ✓ done
 ```
 
 ---
@@ -111,10 +110,13 @@ src/app/api/listings/[id]/route.ts              [ ] not started
 - `handle_new_auth_user` trigger creates public.users row on auth signup
 
 ### Listing submission
-- Single-submit approach: all 6 steps are local React state, everything
-  saves to DB in one shot when "Submit for Review" is clicked
-- Auto-save per step (draft to DB on each Continue) is DEFERRED — next session
-- Photos upload first via POST /api/upload, then listing created with URLs
+- Auto-save: fires after steps 1→2, 2→3, 3→4 (fire-and-forget, non-blocking)
+  - After step 1: POST /api/listings with saveAsDraft=true (creates draft row)
+  - After steps 2, 3: PATCH /api/listings/[id] with saveDraft=true (partial update)
+  - savedDraftIdRef (useRef) stores the draft ID to avoid stale closures
+  - Photos are NOT auto-saved (file objects can't upload in background) — uploaded fresh on final submit
+- Final submit: PATCHes with resubmit=true if effectiveDraftId exists, else POSTs new listing
+- Photos upload first via POST /api/upload, then listing created/updated with URLs
 
 ### Security
 - floor_price: collected from seller in form, sent to API, stored in DB,
@@ -124,10 +126,16 @@ src/app/api/listings/[id]/route.ts              [ ] not started
 
 ### Form
 - Step state: single React page (not URL-per-step)
-- Product search: currently manual entry only (DB search deferred)
-- Price oracle: mock data (real price_history query deferred)
+- Product search: autocomplete in step 1 via GET /api/products/search?q=X; selecting fills brand/name/category; degrades gracefully if products table is empty
+- Price oracle: fetched from GET /api/price-oracle?model=X on entering step 5; falls back to empty state if no history
 - Inclusions: stored as Record<string, boolean> JSONB
 - Condition checklist: stored as comma-separated string in condition_notes
+
+### Telegram
+- src/lib/telegram/index.ts — sendTelegramMessage(chatId, html); no-ops silently if TELEGRAM_BOT_TOKEN is empty
+- Wired in POST /api/listings (listing submitted → notify seller)
+- Wired in PATCH /api/offers/[id] (offer accepted/declined → notify buyer)
+- TELEGRAM_BOT_TOKEN is set in .env.local (currently empty — add real token when bot is ready)
 
 ### Slug
 - Format: {brand-lowercase-alphanum}-{4-random-digits} e.g. moondrop-2394
@@ -170,7 +178,10 @@ src/app/api/listings/[id]/route.ts              [ ] not started
 | `floor_price` rule | `ENGINEERING.md` | Never returned in any API response. Server-side only. |
 | `PATCH /api/offers/[id]` | `src/app/api/offers/[id]/route.ts` | Buyer flow: cancel offer. Admin: force-expire. Both need new RLS policies. |
 | `POST /api/listings` | `src/app/api/listings/route.ts` | Seller-only. Buyer/admin should never call this. |
-| `PATCH /api/listings/[id]` | `src/app/api/listings/[id]/route.ts` | Admin needs to add `pending→approved` and `pending→rejected` transitions here. |
+| `PATCH /api/listings/[id]` | `src/app/api/listings/[id]/route.ts` | Admin needs to add `pending→approved` and `pending→rejected` transitions here. Handles: resubmit, saveDraft (partial update), status transitions, price update. |
+| `GET /api/price-oracle` | `src/app/api/price-oracle/route.ts` | Params: model, brand. Returns recent sold prices from price_history. Buyer-safe (no floor_price). |
+| `GET /api/products/search` | `src/app/api/products/search/route.ts` | Params: q (min 2 chars), category (optional). Returns id, name, brand, model, category. |
+| Telegram lib | `src/lib/telegram/index.ts` | `sendTelegramMessage(chatId, html)` — use for any notification. No-ops if BOT_TOKEN is empty. |
 | `ListingForm` component | `src/components/forms/ListingForm.tsx` | Accepts `draftId?` + `initialData?`. Don't duplicate — extend if needed. |
 | `Nav` component | `src/components/layout/Nav.tsx` | Auth-aware server component. Discuss before modifying. |
 | Supabase helpers | `src/lib/supabase/client.ts`, `server.ts`, `admin.ts` | Use server.ts in API routes, client.ts in components, admin.ts for service-role only. |
@@ -180,12 +191,12 @@ src/app/api/listings/[id]/route.ts              [ ] not started
 
 ## Next Session Starts Here
 
-Seller flow is functionally complete for V1. Remaining deferred items:
-1. Auto-save draft on step completion (POST draft after step 2, PATCH on steps 3–4)
-2. Draft resume page at /sell/draft/[id] — show banner to resume in-progress listing
-3. Real price oracle — query price_history WHERE product_name ILIKE % for the model
-4. Product search in step 2 — fuzzy search products table using pg_trgm index
-5. Telegram notifications — wire TELEGRAM_BOT_TOKEN once bot is set up
+**Seller flow is COMPLETE for V1.** All deferred items from the previous session are now done.
+
+Remaining items (V1.5 / nice-to-have, not blocking launch):
+1. Wire TELEGRAM_BOT_TOKEN once the bot is set up — the lib and calls are in place, just needs the token
+2. Populate the `products` table — product search degrades gracefully, but needs data to be useful
+3. Admin flow (Person 3) needs to add `pending→approved` and `pending→rejected` transitions to PATCH /api/listings/[id]
 
 Check ENGINEERING.md "Current Build Status" table and update Person 1 row to IN PROGRESS
 before starting the next session.
