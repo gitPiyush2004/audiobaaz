@@ -195,7 +195,7 @@ These are final. Do not suggest alternatives.
 | Person | Tool | Feature | Status |
 |--------|------|---------|--------|
 | Person 1 | AI coding tool | Seller flow + dashboard | COMPLETE — all V1 features done, see docs/context/seller-flow.md |
-| Person 2 | Kiro | Buyer flow + listing page | IN PROGRESS — `/browse` and homepage featured strip live against mock data via `getBrowseListings()` boundary. URL-driven filters and sort working. Next: `/listing/[slug]` detail page. See docs/context/buyer-flow.md |
+| Person 2 | Kiro | Buyer flow + listing page | IN PROGRESS — `/browse`, homepage featured strip, and `/listing/[slug]` detail page live against mock data via `getBrowseListings()` and `getListingDetail()` boundaries. URL-driven filters and sort working. See docs/context/buyer-flow.md |
 | Person 3 | - | Admin panel | IN PROGRESS — core panel complete (listings, disputes, users, payouts), orders stub pending. See docs/context/admin-panel.md |
 | Person 4 | AI coding tool | Payments + shipping | IN PROGRESS — payment + shipping APIs done, see docs/context/payments-shipping.md |
 
@@ -286,6 +286,9 @@ Components modified or created that affect multiple features. If you use or modi
 | `ConditionBadge` | `src/components/listing/ConditionBadge.tsx` | Person 2 | Color-coded grade pill (S/A/B/C/D). Props: `grade`, `variant?: "compact" \| "full"`, `size?: "sm" \| "md"`, `className?`. Server component. |
 | `ListingCard` | `src/components/listing/ListingCard.tsx` | Person 2 | Listing grid card. Props: `listing: ListingCardData`, `priority?`, `className?`. `ListingCardData` is a structural subset of `Listing` — never pass server-only fields like `floor_price`. Wraps `next/image` (4:3 cover) and links to `/listing/[slug \|\| id]`. Server component. |
 | `ListingGrid` | `src/components/listing/ListingGrid.tsx` | Person 2 | Responsive grid (1/2/3/4 cols). Props: `children?`, `loading?`, `skeletonCount?`, `empty?`, `className?`. Pure layout — no data shape coupling. |
+| `PhotoGallery` | `src/components/listing/PhotoGallery.tsx` | Person 2 | Listing detail photo gallery. Props: `photos: string[]`, `alt: string`, `className?`. Server-component shell + small client island (`PhotoGalleryView`) for active-photo state. No lightbox/zoom yet. |
+| `SellerCard` | `src/components/listing/SellerCard.tsx` | Person 2 | Public seller summary. Props: `seller: SellerCardData`, `className?`. `SellerCardData` is a strict subset (full_name, city, rating, rating_count, member_since) — never spread a raw `User` row. Server component. |
+| `AccessoryList` | `src/components/listing/AccessoryList.tsx` | Person 2 | ✓/✗ checklist of inclusions. Props: `inclusions: Record<string, boolean>`, `className?`. Server component. |
 
 ---
 
