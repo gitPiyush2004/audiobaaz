@@ -196,7 +196,7 @@ These are final. Do not suggest alternatives.
 |--------|------|---------|--------|
 | Person 1 | AI coding tool | Seller flow + dashboard | COMPLETE — all V1 features done, see docs/context/seller-flow.md |
 | Person 2 | Kiro | Buyer flow + listing page | IN PROGRESS — `cn` utility extracted, shared components scaffold (ConditionBadge, ListingCard, ListingGrid). See docs/context/buyer-flow.md |
-| Person 3 | - | Admin panel | NOT STARTED |
+| Person 3 | - | Admin panel | IN PROGRESS — core panel complete (listings, disputes, users, payouts), orders stub pending. See docs/context/admin-panel.md |
 | Person 4 | AI coding tool | Payments + shipping | IN PROGRESS — payment + shipping APIs done, see docs/context/payments-shipping.md |
 
 > Update this table when features change status.
@@ -279,6 +279,7 @@ Components modified or created that affect multiple features. If you use or modi
 | `Nav` | `src/components/layout/Nav.tsx` | Person 1 | Auth-aware — shows Dashboard + New Listing when logged in, Log in + Sell With Us when logged out. Imports `createClient` from supabase/server (server component). |
 | `ListingForm` | `src/components/forms/ListingForm.tsx` | Person 1 | 6-step listing intake form. Accepts `draftId?` and `initialData?` props. Used by `/sell/new` and `/sell/draft/[id]`. |
 | `DashboardNav` | `src/components/layout/DashboardNav.tsx` | Person 1 | Seller dashboard sidebar. Client component, uses `usePathname`. |
+| `AdminNav` | `src/components/layout/AdminNav.tsx` | Person 3 | Admin panel sidebar. Used inside `src/app/admin/layout.tsx`. |
 | `Button` | `src/components/ui/Button.tsx` | Scaffold | Primary, secondary, ghost, danger variants. sm/md/lg sizes. |
 | `Card` | `src/components/ui/Card.tsx` | Scaffold | Basic surface card. Accepts all div props. |
 | `cn` | `src/lib/utils/cn.ts` | Scaffold | Canonical class-name helper (`clsx` + `tailwind-merge`). The ONLY place to import `cn` from. Do not duplicate. |
