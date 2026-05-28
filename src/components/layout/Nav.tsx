@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { cn } from "@/lib/utils/formatting";
+import { cn } from "@/lib/utils/cn";
 
 const navLinkClass = cn(
   "text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"

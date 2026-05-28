@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { cn } from "@/lib/utils/formatting";
+import { cn } from "@/lib/utils/cn";
 import type { ConditionGrade } from "@/types";
 
 type StatusVariant = "success" | "warning" | "error" | "info";
