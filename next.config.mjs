@@ -9,6 +9,12 @@ const nextConfig = {
         hostname: "*.supabase.co",
         pathname: "/storage/v1/object/public/**",
       },
+      {
+        protocol: "https",
+        // Mock listing photos during UI development. Safe to keep enabled —
+        // real listings will come from Supabase Storage.
+        hostname: "picsum.photos",
+      },
     ],
   },
 };
