@@ -25,7 +25,58 @@ export async function PATCH(
   if (fetchErr || !listing) return err('Listing not found', 'NOT_FOUND', 404);
   if (listing.seller_id !== user.id) return err('Forbidden', 'FORBIDDEN', 403);
 
-  const body = await req.json() as { status?: string; asking_price?: number };
+  const body = await req.json() as {
+    status?: string;
+    asking_price?: number;
+    resubmit?: boolean;
+    // draft resubmit fields
+    productTypeId?: string; productBrand?: string; productName?: string;
+    grade?: string; conditionChecks?: Record<string, boolean>;
+    inclusions?: Record<string, boolean>; photoUrls?: string[];
+    askingPricePaise?: number; negotiationEnabled?: boolean;
+    floorPricePaise?: number | null; autoAcceptPaise?: number | null;
+  };
+
+  // ── Draft resubmission ───────────────────────────────────────────────────
+  if (body.resubmit === true) {
+    if (listing.status !== 'draft') {
+      return err('Only drafts can be resubmitted', 'INVALID_STATE');
+    }
+    const required = ['productTypeId', 'productBrand', 'productName', 'grade', 'askingPricePaise'];
+    for (const f of required) {
+      if (!body[f as keyof typeof body]) return err(`Missing field: ${f}`, 'MISSING_FIELD');
+    }
+    if (!Array.isArray(body.photoUrls) || body.photoUrls.length === 0) {
+      return err('At least one photo is required', 'NO_PHOTOS');
+    }
+    const conditionNotes = body.conditionChecks
+      ? Object.entries(body.conditionChecks).filter(([, v]) => v).map(([k]) => k).join(', ') || null
+      : null;
+
+    const { data, error } = await supabase
+      .from('listings')
+      .update({
+        product_name:          body.productName,
+        brand:                 body.productBrand,
+        category:              body.productTypeId,
+        condition_grade:       body.grade,
+        condition_notes:       conditionNotes,
+        inclusions:            body.inclusions ?? {},
+        photos:                body.photoUrls,
+        asking_price:          body.askingPricePaise,
+        is_negotiable:         body.negotiationEnabled ?? false,
+        floor_price:           body.negotiationEnabled ? (body.floorPricePaise ?? null) : null,
+        auto_accept_threshold: body.negotiationEnabled ? (body.autoAcceptPaise ?? null) : null,
+        status:                'pending',
+        submitted_at:          new Date().toISOString(),
+      })
+      .eq('id', params.id)
+      .select('id, slug')
+      .single();
+
+    if (error) return err(error.message, error.code ?? 'DB_ERROR', 500);
+    return ok(data);
+  }
 
   // ── Price update (approved listings only) ────────────────────────────────
   if (body.asking_price !== undefined) {

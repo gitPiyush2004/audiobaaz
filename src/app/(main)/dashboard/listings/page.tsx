@@ -122,6 +122,14 @@ export default async function ListingsPage({ searchParams }: Props) {
                     )}
                     {activeKey === 'live'    && <DelistButton   listingId={l.id} />}
                     {activeKey === 'pending' && <PullBackButton listingId={l.id} />}
+                    {activeKey === 'draft'   && (
+                      <Link
+                        href={`/sell/draft/${l.id}`}
+                        className="rounded-md border border-accent/40 bg-accent/5 px-3 py-1 text-xs text-accent transition-colors hover:bg-accent/10"
+                      >
+                        Resume
+                      </Link>
+                    )}
                   </div>
                 </div>
               </div>
