@@ -117,6 +117,9 @@ Read the following files in this exact order before writing any code:
 4. Any files you will modify today
 
 Confirm the current git branch. Summarize what you understand before proceeding.
+Do not write any code until I confirm your summary.
+
+At the end of this session, remind me to sync the context files to dev before we close.
 ```
 
 Replace `[your-feature]` with:

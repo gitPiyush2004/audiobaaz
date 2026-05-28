@@ -231,6 +231,9 @@ These are final. Do not suggest alternatives.
 > 4. Any files you will modify today
 >
 > Confirm the current git branch. Summarize what you understand before proceeding.
+> Do not write any code until I confirm your summary.
+>
+> At the end of this session, remind me to sync the context files to dev before we close.
 
 **Feature context files:**
 - Person 1 (seller): `docs/context/seller-flow.md`
