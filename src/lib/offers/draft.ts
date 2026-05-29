@@ -22,11 +22,14 @@ import type { OfferDraftData, OfferRange } from "@/lib/offers/types";
 // ─────────────────────────────────────────────────────────────────────────
 
 /**
- * For the skeleton: the visible range floor is 70% of asking. The real
- * implementation will use `Math.max(floor_price + buffer, asking * 0.5)`
- * or whatever policy product chooses — that decision lives behind this
- * function so the buyer surface never sees it. Adjusting the policy later
- * is a one-line change here, not a cross-cutting refactor.
+ * For the skeleton: the visible range floor is 70% of asking.
+ *
+ * ⚠ Placeholder only. Do NOT infer future negotiation behaviour from this
+ * value. The real implementation will compute the visible band from
+ * `floor_price + buffer` (server-side) using whatever policy product
+ * decides — it may be dramatically different from a flat 70% of asking.
+ * Anyone treating screenshots / demos against this value as evidence of
+ * how negotiation will work in production is wrong.
  */
 const SKELETON_FLOOR_PCT = 0.7;
 

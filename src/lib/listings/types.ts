@@ -93,6 +93,20 @@ export interface SellerCardData {
  */
 export interface ListingCardData {
   id:              string;
+  /**
+   * Human-readable slug, the canonical PUBLIC URL identifier for a listing.
+   *
+   * Rule: public navigation paths (`/listing/<x>`, `/offer/new/<x>`, share
+   * links, OG metadata, sitemap entries) use SLUG. Internal references
+   * (DB joins, API payloads, foreign keys) use ID.
+   *
+   * The two are not interchangeable — accumulating both shapes in URLs
+   * fragments canonicalisation later. Today access functions accept either
+   * for backwards-compatible lookups, but URL CONSTRUCTION should always
+   * resolve to slug. A listing is allowed to be slug-less in the DB only
+   * during draft state; anything reaching this view-model has been approved
+   * and therefore has a slug.
+   */
   slug?:           string;
   product_name:    string;
   brand:           string;
