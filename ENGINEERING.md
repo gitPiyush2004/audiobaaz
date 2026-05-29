@@ -210,6 +210,17 @@ These are final. Do not suggest alternatives.
 
 ---
 
+## Development Utilities
+
+### Dev sign-in bypass (email rate limit workaround)
+- Route: `POST /api/dev/sign-in` — blocked in production (`NODE_ENV === 'production'`)
+- Usage: on the `/login` page, enter any email and click **⚡ Dev: sign in without email**
+- Uses admin client to generate a magic link server-side without sending an email
+- Full auth flow still runs (onboarding check, session creation, redirects)
+- Use this whenever Supabase's email rate limit is hit during testing
+
+---
+
 ## API Conventions
 
 - All API routes in `/src/app/api/`
