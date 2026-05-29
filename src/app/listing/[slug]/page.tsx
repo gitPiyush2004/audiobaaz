@@ -17,6 +17,8 @@ import { ConditionBadge } from "@/components/listing/ConditionBadge";
 import { PhotoGallery } from "@/components/listing/PhotoGallery";
 import { SellerCard } from "@/components/listing/SellerCard";
 import { AccessoryList } from "@/components/listing/AccessoryList";
+import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 interface ListingPageProps {
   params: { slug: string };
@@ -34,8 +36,24 @@ export async function generateMetadata({ params }: ListingPageProps): Promise<Me
 }
 
 export default async function ListingPage({ params }: ListingPageProps) {
-  const listing = await getListingDetail(params.slug);
+  const [listing, { data: { user } }] = await Promise.all([
+    getListingDetail(params.slug),
+    createClient().auth.getUser(),
+  ]);
   if (!listing) notFound();
+
+  // Check if the viewer is the seller — done server-side so seller_id never
+  // reaches the client. Uses admin client to bypass RLS on the seller_id read.
+  let isSeller = false;
+  if (user) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: ownership } = await (createAdminClient() as any)
+      .from("listings")
+      .select("seller_id")
+      .eq("slug", params.slug)
+      .single();
+    isSeller = ownership?.seller_id === user.id;
+  }
 
   const altBase = `${listing.brand} ${listing.product_name}`;
 
@@ -108,26 +126,42 @@ export default async function ListingPage({ params }: ListingPageProps) {
               {formatPrice(listing.asking_price)}
             </p>
 
-            <Link
-              href="/login"
-              className="inline-flex h-11 w-full items-center justify-center rounded-lg bg-accent text-sm font-semibold text-black transition-all hover:bg-accent-hover active:scale-[0.99]"
-            >
-              Buy now
-            </Link>
+            {isSeller ? (
+              <>
+                <div className="rounded-lg border border-border bg-surface-2 px-4 py-3 text-center text-sm text-muted-foreground">
+                  This is your listing
+                </div>
+                <Link
+                  href="/dashboard/listings"
+                  className="inline-flex h-11 w-full items-center justify-center rounded-lg border border-border bg-surface text-sm font-medium text-foreground transition-all hover:bg-surface-2"
+                >
+                  Manage in dashboard
+                </Link>
+              </>
+            ) : (
+              <>
+                <Link
+                  href="/login"
+                  className="inline-flex h-11 w-full items-center justify-center rounded-lg bg-accent text-sm font-semibold text-black transition-all hover:bg-accent-hover active:scale-[0.99]"
+                >
+                  Buy now
+                </Link>
 
-            {listing.is_negotiable && (
-              <Link
-                href={`/offer/new/${listing.slug ?? listing.id}`}
-                className="inline-flex h-11 w-full items-center justify-center rounded-lg border border-border bg-surface text-sm font-medium text-foreground transition-all hover:bg-surface-2"
-              >
-                Make an offer
-              </Link>
+                {listing.is_negotiable && (
+                  <Link
+                    href={`/offer/new/${listing.slug ?? listing.id}`}
+                    className="inline-flex h-11 w-full items-center justify-center rounded-lg border border-border bg-surface text-sm font-medium text-foreground transition-all hover:bg-surface-2"
+                  >
+                    Make an offer
+                  </Link>
+                )}
+
+                <p className="text-[11px] leading-relaxed text-muted-foreground">
+                  Payments are escrow-protected. The seller is paid only after
+                  you confirm the gear matches the listing.
+                </p>
+              </>
             )}
-
-            <p className="text-[11px] leading-relaxed text-muted-foreground">
-              Payments are escrow-protected. The seller is paid only after
-              you confirm the gear matches the listing.
-            </p>
           </div>
 
           {listing.seller && <SellerCard seller={listing.seller} />}

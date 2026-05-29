@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { DelistButton } from './DelistButton';
 import { PullBackButton } from './PullBackButton';
+import { ResubmitButton } from './ResubmitButton';
 import { PriceEdit } from './PriceEdit';
 
 export const metadata = { title: 'My Listings — Audiobaaz' };
@@ -11,6 +12,7 @@ export const metadata = { title: 'My Listings — Audiobaaz' };
 const TABS = [
   { key: 'live',     label: 'Live',           statuses: ['approved'] },
   { key: 'pending',  label: 'Pending Review',  statuses: ['pending'] },
+  { key: 'rejected', label: 'Rejected',        statuses: ['rejected'] },
   { key: 'draft',    label: 'Drafts',          statuses: ['draft'] },
   { key: 'sold',     label: 'Sold',            statuses: ['sold', 'completed'] },
   { key: 'delisted', label: 'Delisted',        statuses: ['delisted'] },
@@ -35,7 +37,7 @@ export default async function ListingsPage({ searchParams }: Props) {
 
   const { data: listings } = await supabase
     .from('listings')
-    .select('id, brand, product_name, condition_grade, asking_price, status, photos, created_at, slug')
+    .select('id, brand, product_name, condition_grade, asking_price, status, photos, created_at, slug, rejection_reason')
     .eq('seller_id', user.id)
     .in('status', activeTab.statuses)
     .order('created_at', { ascending: false });
@@ -78,7 +80,17 @@ export default async function ListingsPage({ searchParams }: Props) {
         ) : (
           <div className="space-y-3">
             {listings.map(l => (
-              <div key={l.id} className="flex items-center gap-4 rounded-xl border border-border bg-surface p-4">
+              <div key={l.id} className={[
+                'rounded-xl border bg-surface',
+                activeKey === 'rejected' ? 'border-error/30' : 'border-border',
+              ].join(' ')}>
+              {activeKey === 'rejected' && l.rejection_reason && (
+                <div className="flex items-start gap-2 rounded-t-xl border-b border-error/20 bg-error/5 px-4 py-3">
+                  <span className="mt-px text-xs font-semibold text-error shrink-0">Reason</span>
+                  <p className="text-xs text-error/80">{l.rejection_reason}</p>
+                </div>
+              )}
+              <div className="flex items-center gap-4 p-4">
                 {/* thumbnail */}
                 <div className="h-16 w-16 shrink-0 overflow-hidden rounded-lg border border-border bg-surface-2">
                   {l.photos?.[0] ? (
@@ -120,9 +132,10 @@ export default async function ListingsPage({ searchParams }: Props) {
                         View
                       </Link>
                     )}
-                    {activeKey === 'live'    && <DelistButton   listingId={l.id} />}
-                    {activeKey === 'pending' && <PullBackButton listingId={l.id} />}
-                    {activeKey === 'draft'   && (
+                    {activeKey === 'live'     && <DelistButton    listingId={l.id} />}
+                    {activeKey === 'pending'  && <PullBackButton  listingId={l.id} />}
+                    {activeKey === 'rejected' && <ResubmitButton  listingId={l.id} />}
+                    {activeKey === 'draft'    && (
                       <Link
                         href={`/sell/draft/${l.id}`}
                         className="rounded-md border border-accent/40 bg-accent/5 px-3 py-1 text-xs text-accent transition-colors hover:bg-accent/10"
@@ -132,6 +145,7 @@ export default async function ListingsPage({ searchParams }: Props) {
                     )}
                   </div>
                 </div>
+              </div>
               </div>
             ))}
           </div>

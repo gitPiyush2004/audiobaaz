@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils/cn";
+import { ProfileMenu } from "@/components/layout/ProfileMenu";
 
 const navLinkClass = cn(
   "text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
@@ -16,11 +17,31 @@ const btnPrimaryClass = cn(
   "text-black transition-all hover:bg-accent-hover active:scale-[0.98]"
 );
 
+function getInitials(fullName: string): string {
+  const parts = fullName.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "?";
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
 export async function Nav() {
   const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  let profile: { full_name: string | null; city: string | null } | null = null;
+  let offerCount = 0;
+
+  if (user) {
+    const [{ data }, { count }] = await Promise.all([
+      supabase.from("users").select("full_name, city").eq("id", user.id).single(),
+      supabase.from("offers").select("*", { count: "exact", head: true }).eq("buyer_id", user.id),
+    ]);
+    profile    = data;
+    offerCount = count ?? 0;
+  }
+
+  const fullName  = profile?.full_name ?? "";
+  const initials  = fullName ? getInitials(fullName) : "?";
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border bg-bg">
@@ -31,14 +52,16 @@ export async function Nav() {
           </span>
         </Link>
 
-        <nav className="flex items-center gap-2 sm:gap-4">
+        <nav className="flex items-center gap-4">
           <Link href="/browse" className={navLinkClass}>Browse</Link>
 
           {user ? (
-            <>
-              <Link href="/dashboard" className={btnSecondaryClass}>Dashboard</Link>
-              <Link href="/sell/new" className={btnPrimaryClass}>+ New Listing</Link>
-            </>
+            <ProfileMenu
+              initials={initials}
+              fullName={fullName || "Your account"}
+              city={profile?.city ?? undefined}
+              offerCount={offerCount}
+            />
           ) : (
             <>
               <Link href="/login" className={btnSecondaryClass}>Log in</Link>

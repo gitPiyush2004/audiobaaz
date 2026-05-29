@@ -1,19 +1,4 @@
-/**
- * Listings access boundary for the buyer flow.
- *
- * UI components and pages MUST call `getBrowseListings()` — never read mock
- * files or Supabase directly. Today this returns mock data; later it'll swap
- * to a Supabase query, then add caching and pagination, without forcing any
- * UI changes.
- *
- * The return type is `ListingCardData` so server-only fields like
- * `floor_price`, `auto_accept_threshold`, and trust scores can never leak
- * into client bundles.
- *
- * Type contracts (`ListingCardData`, `BrowseFilters`, `BrowseSort`,
- * `PriceBucket`) live in `@/lib/listings/types`.
- */
-
+import { createAdminClient } from "@/lib/supabase/admin";
 import type {
   BrowseFilters,
   BrowseSort,
@@ -21,107 +6,96 @@ import type {
   PriceBucket,
 } from "@/lib/listings/types";
 import type { ConditionGrade, ProductCategory } from "@/types";
-import { mockListings, type MockListing } from "@/lib/mock/listings";
 
 const PRICE_BUCKETS: Record<PriceBucket, { min: number; max: number }> = {
-  under_5k:  { min: 0,        max: 500_000 },     // < ₹5,000
-  "5k_15k":  { min: 500_000,  max: 1_500_000 },   // ₹5k – ₹15k
-  "15k_30k": { min: 1_500_000, max: 3_000_000 },  // ₹15k – ₹30k
-  "30k_plus":{ min: 3_000_000, max: Number.POSITIVE_INFINITY },
+  under_5k:   { min: 0,         max: 500_000 },
+  "5k_15k":   { min: 500_000,   max: 1_500_000 },
+  "15k_30k":  { min: 1_500_000, max: 3_000_000 },
+  "30k_plus": { min: 3_000_000, max: Number.POSITIVE_INFINITY },
 };
 
-function applyFilters(input: MockListing[], f: BrowseFilters): MockListing[] {
-  let out = input;
-
-  if (f.categories && f.categories.length > 0) {
-    const set = new Set(f.categories);
-    out = out.filter((l) => set.has(l.category));
-  }
-
-  if (f.conditions && f.conditions.length > 0) {
-    const set = new Set(f.conditions);
-    out = out.filter((l) => set.has(l.condition_grade));
-  }
-
-  if (f.priceBucket) {
-    const { min, max } = PRICE_BUCKETS[f.priceBucket];
-    out = out.filter((l) => l.asking_price >= min && l.asking_price < max);
-  }
-
-  if (f.negotiableOnly) {
-    out = out.filter((l) => l.is_negotiable);
-  }
-
-  return out;
-}
-
-function applySort(input: MockListing[], sort: BrowseSort): MockListing[] {
-  const out = [...input]; // never mutate the source
-  switch (sort) {
-    case "newest":
-      return out.sort((a, b) => b.created_at.localeCompare(a.created_at));
-    case "price_asc":
-      return out.sort((a, b) => a.asking_price - b.asking_price);
-    case "price_desc":
-      return out.sort((a, b) => b.asking_price - a.asking_price);
-    case "most_viewed":
-      return out.sort((a, b) => b.view_count - a.view_count);
-    case "rating_desc":
-    default: {
-      // Higher seller rating first; missing ratings sort to the end.
-      // Tie-break on rating_count, then on newest.
-      const r = (l: MockListing) => l.seller?.rating ?? -1;
-      const c = (l: MockListing) => l.seller?.rating_count ?? 0;
-      return out.sort((a, b) => {
-        const dr = r(b) - r(a);
-        if (dr !== 0) return dr;
-        const dc = c(b) - c(a);
-        if (dc !== 0) return dc;
-        return b.created_at.localeCompare(a.created_at);
-      });
-    }
-  }
-}
-
-/** Strip MockListing-only fields so the public surface stays exactly `ListingCardData`. */
-function toCardData(l: MockListing): ListingCardData {
-  return {
-    id:              l.id,
-    slug:            l.slug,
-    product_name:    l.product_name,
-    brand:           l.brand,
-    condition_grade: l.condition_grade,
-    asking_price:    l.asking_price,
-    is_negotiable:   l.is_negotiable,
-    photos:          l.photos,
-    seller:          l.seller,
-  };
-}
-
-/**
- * Fetch listings for the browse surface.
- *
- * Currently returns mock data; the function signature is the contract the
- * Supabase implementation will honour. UI must depend on this signature only.
- */
 export async function getBrowseListings(
   filters: BrowseFilters = {}
 ): Promise<ListingCardData[]> {
+  const supabase = createAdminClient();
   const sort = filters.sort ?? "rating_desc";
 
-  const filtered = applyFilters(mockListings, filters);
-  const sorted   = applySort(filtered, sort);
-  const limited  = typeof filters.limit === "number" ? sorted.slice(0, filters.limit) : sorted;
+  let query = supabase
+    .from("listings")
+    .select(
+      "id, slug, product_name, brand, category, condition_grade, asking_price, is_negotiable, photos, view_count, seller_id, users!seller_id(full_name, city, created_at)"
+    )
+    .eq("status", "approved");
 
-  return limited.map(toCardData);
+  if (filters.categories?.length) query = query.in("category", filters.categories);
+  if (filters.conditions?.length)  query = query.in("condition_grade", filters.conditions);
+  if (filters.negotiableOnly)      query = query.eq("is_negotiable", true);
+
+  if (filters.priceBucket) {
+    const { min, max } = PRICE_BUCKETS[filters.priceBucket];
+    query = query.gte("asking_price", min);
+    if (max !== Number.POSITIVE_INFINITY) query = query.lt("asking_price", max);
+  }
+
+  if (sort === "newest")      query = query.order("created_at",   { ascending: false });
+  else if (sort === "price_asc")   query = query.order("asking_price", { ascending: true  });
+  else if (sort === "price_desc")  query = query.order("asking_price", { ascending: false });
+  else if (sort === "most_viewed") query = query.order("view_count",   { ascending: false });
+
+  if (filters.limit) query = query.limit(filters.limit);
+
+  const { data: rows } = await query;
+  if (!rows?.length) return [];
+
+  // Batch-fetch seller ratings for all sellers in one query
+  const sellerIds = Array.from(new Set(rows.map((r) => r.seller_id as string)));
+  const { data: ratingRows } = await supabase
+    .from("seller_ratings")
+    .select("seller_id, average_rating, total_ratings")
+    .in("seller_id", sellerIds);
+
+  const ratingMap = new Map(
+    (ratingRows ?? []).map((r) => [r.seller_id as string, r])
+  );
+
+  const listings: ListingCardData[] = rows.map((row) => {
+    const seller = Array.isArray(row.users) ? row.users[0] : row.users;
+    const r = ratingMap.get(row.seller_id as string);
+    return {
+      id:              row.id,
+      slug:            row.slug ?? undefined,
+      product_name:    row.product_name,
+      brand:           row.brand,
+      condition_grade: row.condition_grade as ConditionGrade,
+      asking_price:    row.asking_price,
+      is_negotiable:   row.is_negotiable,
+      photos:          (row.photos as string[]) ?? [],
+      seller: seller ? {
+        full_name:    (seller as { full_name: string | null }).full_name   ?? undefined,
+        city:         (seller as { city: string | null }).city             ?? undefined,
+        rating:       r ? Number(r.average_rating) : undefined,
+        rating_count: r ? Number(r.total_ratings)  : undefined,
+        member_since: (seller as { created_at: string }).created_at,
+      } : undefined,
+    };
+  });
+
+  // rating_desc sort happens in-memory after merging rating data
+  if (sort === "rating_desc") {
+    listings.sort((a, b) => {
+      const ra = a.seller?.rating ?? -1;
+      const rb = b.seller?.rating ?? -1;
+      if (rb !== ra) return rb - ra;
+      const ca = a.seller?.rating_count ?? 0;
+      const cb = b.seller?.rating_count ?? 0;
+      if (cb !== ca) return cb - ca;
+      return 0;
+    });
+  }
+
+  return listings;
 }
 
-/**
- * Helpers for parsing URL search params into `BrowseFilters` so the
- * `/browse` page (or any page consuming this boundary) doesn't reinvent
- * the wheel. Kept colocated because the URL shape and the filter shape
- * evolve together.
- */
 export const VALID_CATEGORIES: ProductCategory[] = [
   "iem",
   "headphone",
@@ -160,10 +134,6 @@ function parseList<T extends string>(raw: string | undefined, valid: readonly T[
     .filter((s): s is T => set.has(s));
 }
 
-/**
- * Parse the URL's `searchParams` into typed `BrowseFilters`.
- * Anything unrecognised is dropped silently — never trust client input.
- */
 export function parseBrowseSearchParams(
   params: Record<string, string | string[] | undefined>
 ): BrowseFilters {

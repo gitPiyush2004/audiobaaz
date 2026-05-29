@@ -1,70 +1,78 @@
-/**
- * Listing detail access boundary.
- *
- * UI components and pages MUST call `getListingDetail(idOrSlug)` — never
- * read mock files or Supabase directly. Sibling of `browse.ts`. Mock-backed
- * today; the future Supabase migration replaces the implementation INSIDE
- * this function. Callers (the route page, components) keep their imports
- * unchanged.
- *
- * The return type is `ListingDetailData` — a strict view-model that
- * excludes server-only fields (`floor_price`, `auto_accept_threshold`,
- * `seller_score`, `buyer_score`) by construction so they cannot leak
- * into the client surface even if the underlying source is wrong.
- *
- * Type contracts (`ListingDetailData`, `SellerCardData`) live in
- * `@/lib/listings/types`.
- *
- * See `docs/context/buyer-flow.md` §4 for the boundary rules.
- */
-
-import type { ConditionGrade } from "@/types";
+import { createAdminClient } from "@/lib/supabase/admin";
+import type { ConditionGrade, ProductCategory } from "@/types";
 import type { ListingDetailData } from "@/lib/listings/types";
-import { mockListings } from "@/lib/mock/listings";
 
-/**
- * Fetch a single listing by id OR slug.
- *
- * Returns `null` when not found. Callers translate that to a Next 404 via
- * `notFound()` — keeping the access boundary unaware of routing conventions.
- *
- * @param idOrSlug — either the `id` (UUID-like) or the human-readable `slug`
- */
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+type RawRow = {
+  id: string;
+  slug: string | null;
+  product_name: string;
+  brand: string;
+  category: string;
+  condition_grade: string;
+  asking_price: number;
+  is_negotiable: boolean;
+  photos: string[] | null;
+  condition_notes: string | null;
+  known_defects: string | null;
+  inclusions: Record<string, boolean> | null;
+  seller_id: string;
+  users: { full_name: string | null; city: string | null; created_at: string } | null;
+};
+
 export async function getListingDetail(
   idOrSlug: string
 ): Promise<ListingDetailData | null> {
   const trimmed = idOrSlug.trim();
   if (!trimmed) return null;
 
-  const found = mockListings.find(
-    (l) => l.slug === trimmed || l.id === trimmed
-  );
-  if (!found) return null;
+  const supabase = createAdminClient();
+  const col = UUID_RE.test(trimmed) ? "id" : "slug";
 
-  // Map MockListing → ListingDetailData. Done explicitly (not via spread)
-  // so any new server-only field added to MockListing later cannot
-  // accidentally leak through this boundary.
-  const detail: ListingDetailData = {
-    id:              found.id,
-    slug:            found.slug,
-    product_name:    found.product_name,
-    brand:           found.brand,
-    category:        found.category,
-    condition_grade: found.condition_grade as ConditionGrade,
-    asking_price:    found.asking_price,
-    is_negotiable:   found.is_negotiable,
-    photos:          found.photos,
-    condition_notes: found.condition_notes,
-    known_defects:   found.known_defects,
-    inclusions:      found.inclusions ?? {},
-    seller:          found.seller && {
-      full_name:    found.seller.full_name,
-      city:         found.seller.city,
-      rating:       found.seller.rating,
-      rating_count: found.seller.rating_count,
-      member_since: found.seller.member_since,
-    },
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: raw } = await (supabase as any)
+    .from("listings")
+    .select(
+      "id, slug, product_name, brand, category, condition_grade, asking_price, is_negotiable, photos, condition_notes, known_defects, inclusions, seller_id, users!seller_id(full_name, city, created_at)"
+    )
+    .eq("status", "approved")
+    .eq(col, trimmed)
+    .single();
+
+  const row = raw as RawRow | null;
+  if (!row) return null;
+
+  const seller = Array.isArray(row.users) ? row.users[0] : row.users;
+
+  const { data: ratingRaw } = await supabase
+    .from("seller_ratings")
+    .select("average_rating, total_ratings")
+    .eq("seller_id", row.seller_id)
+    .single();
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const ratingData = ratingRaw as any;
+
+  return {
+    id:              row.id,
+    slug:            row.slug ?? undefined,
+    product_name:    row.product_name,
+    brand:           row.brand,
+    category:        row.category as ProductCategory,
+    condition_grade: row.condition_grade as ConditionGrade,
+    asking_price:    row.asking_price,
+    is_negotiable:   row.is_negotiable,
+    photos:          row.photos ?? [],
+    condition_notes: row.condition_notes ?? undefined,
+    known_defects:   row.known_defects   ?? undefined,
+    inclusions:      row.inclusions ?? {},
+    seller: seller ? {
+      full_name:    seller.full_name    ?? undefined,
+      city:         seller.city         ?? undefined,
+      rating:       ratingData ? Number(ratingData.average_rating) : undefined,
+      rating_count: ratingData ? Number(ratingData.total_ratings)  : undefined,
+      member_since: seller.created_at,
+    } : undefined,
   };
-
-  return detail;
 }
