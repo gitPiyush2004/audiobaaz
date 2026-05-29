@@ -53,6 +53,36 @@ single listing page, checkout, order dashboard, watchlist, saved searches.
 
 ---
 
+## Buyer Journey
+
+```
+Browse                   (public)
+  ↓
+Listing Detail           (public)
+  ↓
+Offer Composition        (public — friction lives at submit, not entry)
+  ↓
+Authentication           (login + magic link → /auth/callback)
+  ↓
+Offer Created (pending)  (createOfferDraft — mock today)
+  ↓ seller_accept
+Accepted                 (24h payment window starts)
+  ↓ buyer_pay
+Paid                     (terminal)
+```
+
+Branches off the happy path resolve through the state machine — see
+"Offer State Machine" below.
+
+The auth boundary is a deliberate product decision, not an implementation
+detail: friction lives at *intent*, not at *entry*. Browsing, viewing a
+listing, and composing an offer all work without an account; auth happens
+at submission. Drafts survive the boundary via the URL carrier, replaceable
+with a server-stored `draft_id` later. Do not move this boundary without a
+deliberate product call.
+
+---
+
 ## Files Owned By Buyer-Flow
 
 ### Domain types & access boundaries
@@ -669,29 +699,66 @@ between this branch and a real marketplace.
 
 ### Pre-work — alignment with Person 1 BEFORE writing code
 
+**Branch hygiene first.** `feature/buyer-flow` was reset to `dev` after the
+merge — both branches now sit at `0b0572c`. Either continue on
+`feature/buyer-flow` (it's now a clean pointer at dev) or open a fresh
+`feature/offers-persistence` from dev. Do NOT start from a stale local
+buyer-flow with merge baggage.
+
 Schema/RLS decisions must be made before migrations. Open coordination
 items:
 
-1. **`offers` table schema** — confirm the column set against
-   `src/lib/offers/types.ts`. Open question: do `OfferDetailData.message`
-   and `listing_was_negotiable` map to `offers.message` and a new
-   `offers.was_negotiable` column, or is `was_negotiable` denormalised at
-   query time from `listings.is_negotiable`? (Recommend storing — sellers
-   can flip the listing later and the offer record should reflect intent
-   at creation.)
-2. **`offers.status` enum values** — must exactly match `OfferStatus` in
+1. **`offers` table schema** — confirm against `src/lib/offers/types.ts`.
+   Proposed column set:
+   ```
+   id              uuid pk
+   buyer_id        uuid → users.id
+   seller_id       uuid → users.id          (denormalised for RLS performance)
+   listing_id      uuid → listings.id
+   status          offer_status enum         (matches OfferStatus exactly)
+   offer_amount    bigint                    (PAISE)
+   message         text null                 (OfferDetailData.message)
+   was_negotiable  boolean                   (snapshot at creation time —
+                                              listings.is_negotiable can flip
+                                              after the offer is placed; the
+                                              offer record reflects intent at
+                                              creation, not later state)
+   created_at      timestamptz default now()
+   expires_at      timestamptz               (24h window — see policy.ts)
+   accepted_at     timestamptz null
+   paid_at         timestamptz null
+   declined_at     timestamptz null
+   cancelled_at    timestamptz null
+   ```
+   The `*_at` timestamps are nullable not for product reasons but for
+   forensics: when the migration runs the existing seller-side
+   `PATCH /api/offers/[id]` code may set them, and we want a single
+   timeline source.
+
+2. **`offers.status` enum** — must exactly match `OfferStatus` in
    `src/lib/offers/types.ts`: `pending | accepted | paid | declined |
-   expired | cancelled`. No counter-offer status.
-3. **RLS policies** — three personas, three rule sets:
-   - Buyer: read own offers (`buyer_id = auth.uid()`), insert offers,
-     update own offers ONLY when transitioning `pending → cancelled`.
-   - Seller: read offers on own listings, update offers on own listings
-     ONLY when transitioning `pending → accepted` or `pending → declined`.
-   - Admin: read all (already exists for the admin panel).
+   expired | cancelled`. No counter-offer status. No `lost` status
+   unless §4 decides otherwise.
+
+3. **RLS policies** — three personas, explicit access matrix:
+
+   |                            | SELECT | INSERT | UPDATE status |
+   |----------------------------|--------|--------|---------------|
+   | Buyer (own offers)         | ✓      | ✓      | `pending → cancelled` only |
+   | Seller (offers on own listings) | ✓ | ✗      | `pending → accepted`, `pending → declined` only |
+   | Admin                      | ✓      | ✗      | force-expire / dispute-related transitions |
+   | System (service role)      | ✓      | ✓      | `system_expire_*` transitions only |
+
+   Status transitions are validated server-side by
+   `validateOfferTransition()` from `state.ts` AND by the RLS rule. The
+   state machine is the source of truth; RLS is defence in depth.
+
 4. **Open marketplace question §2** — decide before the migration: when
    another buyer pays first on a parallel-accepted offer, does the losing
    buyer's offer transition to `expired` or to a new terminal status
-   `lost`? Migrations on enums are painful — get this right once.
+   `lost`? Migrations on enums are painful — get this right once. If
+   `lost` is added, update both the enum and the state machine's
+   `TRANSITIONS` table in the same PR.
 
 ### In scope for the persistence slice (after alignment)
 
