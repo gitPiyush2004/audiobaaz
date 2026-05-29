@@ -1,7 +1,7 @@
 'use client';
 
 import { Suspense, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 
 const inputCls = [
@@ -20,7 +20,6 @@ function OnboardingForm() {
   const [loading,   setLoading]   = useState(false);
   const [error,     setError]     = useState<string | null>(null);
 
-  const router      = useRouter();
   const searchParams = useSearchParams();
   const next        = searchParams.get('next') ?? '/';
 
