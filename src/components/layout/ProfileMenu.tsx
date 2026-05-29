@@ -60,7 +60,7 @@ export function ProfileMenu({ initials, fullName, city, offerCount }: ProfileMen
           {/* links */}
           <nav className="py-1">
             {offerCount > 0 ? (
-              <MenuLink href="/orders/offers" onClick={() => setOpen(false)}>
+              <MenuLink href="/orders/purchases" onClick={() => setOpen(false)}>
                 <span className="flex items-center justify-between">
                   My Orders
                   <span className="ml-2 rounded-full bg-accent/15 px-2 py-0.5 text-xs font-semibold text-accent">

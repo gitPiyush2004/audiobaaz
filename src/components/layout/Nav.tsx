@@ -32,12 +32,13 @@ export async function Nav() {
   let offerCount = 0;
 
   if (user) {
-    const [{ data }, { count }] = await Promise.all([
+    const [{ data }, { count: offers }, { count: orders }] = await Promise.all([
       supabase.from("users").select("full_name, city").eq("id", user.id).single(),
       supabase.from("offers").select("*", { count: "exact", head: true }).eq("buyer_id", user.id),
+      supabase.from("orders").select("*", { count: "exact", head: true }).eq("buyer_id", user.id),
     ]);
     profile    = data;
-    offerCount = count ?? 0;
+    offerCount = (offers ?? 0) + (orders ?? 0);
   }
 
   const fullName  = profile?.full_name ?? "";
