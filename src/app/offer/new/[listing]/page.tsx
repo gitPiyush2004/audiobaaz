@@ -33,6 +33,7 @@ import {
   parseOfferDraftFromSearchParams,
   validateOfferAmount,
 } from "@/lib/offers/draft";
+import { createOfferDraft } from "@/lib/offers/create";
 import { ConditionBadge } from "@/components/listing/ConditionBadge";
 import { OfferAmountInput } from "@/components/offers/OfferAmountInput";
 import { formatPrice } from "@/lib/utils/formatting";
@@ -129,11 +130,19 @@ export default async function OfferPage({ params, searchParams }: OfferPageProps
   /**
    * Server action that handles "Continue" on the offer form.
    *
-   * Skeleton behaviour: validate the amount, build the auth-redirect URL
-   * via `buildOfferAuthRedirect()`, redirect. No DB writes, no offers
-   * table touch, no auth check. The redirect SHAPE is what we're locking
-   * in this slice — a future implementation replaces the body of this
-   * action with real persistence, but the call sites stay the same.
+   * Skeleton behaviour:
+   *   1. Parse the amount.
+   *   2. Re-validate cheaply (validateOfferAmount) for fast-fail UX.
+   *   3. Call `createOfferDraft()` — the real domain-object creation
+   *      path. It runs the state machine's initial transition and
+   *      returns a mocked `OfferSummary` today; tomorrow it persists.
+   *   4. Build the auth-redirect URL and redirect.
+   *
+   * The `OfferSummary` returned from createOfferDraft is intentionally
+   * not surfaced yet — there's no buyer-offer dashboard to land on.
+   * That arrives in a later slice. Calling the boundary now exercises
+   * the full path so swapping the mock for Supabase is a body-only
+   * change, not a call-site change.
    */
   async function continueAction(formData: FormData) {
     "use server";
@@ -141,12 +150,38 @@ export default async function OfferPage({ params, searchParams }: OfferPageProps
     const raw = formData.get("offer");
     const amount = typeof raw === "string" ? Number.parseInt(raw, 10) : NaN;
 
-    // Re-validate server-side. `validateOfferAmount` is the same rule
-    // applied by the client UI — never trust the form value alone.
-    const error = validateOfferAmount(amount, range);
-    if (error) {
+    // Fast-fail validation for invalid input shape.
+    const amountError = validateOfferAmount(amount, range);
+    if (amountError) {
       // Skeleton: re-render the page with the existing URL state.
       // A future slice can surface the error inline via a result tuple.
+      redirect(`/offer/new/${negotiableListing.id}?offer=${Math.max(amount || 0, 0)}`);
+    }
+
+    // Run the full create path. The state machine validates the initial
+    // transition; the mocked summary stands in for the eventual DB row.
+    const result = await createOfferDraft({
+      draft: {
+        listing_id:   negotiableListing.id,
+        offer_amount: amount,
+      },
+      listing: {
+        id:            negotiableListing.id,
+        slug:          negotiableListing.slug,
+        brand:         negotiableListing.brand,
+        product_name:  negotiableListing.product_name,
+        thumbnail:     negotiableListing.photos[0],
+        asking_price:  negotiableListing.asking_price,
+        is_negotiable: negotiableListing.is_negotiable,
+      },
+      range,
+    });
+
+    if (!result.ok) {
+      // The boundary rejected something the page-level validator missed
+      // (e.g. listing flipped to non-negotiable mid-flight). Bounce the
+      // buyer back to the offer page with their amount preserved; later
+      // slices surface the specific error.
       redirect(`/offer/new/${negotiableListing.id}?offer=${Math.max(amount || 0, 0)}`);
     }
 
