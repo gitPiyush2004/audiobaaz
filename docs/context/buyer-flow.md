@@ -18,98 +18,123 @@ single listing page, checkout, order dashboard, watchlist, saved searches.
 ## Current Status
 
 ```
-[x] Foundation session — branch created, dev verified buildable, shared component primitives in place
-[x] cn utility extracted to canonical src/lib/utils/cn.ts (sole source of truth for class merging)
-[x] ConditionBadge — color-coded grade pill (S/A/B/C/D), compact + full variants, sm/md sizes
-[x] ListingCard — 4:3 cover, condition overlay, mono accent price, optional rating + city
-[x] ListingGrid — 1/2/3/4-col responsive layout, loading skeletons, empty slot
-[x] next.config.mjs — images.remotePatterns allows *.supabase.co/storage/v1/object/public/**
-[x] Pre-existing scaffold lint errors fixed (page.tsx apostrophe, Card.tsx empty interface)
-[x] Buyer-flow files are tsc + lint clean; production build compiles successfully
-[x] Mock dataset (src/lib/mock/{listings,users}.ts) — realistic, messy, intentionally not "perfect"
-[x] Listings access boundary — src/lib/listings/browse.ts → getBrowseListings()
-[x] /browse page — URL-driven filter sidebar, sort, ListingGrid integration
-[x] Homepage integration — featured strip wired via getBrowseListings({ sort: "newest", limit: 4 })
-[ ] src/lib/mock/offers.ts — offer fixtures for buyer dashboard (defer until needed)
-[ ] Single listing page (/listing/[slug])
-[ ] PhotoGallery, SellerCard, AccessoryList shared components
-[ ] getListingDetail() access boundary
-[ ] Account gate (modals/redirects on watchlist/offer/checkout intent)
-[ ] Checkout, order tracking, watchlist, saved searches, disputes — defer
+[x] Foundation slice — primitives (cn, ConditionBadge, ListingCard, ListingGrid)
+[x] Browse slice — mock listings, getBrowseListings(), URL-driven /browse, homepage featured strip
+[x] Listing detail slice — getListingDetail(), PhotoGallery, SellerCard, AccessoryList, /listing/[slug]
+[x] Offer composition slice — /offer/new/[listing], OfferAmountInput, getOfferRange, parseOfferDraftFromSearchParams, buildOfferAuthRedirect, validateOfferAmount
+[x] Offer domain slice — OfferStatus, state machine (state.ts), createOfferDraft (mock), wired into /offer/new server action
+[x] Buyer dashboard slice — getMyOffers, BuyerOfferRow projection, /orders/offers with three sections (Action needed / Awaiting response / History)
+[x] Offer detail slice — getOfferDetail (queries.ts), /orders/offers/[id]
+[x] Auth gate slice — /orders/* protected by middleware; /offer/new/* remains public; pay/cancel actions disabled until persistence exists
+[x] Buyer-flow files: tsc clean, lint clean, dev smoke-tested
+[ ] Real offers persistence — replace mock createOfferDraft / getMyOffers / getOfferDetail with Supabase
+[ ] Buyer-side offer cancel — RLS policy + API route (coordinate with Person 1 first)
+[ ] Real Pay now flow — checkout / Razorpay (Person 4 dependency)
+[ ] Add /orders link to Nav.tsx for authenticated buyers — separate small PR; Person 1 owns Nav
+[ ] Watchlist, saved searches, disputes, orders dashboard, ratings — defer
+[ ] /buy/checkout/[listingId], /buy/confirm/[orderId] — defer until persistence + Person 4's payments are wired
 ```
 
 ---
 
-## Files Created This Session
+## Routes Now Implemented
 
-### Foundation slice (primitives + lint + docs)
+| Route | Purpose | Auth | Component |
+|-------|---------|------|-----------|
+| `/` | Homepage with hero + Latest listings strip | public | `src/app/page.tsx` |
+| `/browse` | Filter + sort + grid | public | `src/app/browse/page.tsx` |
+| `/listing/[slug]` | Single listing detail | public | `src/app/listing/[slug]/page.tsx` |
+| `/offer/new/[listing]` | Offer composition (slider + amount input) | public — auth at submit | `src/app/offer/new/[listing]/page.tsx` |
+| `/orders` | Redirect to `/orders/offers` | protected | `src/app/orders/page.tsx` |
+| `/orders/offers` | Buyer offer dashboard (3 sections) | protected | `src/app/orders/offers/page.tsx` |
+| `/orders/offers/[id]` | Offer detail | protected | `src/app/orders/offers/[id]/page.tsx` |
 
-```
-src/lib/utils/cn.ts                            ✓ canonical class-name helper
-src/components/listing/ConditionBadge.tsx      ✓ SHARED — see registry
-src/components/listing/ListingCard.tsx         ✓ SHARED — see registry
-src/components/listing/ListingGrid.tsx         ✓ SHARED — see registry
-```
-
-### Browse slice (mock data + access boundary + UI)
-
-```
-src/lib/mock/users.ts                          ✓ 8 sellers (view-model only — no scores, phone, UPI)
-src/lib/mock/listings.ts                       ✓ 12 listings, ListingCardData-shaped, intentionally messy
-src/lib/listings/browse.ts                     ✓ getBrowseListings() + BrowseFilters/Sort + parseBrowseSearchParams
-src/app/browse/page.tsx                        ✓ Server component, URL-driven filters and sort
-```
-
-## Files Modified This Session
-
-```
-next.config.mjs                                ✓ images.remotePatterns: *.supabase.co/storage + picsum.photos (mock dev)
-src/lib/utils/formatting.ts                    ✓ cn removed; only formatPrice + formatDate
-src/components/{ui/Button,ui/Input,ui/Card,ui/Badge,ui/Spinner,layout/Nav}.tsx  ✓ cn import path updated
-src/app/page.tsx                               ✓ apostrophe escape (lint fix); +"Latest listings" featured strip via getBrowseListings()
-src/components/ui/Card.tsx                     ✓ empty interface → type alias (lint fix)
-ENGINEERING.md                                      ✓ build status + Shared Components Registry
-docs/BRANCHING.md                              ✓ reviewer ownership rules + reviewer checklist
-```
+`protected` routes redirect anonymous users to `/login?redirect=<path>` via `src/middleware.ts`.
 
 ---
 
-## Files To Create (next slice — listing detail page only)
+## Files Owned By Buyer-Flow
 
-Strict scope. Do NOT add anything else to this list "while you're there."
-
-```
-src/lib/listings/detail.ts                     # getListingDetail(idOrSlug) — sibling of browse.ts
-src/app/listing/[slug]/page.tsx                # Server component, URL is /listing/<slug>
-src/components/listing/PhotoGallery.tsx        # SHARED — see registry once landed
-src/components/listing/SellerCard.tsx          # SHARED — see registry once landed
-src/components/listing/AccessoryList.tsx       # SHARED — inclusions ✓/✗ display
-```
-
-## Deferred (do NOT pull into the detail-page slice)
-
-These remain valid future work but stay out of the next PR. Each gets its own narrow slice.
+### Domain types & access boundaries
 
 ```
-src/lib/mock/offers.ts                         # Defer until buyer dashboard work begins
-src/lib/listings/search.ts                     # Defer — /browse covers v1 needs
-src/app/listing/search/page.tsx                # Defer
-src/app/buy/checkout/[listingId]/page.tsx     # Defer (checkout slice)
-src/app/buy/confirm/[orderId]/page.tsx        # Defer
-src/app/orders/page.tsx                       # Defer (orders slice)
-src/app/orders/[orderId]/page.tsx             # Defer
-src/app/orders/watchlist/page.tsx             # Defer (watchlist slice)
-src/app/orders/saved-searches/page.tsx        # Defer (saved-search slice)
-src/app/orders/disputes/page.tsx              # Defer (disputes slice)
-src/components/listing/PriceHistory.tsx        # Defer until price_history table has data
-src/components/shared/TrackingTimeline.tsx     # Defer (orders slice)
-src/components/shared/DisputeForm.tsx          # Defer (disputes slice)
-src/components/shared/RatingPrompt.tsx         # Defer (post-delivery slice)
-src/app/api/orders/route.ts                    # Defer
-src/app/api/orders/[id]/route.ts               # Defer
-src/app/api/watchlist/route.ts                 # Defer
-src/app/api/offers/route.ts                    # Defer
-src/app/api/offers/[id]/route.ts               # Defer
+src/lib/listings/types.ts        Canonical buyer view-models — see §11
+src/lib/listings/browse.ts       getBrowseListings(filters)
+src/lib/listings/detail.ts       getListingDetail(idOrSlug)
+
+src/lib/offers/types.ts          OfferRange, OfferDraftData, OfferStatus,
+                                 OfferSummary, OfferDetailData
+src/lib/offers/state.ts          Pure state machine — TRANSITIONS table,
+                                 validateOfferTransition, predicates
+                                 (canBuyerCancel/canBuyerPay/canSellerAccept/
+                                 canSellerDecline/isTerminal/isAwaitingSeller/
+                                 isAwaitingBuyer), buyerStatusLabel,
+                                 statusToneToken. Open-questions block above
+                                 the transition table — see "Open Questions".
+src/lib/offers/draft.ts          getOfferRange, parseOfferDraftFromSearchParams,
+                                 buildOfferAuthRedirect, validateOfferAmount
+src/lib/offers/create.ts         createOfferDraft → CreateOfferResult
+                                 (typed error codes), PENDING_TTL_MS
+src/lib/offers/dashboard.ts      BuyerOfferRow projection, getMyOffers
+                                 (bucketed: awaiting_seller / action_needed /
+                                 history)
+src/lib/offers/queries.ts        getOfferDetail (single offer)
+```
+
+### Mock data
+
+```
+src/lib/mock/users.ts            8 sellers (view-model only — no scores, no
+                                 phone, no UPI). Includes `member_since`.
+src/lib/mock/listings.ts         12 listings, ListingCardData-shaped + detail
+                                 fields (condition_notes, known_defects,
+                                 inclusions) on a curated subset. Realistic
+                                 mess: missing accessories, single-photo
+                                 listings, obscure brands, mixed cities.
+src/lib/mock/offers.ts           7 offers as MockOffer (OfferSummary +
+                                 message? + listing_was_negotiable). One per
+                                 status branch + one without thumbnail + one
+                                 without slug.
+```
+
+### Shared components (registered in ENGINEERING.md)
+
+```
+src/lib/utils/cn.ts                          (Scaffold)
+src/components/listing/ConditionBadge.tsx    (Person 2)
+src/components/listing/ListingCard.tsx       (Person 2)
+src/components/listing/ListingGrid.tsx       (Person 2)
+src/components/listing/PhotoGallery.tsx      (Person 2)
+src/components/listing/PhotoGalleryView.tsx  (Person 2 — client island
+                                              for PhotoGallery)
+src/components/listing/SellerCard.tsx        (Person 2)
+src/components/listing/AccessoryList.tsx     (Person 2)
+src/components/offers/OfferAmountInput.tsx   (buyer-only client island)
+src/components/offers/OfferStatusBadge.tsx   (buyer-only — wraps Badge with
+                                              statusToneToken + buyerStatusLabel)
+```
+
+### Files modified outside buyer-flow's domain
+
+```
+next.config.mjs                              images.remotePatterns:
+                                             *.supabase.co/storage + picsum.photos
+src/middleware.ts                            /orders added to protectedPaths
+                                             (auth-gate slice)
+src/components/ui/Badge.tsx                  Added `neutral` status variant
+                                             (offer terminal states use it)
+src/components/ui/{Button,Input,Card,Badge,Spinner}.tsx
+src/components/layout/Nav.tsx                cn import path updated to
+                                             @/lib/utils/cn (refactor slice)
+src/lib/utils/formatting.ts                  cn extracted out; only formatPrice
+                                             + formatDate remain
+src/app/page.tsx                             Apostrophe escape (lint fix);
+                                             "Latest listings" featured strip
+                                             via getBrowseListings()
+src/components/ui/Card.tsx                   Empty interface → type alias (lint fix)
+ENGINEERING.md                                    Build status, registry updates,
+                                             Project-Level Known Issues
+docs/BRANCHING.md                            Reviewer ownership rules + checklist
 ```
 
 ---
@@ -266,6 +291,90 @@ inclusions. The seller field is unified on `SellerCardData` across both —
 the card UI ignores fields it doesn't render. This is the only inheritance
 in the module today.
 
+### 12. Offers are a separate domain — `src/lib/offers/*`
+Offers and listings are different bounded contexts. Listings = discovery;
+offers = negotiation. The two domains have separate folders, separate
+canonical type files, and separate access functions. Do NOT fold offer
+view-models into `lib/listings/types.ts`.
+
+```
+src/lib/listings/      Discovery domain
+└── types.ts             ListingCardData / ListingDetailData / SellerCardData
+                         BrowseFilters / BrowseSort / PriceBucket
+└── browse.ts, detail.ts (access boundaries)
+
+src/lib/offers/        Negotiation domain
+└── types.ts             OfferRange / OfferDraftData / OfferStatus /
+                         OfferSummary / OfferDetailData
+└── state.ts             Pure state machine — single source of truth for
+                         offer transitions and predicates
+└── draft.ts             Pre-creation helpers (range, URL parsing,
+                         auth-redirect URL builder, validation)
+└── create.ts            createOfferDraft entry point (mock-backed today)
+└── dashboard.ts         BuyerOfferRow projection + getMyOffers
+└── queries.ts           Domain reads returning offer-domain types
+                         (getOfferDetail today; siblings later)
+```
+
+`dashboard.ts` and `queries.ts` are sibling files with sharp purposes:
+projection layer vs domain reads. Keep them separate so a future
+`listOffersForListing()` (a domain read) doesn't accidentally land in
+`dashboard.ts` and pull display fields with it.
+
+### 13. Buyer offer view-models layer cleanly
+Same separation as listings:
+
+```
+OfferSummary       = offer-domain object — what an offer IS
+BuyerOfferRow      = dashboard projection — what one ROW shows
+OfferDetailData    = offer-domain object for the detail surface
+                     (extends OfferSummary with `message` and
+                     `listing_was_negotiable`)
+```
+
+UI components consume projections (BuyerOfferRow) on multi-row surfaces
+and domain types (OfferDetailData) on single-item surfaces. Domain types
+must NOT carry display fields like `listing_href` or `offer_pct_of_asking` —
+those live in projections. Projections must NOT add fields the domain
+doesn't logically own.
+
+### 14. Buyer auth boundary
+The marketplace follows intent-driven auth:
+
+```
+public:    /, /browse, /listing/[slug], /offer/new/[listing]
+protected: /orders, /orders/offers, /orders/offers/[id]
+```
+
+`/offer/new/[listing]` is intentionally public — buyers compose the offer,
+then auth happens at submission via `buildOfferAuthRedirect()`. The draft
+survives the auth boundary; the URL carrier (`?offer=<paise>`) is
+replaceable with `?draft=<id>` later when drafts are server-persisted.
+
+Middleware (`src/middleware.ts`) only handles route protection. It contains
+NO buyer-vs-seller logic, NO role checks, NO ownership checks.
+Authorisation lives in the access boundaries (`getMyOffers`,
+`getOfferDetail`, etc.) which will read `auth.uid()` server-side once
+persistence lands. Pages MUST NOT thread userId through props or URLs.
+
+### 15. State machine owns offer status semantics
+`src/lib/offers/state.ts` is the single source of truth for what an offer
+status means and what transitions are legal. Predicates (`canBuyerCancel`,
+`canBuyerPay`, `canSellerAccept`, `canSellerDecline`, `isTerminal`,
+`isAwaitingSeller`, `isAwaitingBuyer`) are derived from a static
+`TRANSITIONS` table. UI surfaces ask predicates, never inspect status
+directly to decide affordances.
+
+Display helpers (`buyerStatusLabel`, `statusToneToken`) live in `state.ts`
+too so seller-side and admin-side surfaces (when they arrive) can use a
+different label-helper but the SAME tone-token mapping — keeping colour
+semantics consistent across the app.
+
+`OfferStatusBadge` is a thin renderer:
+`<Badge variant={statusToneToken(status)}>{buyerStatusLabel(status)}</Badge>`.
+No switch in the component. The state machine owns semantics; the
+component owns rendering.
+
 ---
 
 ## Database Tables This Feature Uses
@@ -282,6 +391,82 @@ in the module today.
 | ratings | INSERT | Post-delivery rating |
 | disputes | INSERT, SELECT | Raise and track disputes |
 | users | SELECT | Seller profile on listing page |
+
+Today the buyer surface runs entirely on mock data — no Supabase queries
+in any buyer-flow file. The persistence slice will replace mock bodies
+inside `src/lib/listings/*` and `src/lib/offers/*` without touching pages
+or components.
+
+---
+
+## Offer State Machine
+
+Lives in `src/lib/offers/state.ts`. Mirrors ENGINEERING.md "Offer Status Flow".
+
+```
+pending  ──seller_accept──→ accepted ──buyer_pay──→ paid       (terminal)
+       ↘ seller_decline ──────────────────────→ declined   (terminal)
+       ↘ buyer_cancel  ──────────────────────→ cancelled  (terminal)
+       ↘ system_expire_seller ──────────────→ expired    (terminal)
+                              accepted ──system_expire_buyer──→ expired (terminal)
+```
+
+Statuses (`OfferStatus`):
+
+| Status | Meaning | Reachable from |
+|--------|---------|----------------|
+| `pending` | Awaiting seller's accept/decline | initial |
+| `accepted` | Seller accepted; buyer must pay within 24h | `pending` |
+| `paid` | Buyer paid (terminal — success) | `accepted` |
+| `declined` | Seller declined (terminal) | `pending` |
+| `expired` | 24h timeout — either seller didn't respond OR buyer didn't pay (terminal) | `pending`, `accepted` |
+| `cancelled` | Buyer retracted before acceptance (terminal) | `pending` |
+
+Predicates UI surfaces use:
+
+- `canBuyerCancel(status)` — true on `pending` only
+- `canBuyerPay(status)` — true on `accepted` only
+- `canSellerAccept(status)` — true on `pending` only
+- `canSellerDecline(status)` — true on `pending` only
+- `isTerminal(status)` — true on `paid`, `declined`, `expired`, `cancelled`
+- `isAwaitingSeller(status)` — true on `pending`
+- `isAwaitingBuyer(status)` — true on `accepted`
+
+Locked invariants encoded in the transition table:
+- No counter-offers — only seller `accept`/`decline` events exist.
+- Buyer can cancel only from `pending` — `accepted → cancelled` is absent.
+- Two distinct events lead to `expired`: `system_expire_seller` (seller
+  no-response from `pending`) and `system_expire_buyer` (buyer no-payment
+  from `accepted`).
+
+---
+
+## Open Questions
+
+Recorded in `src/lib/offers/state.ts` next to the transition table. Recorded,
+NOT answered — solving marketplace edge cases before there is enough usage
+to understand them is the bigger mistake.
+
+1. **Listing visibility while an offer is `accepted`.** Current assumption:
+   the listing remains `approved` and parallel negotiations continue until
+   someone pays. ENGINEERING.md says parallel negotiations are allowed and first
+   to pay wins. The state machine has no `accepted → reserved` notion —
+   reservation is a listing concept, not an offer one.
+
+2. **An `accepted` offer that loses because another buyer paid first.**
+   No dedicated terminal status today. Two candidates:
+   - (a) Resolve to `expired` (collapsed with the payment-window timeout);
+     buyer-facing message changes to "another buyer purchased this".
+   - (b) Add a separate terminal status (e.g. `lost`) so analytics can
+     distinguish "buyer didn't pay" from "buyer was outraced by another".
+   Decide before the offers table is persisted; DB migrations on terminal-
+   status enums are painful.
+
+3. **`expired` collapses two distinct events.** From `pending` it means
+   seller-no-response; from `accepted` it means buyer-no-payment. Verify
+   with usage data whether buyer/seller need to distinguish these on the
+   dashboard. If yes, split the terminal status; if no, keep collapsed and
+   rely on `system_expire_*` event names for analytics.
 
 ---
 
@@ -361,15 +546,26 @@ in the module today.
 ## Components Marked SHARED
 
 The following components in this feature are used by other features.
-Build them generically and document their props clearly:
+Build them generically and document their props clearly.
+
+Shipped (registered in ENGINEERING.md):
 
 - `ListingCard` — homepage, browse, search, similar listings, watchlist
 - `ListingGrid` — anywhere listings are shown in a grid
 - `ConditionBadge` — everywhere a condition grade is shown
+- `PhotoGallery` (+ `PhotoGalleryView` client island) — listing detail
+- `SellerCard` — listing detail; profile pages later
+- `AccessoryList` — listing detail inclusions display
+
+Buyer-specific (not registered as repo-shared because they only render
+buyer-side surfaces):
+
+- `OfferAmountInput` — `/offer/new/[listing]` slider + numeric input
+- `OfferStatusBadge` — buyer dashboard + offer detail
+
+Future / deferred (no implementation yet):
+
 - `PriceHistory` — listing page, potentially seller dashboard
-- `PhotoGallery` — listing page; admin review may reuse
-- `SellerCard` — listing page, profile pages
-- `AccessoryList` — listing page; admin and seller may reuse
 - `TrackingTimeline` — buyer orders AND seller dashboard
 - `DisputeForm` — buyer disputes, admin may reuse
 - `RatingPrompt` — buyer post-delivery widget
@@ -378,17 +574,46 @@ Build them generically and document their props clearly:
 
 ## What Other Features Can Use From Here
 
+### Listings domain
+
 | What | Path | Notes for other teams |
 |------|------|-----------------------|
 | `cn()` | `src/lib/utils/cn.ts` | The ONE class-name helper. Import from here only. Do not duplicate `clsx + tailwind-merge` anywhere else. |
-| `ConditionBadge` | `src/components/listing/ConditionBadge.tsx` | Color-coded grade pill (S/A/B/C/D). Props: `grade`, `variant?: "compact" \| "full"`, `size?: "sm" \| "md"`, `className?`. Server component, no client hooks. |
-| `ListingCard` | `src/components/listing/ListingCard.tsx` | Listing grid card. Accepts `ListingCardData` (NOT raw `Listing` — view-model subset that excludes `floor_price`, scores, etc). Wraps `next/image` (4:3) and links to `/listing/[slug \|\| id]`. Server component. |
-| `ListingGrid` | `src/components/listing/ListingGrid.tsx` | Pure responsive grid. No data shape coupling. Has `loading` skeletons and customisable `empty` slot. |
-| `getBrowseListings()` | `src/lib/listings/browse.ts` | Canonical access function for any surface that shows a listing grid. Returns `ListingCardData[]`. Filters: `categories[]`, `conditions[]`, `priceBucket`, `negotiableOnly`, `sort`, `limit`. Mock-backed today; will swap to Supabase. |
-| `parseBrowseSearchParams()` | `src/lib/listings/browse.ts` | Parse a Next `searchParams` object into typed `BrowseFilters`. Use this in any server component that shows filtered listings — do not roll your own URL parsing. |
-| `BrowseFilters`, `BrowseSort`, `PriceBucket` | `src/lib/listings/browse.ts` | The contract types. Filter UIs in seller dashboard / admin can reuse the price-bucket and sort enums for consistency. |
-| View-model rule | this file, "Architectural Decisions Made" §2 | Never spread raw DB rows into shared components. Map at the boundary. |
-| URL-driven filters rule | this file, §8 | Filter and sort state lives in the URL, not in client state. |
+| `ConditionBadge` | `src/components/listing/ConditionBadge.tsx` | Color-coded grade pill (S/A/B/C/D). Server component. |
+| `ListingCard` | `src/components/listing/ListingCard.tsx` | Listing grid card. Accepts `ListingCardData` (NOT raw `Listing`). Server component. |
+| `ListingGrid` | `src/components/listing/ListingGrid.tsx` | Pure responsive grid. Has `loading` skeletons + customisable `empty` slot. |
+| `PhotoGallery` | `src/components/listing/PhotoGallery.tsx` | 4:3 main + thumb strip. Server shell + client island. |
+| `SellerCard` | `src/components/listing/SellerCard.tsx` | Public seller summary. Strict subset (`SellerCardData`) — never spread a `User` row. |
+| `AccessoryList` | `src/components/listing/AccessoryList.tsx` | ✓/✗ inclusions checklist. |
+| `getBrowseListings()` | `src/lib/listings/browse.ts` | Canonical access function for any surface that shows a listing grid. Returns `ListingCardData[]`. Mock-backed today; will swap to Supabase. |
+| `getListingDetail()` | `src/lib/listings/detail.ts` | Single listing read. Returns `ListingDetailData \| null`. Same swap-the-body migration pattern. |
+| `parseBrowseSearchParams()` | `src/lib/listings/browse.ts` | Parse Next `searchParams` → typed `BrowseFilters`. |
+| `BrowseFilters`, `BrowseSort`, `PriceBucket` | `src/lib/listings/types.ts` | Filter UIs in seller / admin can reuse the price-bucket and sort enums for consistency. |
+| Listing view-models | `src/lib/listings/types.ts` | Single canonical home — see §11. |
+
+### Offers domain
+
+| What | Path | Notes for other teams |
+|------|------|-----------------------|
+| Offer view-models | `src/lib/offers/types.ts` | `OfferRange`, `OfferDraftData`, `OfferStatus`, `OfferSummary`, `OfferDetailData`. Single canonical home for the offers domain. View-models are intentionally lossy — `floor_price`, `auto_accept_threshold`, scores, contact data cannot be members. |
+| Offer state machine | `src/lib/offers/state.ts` | Pure module. `validateOfferTransition`, predicates (`canBuyerCancel`, `canBuyerPay`, `canSellerAccept`, `canSellerDecline`, `isTerminal`, etc.), display helpers (`buyerStatusLabel`, `statusToneToken`). The seller surface MUST consume these — do not fork the transition logic. |
+| `createOfferDraft()` | `src/lib/offers/create.ts` | Buyer offer-creation entry point. Returns `CreateOfferResult` (typed error codes). Mock-backed; swap body for Supabase later. |
+| `getMyOffers()` | `src/lib/offers/dashboard.ts` | Returns bucketed `BuyerOfferDashboardData`. Reads `auth.uid()` server-side; callers must NOT thread `userId`. |
+| `getOfferDetail()` | `src/lib/offers/queries.ts` | Returns `OfferDetailData \| null`. Same auth-uid contract. |
+| `getOfferRange()` | `src/lib/offers/draft.ts` | The canonical place that decides the buyer-visible negotiation band. The seller's actual `floor_price` does NOT cross this boundary. |
+| `parseOfferDraftFromSearchParams()` | `src/lib/offers/draft.ts` | URL → `OfferDraftData`. Today's carrier is `?offer=<paise>`; future is `?draft=<id>`. Pages call this helper, never `searchParams.offer` directly. |
+| `buildOfferAuthRedirect()` | `src/lib/offers/draft.ts` | Single source of truth for the auth-handoff URL shape. |
+| `validateOfferAmount()` | `src/lib/offers/draft.ts` | Same rule applied client-side and server-side. |
+| `OfferStatusBadge` | `src/components/offers/OfferStatusBadge.tsx` | Renders `<Badge variant={statusToneToken}>{buyerStatusLabel}</Badge>`. Buyer label only — seller surface should ship a sibling component sharing the same tone tokens. |
+
+### Cross-cutting rules
+
+| What | Where it lives | Summary |
+|------|----------------|---------|
+| View-model rule | this file, §2 | Never spread raw DB rows into shared components. Map at the boundary. |
+| URL-driven filters rule | this file, §8 | Filter and sort state lives in URL search params, not client state. |
+| Boundary discipline | this file, §4 + §12 | UI never imports mock or Supabase directly. Reads go through `lib/{listings,offers}/*` access functions. Future Supabase migration replaces implementations inside the boundary, never callers. |
+| State-machine ownership | this file, §15 | UI asks predicates, never inspects `OfferStatus` directly to decide affordances. |
 
 ---
 
@@ -406,103 +631,116 @@ At the start of each Kiro session:
 
 ## Known Blockers / Watch Out
 
-- No real listings exist in the DB yet. UI development runs against mock
-  data via `getBrowseListings()` until Person 1's seller flow + Person 3's
-  approval queue produce approved listings end-to-end. The mock layer is
-  the development substrate, not a fallback — when real data lands, swap
-  the implementation inside `browse.ts` and `detail.ts`, not the call sites.
-- `PATCH /api/offers/[id]` exists but is currently seller-side only (accept /
-  decline). Buyer-side offer cancel needs new RLS policies — coordinate with
-  Person 1 before adding.
-- Per ENGINEERING.md, middleware protects `/sell/*`, `/dashboard`, and `/admin`.
-  Buyer routes that require auth (`/buy/*`, `/orders/*`) need to be added to
-  the same middleware — do not create a parallel middleware.
-- Cross-feature: there is an upstream `next build` lint failure on `dev`
-  owned by admin-panel. Tracked in ENGINEERING.md "Project-Level Known Issues"
-  and `docs/context/admin-panel.md`. Does not block buyer-flow work.
+- **Persistence is the next gap.** `createOfferDraft()`, `getMyOffers()`,
+  and `getOfferDetail()` are all mock-backed. The buyer flow renders end
+  to end but no offer record reaches a database. This is the single
+  biggest distance between "prototype" and "marketplace" right now.
+- **Buyer-side offer cancel needs RLS coordination.** `PATCH /api/offers/[id]`
+  exists but is currently seller-side only (accept / decline). New RLS
+  policies are required for buyer cancel. Coordinate with Person 1 before
+  the persistence slice opens — schema/RLS decisions first, then code.
+- **24h windows live in three places.** `PENDING_TTL_MS` in
+  `src/lib/offers/create.ts`, the deadline-block copy on
+  `/orders/offers/[id]`, and the countdown logic on `/orders/offers`. Not
+  a problem today, but when the expiration job ships in the persistence
+  slice, introduce `src/lib/offers/policy.ts` (or similar) and centralise
+  `PENDING_WINDOW_MS` / `PAYMENT_WINDOW_MS`. Backend behaviour and UI
+  copy should read the same source.
+- **`Available in next milestone` copy is duplicated** in
+  `/orders/offers/page.tsx` and `/orders/offers/[id]/page.tsx`. Tolerable
+  for two surfaces. If a third needs it, extract a tiny shared component
+  or a constant.
+- **Buyer dashboard reachability via Nav is missing.** `/orders/offers`
+  works via direct URL or post-login redirect. A `My offers` link in
+  `Nav.tsx` for authenticated buyers needs its own small PR — `Nav` is
+  Person 1's domain, do not "while I'm here" it.
+- **Cross-feature: upstream `next build` lint failure on `dev`** owned
+  by admin-panel. Tracked in ENGINEERING.md "Project-Level Known Issues" and
+  `docs/context/admin-panel.md`. Does not block buyer-flow work.
 
 ---
 
 ## Next Session Starts Here
 
-Buyer browse surface is shipping. The next slice is the listing detail page —
-**strict scope, no scope creep, no "while I'm here" refactors.**
+The buyer flow is end-to-end against mock data. Discovery → listing →
+offer composition → auth → dashboard → detail all click-through cleanly.
+**The next slice is real offers persistence** — it's now the largest gap
+between this branch and a real marketplace.
 
-### In scope (this slice only)
+### Pre-work — alignment with Person 1 BEFORE writing code
 
-1. **`src/lib/listings/detail.ts`** — sibling of `browse.ts`. Export:
-   ```ts
-   export async function getListingDetail(idOrSlug: string): Promise<ListingDetailData | null>
-   ```
-   - Mock-backed initially; reads from `mockListings` plus richer fields
-     (inclusions, condition_notes, known_defects, more photos)
-   - Define `ListingDetailData` colocated — extends `ListingCardData` with
-     the additional view-model fields the detail page needs
-   - **MUST exclude `floor_price`, `auto_accept_threshold`, and any scores**
-     even if those fields end up on the underlying record. View-model maps
-     them out at the boundary.
-   - Returns `null` for not-found (callers translate to a Next 404)
+Schema/RLS decisions must be made before migrations. Open coordination
+items:
 
-2. **`src/components/listing/PhotoGallery.tsx`** — SHARED
-   - Server component shell + tiny client island for active-photo state
-   - Props: `photos: string[]`, `alt: string`, `className?`
-   - Renders one main image + a thumbnail strip; click to swap
-   - No zoom/lightbox in this slice — defer
+1. **`offers` table schema** — confirm the column set against
+   `src/lib/offers/types.ts`. Open question: do `OfferDetailData.message`
+   and `listing_was_negotiable` map to `offers.message` and a new
+   `offers.was_negotiable` column, or is `was_negotiable` denormalised at
+   query time from `listings.is_negotiable`? (Recommend storing — sellers
+   can flip the listing later and the offer record should reflect intent
+   at creation.)
+2. **`offers.status` enum values** — must exactly match `OfferStatus` in
+   `src/lib/offers/types.ts`: `pending | accepted | paid | declined |
+   expired | cancelled`. No counter-offer status.
+3. **RLS policies** — three personas, three rule sets:
+   - Buyer: read own offers (`buyer_id = auth.uid()`), insert offers,
+     update own offers ONLY when transitioning `pending → cancelled`.
+   - Seller: read offers on own listings, update offers on own listings
+     ONLY when transitioning `pending → accepted` or `pending → declined`.
+   - Admin: read all (already exists for the admin panel).
+4. **Open marketplace question §2** — decide before the migration: when
+   another buyer pays first on a parallel-accepted offer, does the losing
+   buyer's offer transition to `expired` or to a new terminal status
+   `lost`? Migrations on enums are painful — get this right once.
 
-3. **`src/components/listing/SellerCard.tsx`** — SHARED
-   - Server component
-   - Props: `seller: SellerCardData` (subset of `User` — `full_name`, `city`,
-     `rating`, `rating_count`, `member_since`; absolutely no `seller_score`,
-     `phone`, `email`, `upi_id`, `telegram_chat_id`, internal flags)
-   - Compact card — used on detail page and possibly profile page later
+### In scope for the persistence slice (after alignment)
 
-4. **`src/components/listing/AccessoryList.tsx`** — SHARED
-   - Server component
-   - Props: `inclusions: Record<string, boolean>`, `className?`
-   - Renders ✓/✗ visual checklist of expected items (e.g. original_box,
-     stock_cable, spare_tips)
+Strict scope. Two-or-three small commits, not one big PR.
 
-5. **`src/app/listing/[slug]/page.tsx`** — server component
-   - Calls `getListingDetail(slug)`; `notFound()` if null
-   - Renders `<PhotoGallery>` + heading + `<ConditionBadge variant="full">` +
-     asking price + condition notes + `<AccessoryList>` + `<SellerCard>`
-   - Negotiation slider only renders if `is_negotiable` — slider itself is a
-     stub button for this slice ("Make an offer" → links to `/login` for now)
-   - No price-history chart yet (defer until `price_history` has data)
-   - No similar-listings strip yet (can add as a follow-up using
-     `getBrowseListings({ categories: [listing.category], limit: 4 })`)
+1. **`offers` table migration** in `supabase/schema.sql` (Person 1 owns
+   the schema file per BRANCHING.md — submit the migration there).
+2. **Replace mock implementations**, body-only changes inside the
+   boundary files. Call sites stay identical:
+   - `src/lib/offers/create.ts` — `createOfferDraft` writes a row.
+   - `src/lib/offers/dashboard.ts` — `getMyOffers` selects with
+     `auth.uid()` + joins `listings`.
+   - `src/lib/offers/queries.ts` — `getOfferDetail` selects + joins.
+3. **Buyer cancel API + RLS policy.** Likely `PATCH /api/offers/[id]`
+   extended (currently seller-only). Real Cancel offer button wires
+   here; the `disabled` state added in the auth-gate slice gets removed
+   for buyers.
+4. **Architectural decision before code:** centralise Supabase access
+   for the offers domain. Three independent files (`create.ts`,
+   `dashboard.ts`, `queries.ts`) each writing `createClient()` and
+   inline queries gets messy. Possible shapes:
+   - (a) Each file uses `lib/supabase/server.ts` directly. Simplest;
+     three independent query implementations.
+   - (b) Add `src/lib/offers/db.ts` — a thin data-access layer that
+     returns mapped domain objects. The three boundary files call into it.
+   Make this call before writing the first SELECT.
+5. **Centralise the 24h windows** into `src/lib/offers/policy.ts` (or
+   add to `state.ts`). Replace the inline 24h figure in `create.ts` and
+   the deadline-block copy on `/orders/offers/[id]`.
 
-6. **Mock data extensions** — in `src/lib/mock/listings.ts`, augment a few
-   listings with realistic `condition_notes`, `known_defects`, and
-   `inclusions` so the detail page renders plausibly. Do not perfect every
-   listing; match the existing intentional mess.
+### Explicitly out of scope for the persistence slice
 
-7. **Update ENGINEERING.md** Shared Components Registry with `PhotoGallery`,
-   `SellerCard`, `AccessoryList`. Build-status row stays IN PROGRESS.
-
-### Explicitly out of scope (do NOT touch this slice)
-
-- Watchlist save button or any auth-gated interactivity
-- Account gate / login modal
-- Pricing engine, negotiation slider logic, real offer submission
-- Checkout flow, orders, disputes, ratings
-- Auth or middleware changes
-- Admin code (Person 3's domain) — including the upstream lint failures
-- Refactors to existing primitives "while you're there"
-- `src/app/(main)/layout.tsx` introduction (separate, coordinated PR)
-- Real Supabase reads — the boundary stays mock-backed for one more slice
+- Real Pay now flow (Person 4's checkout/Razorpay)
+- Seller offer inbox (separate slice; coordinate when persistence lands)
+- `My offers` link in `Nav.tsx` (separate small PR; Person 1 reviews)
+- Watchlist, saved searches, disputes, orders dashboard
+- Counter-offers (locked product decision: not happening)
+- Auto-accept threshold logic
+- Telegram notifications on offer events (later slice)
 
 ### How to start the session
 
-1. `git checkout feature/buyer-flow && git pull origin dev`
-2. Re-read ENGINEERING.md, BRANCHING.md, this file
-3. Confirm branch + summarize before writing code (per session protocol)
-4. Implement in the order above; tsc + lint + build between commits
-5. Two small commits ideal:
-   - `feat(buyer): getListingDetail + detail-page primitives`
-   - `feat(buyer): /listing/[slug] page`
-6. Open PR into `dev` immediately when the slice is shippable —
-   do not stack the next slice on this branch.
+1. Coordinate with Person 1 on the four pre-work items above. Do this
+   before opening a feature branch.
+2. `git checkout feature/buyer-flow && git pull origin dev`
+3. Re-read ENGINEERING.md, BRANCHING.md, this file
+4. Confirm branch + summarize before writing code
+5. Resolve the (a) vs (b) data-access decision before writing migrations
+6. Migrate, swap bodies, test, ship as 2–3 small commits
 
 ---
 
@@ -528,3 +766,12 @@ Buyer browse surface is shipping. The next slice is the listing detail page —
 - Homepage and `/browse` consume the same `getBrowseListings()` boundary by design
 - Directory-shape changes (route groups, shared layouts) are multi-feature decisions — coordinate with seller-flow before introducing one
 - Buyer view-models live in `src/lib/listings/types.ts` — one canonical home, one import path per type, no re-exports from component or access-function files
+- Offers are a separate domain — `src/lib/offers/*` with its own types.ts; do not fold into listings
+- Buyer offer view-models layer cleanly: `OfferSummary` (domain) ↔ `BuyerOfferRow` (dashboard projection) ↔ `OfferDetailData` (domain detail). UI consumes the right tier; domain types do not carry display fields
+- Public surface: `/`, `/browse`, `/listing/[slug]`, `/offer/new/[listing]` — composing an offer requires no account; auth happens at submission via `buildOfferAuthRedirect()`
+- Protected surface: `/orders`, `/orders/offers`, `/orders/offers/[id]` — middleware redirects anonymous users to `/login` with the original path preserved
+- Middleware stays boring: route protection only. No buyer-vs-seller logic, no role checks, no ownership checks. Authorisation lives in access boundaries (`getMyOffers`, `getOfferDetail`, future `cancelOffer`) which read `auth.uid()` server-side
+- Pages MUST NOT thread `userId` through props or URLs — ownership is enforced at the boundary
+- Offer-status semantics live in `src/lib/offers/state.ts`. UI surfaces ask predicates (`canBuyerCancel`, `canBuyerPay`, etc.), never inspect status directly to decide affordances
+- Slug-vs-id rule: public navigation paths use slug, internal references use id. Documented inline on `ListingCardData.slug`
+- `getOfferRange()` is the only place the server's `floor_price` becomes a buyer-visible band. The 70% placeholder is explicitly NOT business logic — see the inline warning in `src/lib/offers/draft.ts`

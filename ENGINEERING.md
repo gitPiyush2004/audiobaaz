@@ -195,7 +195,7 @@ These are final. Do not suggest alternatives.
 | Person | Tool | Feature | Status |
 |--------|------|---------|--------|
 | Person 1 | AI coding tool | Seller flow + dashboard | COMPLETE — all V1 features done, see docs/context/seller-flow.md |
-| Person 2 | Kiro | Buyer flow + listing page | IN PROGRESS — `/browse`, homepage featured strip, and `/listing/[slug]` detail page live against mock data via `getBrowseListings()` and `getListingDetail()` boundaries. URL-driven filters and sort working. See docs/context/buyer-flow.md |
+| Person 2 | Kiro | Buyer flow + listing page | IN PROGRESS — Discovery, listing detail, offer composition, buyer dashboard, and offer detail are all live against mock data, behind auth where appropriate. Offer state machine + access boundaries shipped. Persistence (real `offers` table + RLS) is the next slice. See docs/context/buyer-flow.md |
 | Person 3 | - | Admin panel | IN PROGRESS — core panel complete (listings, disputes, users, payouts), orders stub pending. See docs/context/admin-panel.md |
 | Person 4 | AI coding tool | Payments + shipping | IN PROGRESS — payment + shipping APIs done, see docs/context/payments-shipping.md |
 
@@ -290,6 +290,10 @@ Components modified or created that affect multiple features. If you use or modi
 | `PhotoGallery` | `src/components/listing/PhotoGallery.tsx` | Person 2 | Listing detail photo gallery. Props: `photos: string[]`, `alt: string`, `className?`. Server-component shell + small client island (`PhotoGalleryView`) for active-photo state. No lightbox/zoom yet. |
 | `SellerCard` | `src/components/listing/SellerCard.tsx` | Person 2 | Public seller summary. Props: `seller: SellerCardData`, `className?`. `SellerCardData` is a strict subset (full_name, city, rating, rating_count, member_since) — never spread a raw `User` row. Server component. |
 | `AccessoryList` | `src/components/listing/AccessoryList.tsx` | Person 2 | ✓/✗ checklist of inclusions. Props: `inclusions: Record<string, boolean>`, `className?`. Server component. |
+| Offer view-models | `src/lib/offers/types.ts` | Person 2 | Canonical home for `OfferRange`, `OfferDraftData`, `OfferStatus`, `OfferSummary`, `OfferDetailData`. Same intentionally-lossy rules as the listings types module — `floor_price`, `auto_accept_threshold`, scores, contact data cannot be members. Offers and listings are separate domains; do not fold types together. |
+| Offer state machine | `src/lib/offers/state.ts` | Person 2 | Pure module — single source of truth for offer transitions and predicates. Anywhere a UI needs "can the buyer cancel?" / "can the seller accept?", call the predicates here. Display helpers (`buyerStatusLabel`, `statusToneToken`) are buyer-side; seller surfaces should ship a sibling label helper but reuse the same tone tokens. |
+| `OfferStatusBadge` | `src/components/offers/OfferStatusBadge.tsx` | Person 2 | Buyer-facing offer status pill — `<Badge variant={statusToneToken(status)}>{buyerStatusLabel(status)}</Badge>`. Server component. |
+| `OfferAmountInput` | `src/components/offers/OfferAmountInput.tsx` | Person 2 | Slider + numeric input for offer composition. Client island. Validates against `OfferRange` via `validateOfferAmount()`. Hidden input is what the form submits. |
 
 ---
 
