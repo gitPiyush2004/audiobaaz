@@ -78,6 +78,13 @@ inspection → completed
                               ↘ refunded
 ```
 
+> **Source of truth:** `docs/context/payments-shipping.md` is canonical
+> for the offer enum, the order state machine (incl. branches), the
+> offer→order handoff at `paid`, escrow timing, race-condition handling,
+> and refund flow. The two diagrams above are summary views; if they
+> disagree with `payments-shipping.md`, the context file wins. Update
+> both together.
+
 ---
 
 ## Design System
@@ -197,7 +204,7 @@ These are final. Do not suggest alternatives.
 | Person 1 | AI coding tool | Seller flow + dashboard | COMPLETE — all V1 features done, see docs/context/seller-flow.md |
 | Person 2 | Kiro | Buyer flow + listing page | IN PROGRESS — Discovery, listing detail, offer composition, buyer dashboard, and offer detail are all live against mock data, behind auth where appropriate. Offer state machine + access boundaries shipped. Persistence (real `offers` table + RLS) is the next slice. See docs/context/buyer-flow.md |
 | Person 3 | - | Admin panel | IN PROGRESS — core panel complete (listings, disputes, users, payouts), orders stub pending. See docs/context/admin-panel.md |
-| Person 4 | AI coding tool | Payments + shipping | IN PROGRESS — payment + shipping APIs done, see docs/context/payments-shipping.md |
+| Person 4 | AI coding tool | Payments + shipping | IN PROGRESS — architecture locked, persistence pending, no code yet. See docs/context/payments-shipping.md |
 
 > Update this table when features change status.
 
