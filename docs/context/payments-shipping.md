@@ -25,16 +25,17 @@ edge that fires from a verified Razorpay capture.
 
 ```
 [ ] Not started
-[ ] In progress
-[ ] Complete
-[x] Blocked — architecture locked; OQ#1 (escrow_held / order
-    lifecycle) RESOLVED 2026-05-30 — see "Order state machine —
+[x] In progress — Phase 1 schema substrate written on
+    feature/payments-shipping (commits c3ed389 RPC + invariant +
+    audit tables, ab49e76 refund-lifecycle, e72caa4 checkout_locks);
+    pending verification against a live Postgres (four-scenario
+    test in supabase/tests/phase1_scenarios.sql) and PR back to
+    dev. OQ#1 RESOLVED 2026-05-30 — see "Order state machine —
     locked V1 contract" below; session-zero audit complete
     (docs/reviews/payments-session-zero.md is the authoritative
-    artifact; Schema Contract §4 is the primary review surface);
-    implementation deferred pending Phase 1 schema work (OQ#4
-    invariant, OQ#5 RPC, audit tables, checkout_locks).
-    feature/payments-shipping branch parked at f47ab10.
+    artifact; Schema Contract §4 is the primary review surface).
+[ ] Complete
+[ ] Blocked
 ```
 
 Status reality (audit-verified):
@@ -920,16 +921,37 @@ proceed.
 
 1. ~~Resolve OQ#1 (lifecycle).~~ **Done — see "Order state machine —
    locked V1 contract" above.**
-2. Person 1 lands the Phase 1 schema PR per the priority and scope
-   above.
-3. Person 4 + Person 1 sign off on the Schema Contract (audit §4) as
-   amended by this resolution.
-4. Wipe synthetic `payments WHERE razorpay_order_id LIKE 'mock_%'`
+2. ~~Land Phase 1 schema substrate.~~ **In code on
+   feature/payments-shipping** (commits c3ed389 / ab49e76 / e72caa4).
+   **Not yet verified** — the four-scenario acceptance test
+   (`supabase/tests/phase1_scenarios.sql`) has not been run against
+   a live Postgres because this machine has no psql / supabase CLI /
+   docker. **Run the tests before merging to dev.**
+3. Person 1 + Person 4 sign off on the Schema Contract (audit §4)
+   as amended by the OQ#1 resolution.
+4. Merge feature/payments-shipping → dev (schema only — Phase 2
+   application work follows).
+5. Wipe synthetic `payments WHERE razorpay_order_id LIKE 'mock_%'`
    rows before Phase 2 begins.
+6. Phase 2 (Razorpay) revises the parked routes per audit §5.9 to
+   call `finalize_winning_payment(...)`, `initiate_refund(...)`,
+   `record_refund_outcome(...)`, and `acquire_checkout_lock(...)`.
 
-Phase 2 (Razorpay) begins only after Phase 1 lands on `dev`. Audit
-§5.9 dictates how the parked `feature/payments-shipping` files
-migrate; the verify and webhook routes need rework to commit the
-locked V1 transition (capture → `escrow_held` + listing `sold` +
-loser cascade) inside the RPC. Everything before Phase 2 is design
-and verification — no new code in this feature lands on `dev`.
+### What needs verifying before the merge
+
+- **Run the four-scenario acceptance test.** Per
+  `supabase/tests/README.md`. Scenario B is the gate; if it fails,
+  fix before continuing.
+- **Application-side cleanup.** The parked Razorpay routes
+  (`src/app/api/payments/{create,verify,webhook}/route.ts`)
+  reference the dropped `reserve_listing` flow and the old
+  `escrow_held`-on-capture lifecycle. Audit §5.9 already records
+  these as "Revise" — that work happens in Phase 2 once the schema
+  lands. The routes are NOT live on dev (no `payments/` directory
+  exists there), so this is a Phase 2 todo, not a runtime regression.
+- **Multi-connection concurrency check.** The four scenarios prove
+  correctness in a single session against the lifetime invariant +
+  `SELECT ... FOR UPDATE` locks. A pgbench-style multi-connection
+  stress test (e.g. 20 concurrent calls to `finalize_winning_payment`
+  for the same listing) belongs in CI and should land before Phase 2
+  begins.
