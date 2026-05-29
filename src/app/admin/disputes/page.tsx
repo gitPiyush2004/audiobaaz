@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { formatDate } from '@/lib/utils/formatting';
 
 const reasonLabels: Record<string, string> = {
@@ -16,7 +16,7 @@ const statusStyles: Record<string, string> = {
 };
 
 export default async function AdminDisputesPage() {
-  const supabase = createClient();
+  const supabase = createAdminClient();
 
   const { data: disputes } = await supabase
     .from('disputes')

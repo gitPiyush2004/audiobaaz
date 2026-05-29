@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { formatPrice, formatDate } from '@/lib/utils/formatting';
 import { ResolveActions } from './ResolveActions';
 
@@ -13,7 +13,7 @@ const reasonLabels: Record<string, string> = {
 };
 
 export default async function AdminDisputeDetailPage({ params }: { params: { id: string } }) {
-  const supabase = createClient();
+  const supabase = createAdminClient();
 
   const { data: dispute } = await supabase
     .from('disputes')

@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { formatPrice, formatDate } from '@/lib/utils/formatting';
 
 const conditionColors: Record<string, string> = {
@@ -11,7 +11,7 @@ const conditionColors: Record<string, string> = {
 };
 
 export default async function AdminListingsPage() {
-  const supabase = createClient();
+  const supabase = createAdminClient();
 
   const { data: listings } = await supabase
     .from('listings')

@@ -1,7 +1,7 @@
-import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 
 async function getStats() {
-  const supabase = createClient();
+  const supabase = createAdminClient();
   const [listings, disputes, payouts, users] = await Promise.all([
     supabase.from('listings').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
     supabase.from('disputes').select('id', { count: 'exact', head: true }).in('status', ['open', 'under_review']),

@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { formatPrice, formatDate } from '@/lib/utils/formatting';
 import { PayoutTrigger } from './PayoutTrigger';
 
@@ -10,7 +10,7 @@ const payoutStatusStyles: Record<string, string> = {
 };
 
 async function getPending() {
-  const supabase = createClient();
+  const supabase = createAdminClient();
   const { data } = await supabase
     .from('orders')
     .select(`
@@ -25,7 +25,7 @@ async function getPending() {
 }
 
 async function getHistory() {
-  const supabase = createClient();
+  const supabase = createAdminClient();
   const { data } = await supabase
     .from('orders')
     .select(`

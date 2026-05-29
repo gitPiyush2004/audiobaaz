@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { formatPrice, formatDate } from '@/lib/utils/formatting';
 import { ReviewActions } from './ReviewActions';
 
@@ -21,7 +21,7 @@ const conditionLabels: Record<string, string> = {
 };
 
 export default async function AdminListingReviewPage({ params }: { params: { id: string } }) {
-  const supabase = createClient();
+  const supabase = createAdminClient();
 
   const { data: listing } = await supabase
     .from('listings')

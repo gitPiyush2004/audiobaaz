@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { formatDate } from '@/lib/utils/formatting';
 
 export default async function AdminUsersPage({
@@ -7,7 +7,7 @@ export default async function AdminUsersPage({
 }: {
   searchParams: { q?: string };
 }) {
-  const supabase = createClient();
+  const supabase = createAdminClient();
   const q = searchParams.q?.trim() ?? '';
 
   let query = supabase
