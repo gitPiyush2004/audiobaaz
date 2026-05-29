@@ -135,10 +135,11 @@ interface OfferCardProps {
 function OfferCard({ row, now }: OfferCardProps) {
   const canPay    = canBuyerPay(row.status);
   const canCancel = canBuyerCancel(row.status);
+  const offerHref = `/orders/offers/${row.id}`;
 
   return (
     <article className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-4 sm:flex-row sm:items-stretch">
-      {/* Thumbnail */}
+      {/* Thumbnail — links to the listing (the gear), not the offer detail */}
       <Link
         href={row.listing_href}
         className="relative block aspect-[4/3] w-full shrink-0 overflow-hidden rounded-lg bg-surface-2 sm:aspect-square sm:h-24 sm:w-24"
@@ -163,7 +164,7 @@ function OfferCard({ row, now }: OfferCardProps) {
       <div className="flex min-w-0 flex-1 flex-col gap-2">
         <div className="flex flex-wrap items-start justify-between gap-2">
           <Link
-            href={row.listing_href}
+            href={offerHref}
             className="min-w-0 truncate text-sm font-semibold text-foreground hover:text-accent"
           >
             {row.listing_title}
@@ -209,11 +210,10 @@ function OfferCard({ row, now }: OfferCardProps) {
         )}
       </div>
 
-      {/* Chevron — entire row links to detail page eventually */}
+      {/* Chevron — opens the offer detail page */}
       <Link
-        href={row.listing_href}
-        aria-hidden
-        tabIndex={-1}
+        href={offerHref}
+        aria-label="View offer details"
         className="hidden self-center text-dim-foreground transition-colors hover:text-muted-foreground sm:flex"
       >
         <ChevronRight className="h-5 w-5" />
