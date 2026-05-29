@@ -2,8 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { sendTelegramMessage } from '@/lib/telegram';
+import { pickOne } from '@/lib/utils/relations';
 
 type Resolution = 'full_refund' | 'partial_refund' | 'rejected';
+
+type OrderRow = { paid_price: number; listing_price: number };
+type BuyerRow = { telegram_chat_id: string | null; buyer_score: number | null };
+type SellerRow = { telegram_chat_id: string | null; seller_score: number | null };
 
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   const supabase = createClient();
@@ -59,9 +64,9 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     return NextResponse.json({ data: null, error: { message: 'Dispute not found or already resolved', code: 'NOT_FOUND' } }, { status: 404 });
   }
 
-  const order  = (Array.isArray(dispute.orders)  ? dispute.orders[0]  : dispute.orders)  as any;
-  const buyer  = (Array.isArray(dispute.buyers)  ? dispute.buyers[0]  : dispute.buyers)  as any;
-  const seller = (Array.isArray(dispute.sellers) ? dispute.sellers[0] : dispute.sellers) as any;
+  const order  = pickOne<OrderRow>(dispute.orders);
+  const buyer  = pickOne<BuyerRow>(dispute.buyers);
+  const seller = pickOne<SellerRow>(dispute.sellers);
 
   // Resolve dispute
   await adminClient.from('disputes').update({

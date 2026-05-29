@@ -3,6 +3,9 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { sendTelegramMessage } from '@/lib/telegram';
 import { formatPrice } from '@/lib/utils/formatting';
+import { pickOne } from '@/lib/utils/relations';
+
+type SellerRow = { id: string; upi_id: string | null; telegram_chat_id: string | null };
 
 export async function POST(_req: NextRequest, { params }: { params: { id: string } }) {
   const supabase = createClient();
@@ -39,7 +42,7 @@ export async function POST(_req: NextRequest, { params }: { params: { id: string
     return NextResponse.json({ data: null, error: { message: 'Order not found or not eligible for payout', code: 'NOT_FOUND' } }, { status: 404 });
   }
 
-  const seller = (Array.isArray(order.sellers) ? order.sellers[0] : order.sellers) as any;
+  const seller = pickOne<SellerRow>(order.sellers);
 
   if (!seller?.upi_id) {
     return NextResponse.json({ data: null, error: { message: 'Seller has no UPI ID on file', code: 'NO_UPI' } }, { status: 400 });

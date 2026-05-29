@@ -201,10 +201,11 @@ These are final. Do not suggest alternatives.
 
 | Person | Tool | Feature | Status |
 |--------|------|---------|--------|
-| Person 1 | AI coding tool | Seller flow + dashboard | COMPLETE — onboarding, nav profile menu, rejected listings tab, resubmit flow all done. See docs/context/seller-flow.md |
-| Person 2 | Kiro | Buyer flow + listing page | IN PROGRESS — browse + listing detail on real Supabase. Mock checkout flow live (buy now → checkout → order confirmed). Offers persistence still mock. See docs/context/buyer-flow.md |
-| Person 3 | - | Admin panel | IN PROGRESS — core panel complete (listings, disputes, users, payouts), orders stub pending. See docs/context/admin-panel.md |
-| Person 4 | AI coding tool | Payments + shipping | IN PROGRESS — architecture locked, persistence pending, no code yet. See docs/context/payments-shipping.md |
+| Person 1 | AI coding tool | Seller flow + dashboard | COMPLETE — onboarding, nav profile menu, rejected listings tab, resubmit flow, Google OAuth on login page (commit 15ff3f1). Magic-link OTP retained as fallback. See docs/context/seller-flow.md |
+| Person 2 | Kiro | Buyer flow + listing page | MERGED to dev — buyer journey testable end-to-end on real Supabase: browse, listing detail, mock checkout (`/buy/checkout/[listingId]`), orders list (`/orders/purchases`), order detail with status timeline, inspection window, dispute creation, dev advance-order tooling, Nav/profile integration. Offers persistence and real Razorpay swap intentionally deferred. See docs/context/buyer-flow.md |
+| Person 3 | - | Admin panel | MERGED to dev — core panel complete (listings review, disputes, users, payouts queue + history). Orders monitor remains a stub. Vercel build lint failures resolved in commit e0d84e4. See docs/context/admin-panel.md |
+| Person 4 | AI coding tool | Payments + shipping | BLOCKED — architecture locked; session-zero audit complete (`docs/reviews/payments-session-zero.md` is the authoritative artifact, Schema Contract §4 is the primary review surface). Implementation deferred pending Open Question #1 (lifecycle) and Phase 1 schema work. `feature/payments-shipping` branch parked at f47ab10 with 9 Razorpay/Shiprocket files awaiting Phase 2. See docs/context/payments-shipping.md |
+| Project | — | Deployment + domain + auth infrastructure | LIVE — production at audiobaaz.com, dev at dev.audiobaaz.com, both on Vercel with Cloudflare DNS + Email Routing. Magic-link + Google OAuth wired through Supabase. See docs/DEPLOYMENT.md |
 
 > Update this table when features change status.
 
@@ -218,6 +219,14 @@ These are final. Do not suggest alternatives.
 - Uses admin client to generate a magic link server-side without sending an email
 - Full auth flow still runs (onboarding check, session creation, redirects)
 - Use this whenever Supabase's email rate limit is hit during testing
+
+### Deployment + domains + auth infrastructure
+- Production: https://audiobaaz.com — auto-deploys from `main`
+- Development: https://dev.audiobaaz.com — auto-deploys from `dev`
+- DNS + email routing: Cloudflare. SPF / DKIM / DMARC configured.
+- Supabase Auth providers enabled: Email magic link (primary fallback) + Google OAuth (preferred long-term)
+- Public support address: hello@audiobaaz.com
+- Full runbook (incidents, redirect URLs, lessons learned, troubleshooting): `docs/DEPLOYMENT.md`
 
 ---
 
@@ -321,29 +330,27 @@ Cross-feature blockers tracked here so individual feature context files don't
 re-document them. Add to this section only when the issue affects more than
 one feature or the project as a whole.
 
-### `next build` lint phase fails on `dev` (admin-panel)
+### CI gate for `tsc + lint + build` on PRs into `dev` (project)
 
-Owner: Person 3. Files: `src/app/admin/**`, `src/app/api/admin/**`.
+The earlier admin-panel lint failure was resolved in commit `e0d84e4`
+(replaced 12 `as any` Supabase relation casts with a typed `pickOne<T>`
+helper at `src/lib/utils/relations.ts`; removed an unused `router` in
+onboarding). `next build` is green on `dev` today and Vercel deploys
+both `dev` (→ dev.audiobaaz.com) and `main` (→ audiobaaz.com) cleanly.
 
-Twelve `@typescript-eslint/no-explicit-any` errors plus four
-`@next/next/no-img-element` warnings landed on `dev` via the admin-panel
-merge. Compilation itself passes; only the lint phase of `next build`
-fails. None of the failing files are outside the admin paths.
-
-Fix belongs to Person 3 in a separate follow-up PR. Do not patch with
-`eslint-disable` comments from other branches — that masks the underlying
-process problem.
-
-Systemic root cause: there is no CI gate enforcing `tsc + lint + build` on
-PRs into `dev`. Until that exists, the always-green-dev rule depends on
-developer discipline alone. A CI workflow on PRs into `dev` is the right
-durable fix.
+The systemic gap remains: no CI gate enforces `tsc + lint + build` on
+PRs into `dev`. Until one exists, always-green-dev relies on developer
+discipline alone. A CI workflow on PRs into `dev` is the right durable
+fix; tracked as a project-level follow-up.
 
 ---
 
 ## Contact / Ownership
 
-- Repo: github.com/[repo-url]/audiobaaz
+- Repo: github.com/audiobaaz/audiobaaz
+- Production: https://audiobaaz.com (also www.audiobaaz.com → 308 redirect to apex)
+- Development: https://dev.audiobaaz.com (auto-deploy from `dev` branch)
+- Public support email: hello@audiobaaz.com (Cloudflare Email Routing)
 - Parent company: Lapidaria
 - Platform: StockMyNiche
 - Product: Audiobaaz

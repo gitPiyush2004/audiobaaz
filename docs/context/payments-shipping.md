@@ -25,19 +25,31 @@ edge that fires from a verified Razorpay capture.
 
 ```
 [ ] Not started
-[x] In progress — architecture locked, persistence pending, no code yet
+[ ] In progress
 [ ] Complete
-[ ] Blocked — see "Hard Prerequisites" below
+[x] Blocked — architecture locked; OQ#1 (escrow_held / order
+    lifecycle) RESOLVED 2026-05-30 — see "Order state machine —
+    locked V1 contract" below; session-zero audit complete
+    (docs/reviews/payments-session-zero.md is the authoritative
+    artifact; Schema Contract §4 is the primary review surface);
+    implementation deferred pending Phase 1 schema work (OQ#4
+    invariant, OQ#5 RPC, audit tables, checkout_locks).
+    feature/payments-shipping branch parked at f47ab10.
 ```
 
-This file previously claimed nine files were complete (`src/lib/razorpay/*`,
-`src/lib/shiprocket/*`, several `/api/payments/*` routes). Those files
-do not exist in the repo. Earlier draft was forward-looking notes
-mistakenly checked off as done. Section is now reset to actual state.
+Status reality (audit-verified):
+- No payment or shipping code on `dev`. `src/app/api/` has no
+  `payments/` or `shipping/` directories.
+- Nine Razorpay/Shiprocket files exist on the parked
+  `feature/payments-shipping` branch (HEAD `f47ab10`); audit §5.9
+  ("Implementation Inventory") records the file-by-file disposition
+  (5 keep, 4 revise, 0 rewrite).
+- Buyer flow on `dev` uses `/api/checkout/mock` as a transitional
+  stand-in. Replaced in Phase 2 (audit §8).
 
-The only offer-domain code that exists today is mock-backed
-(`src/lib/offers/*` + `src/lib/mock/offers.ts`). Nothing in the repo
-talks to Razorpay or Shiprocket yet.
+Offer-domain code on `dev` remains mock-backed (`src/lib/offers/*` +
+`src/lib/mock/offers.ts`). Nothing on `dev` talks to Razorpay or
+Shiprocket.
 
 ---
 
@@ -48,19 +60,19 @@ Two state machines, two audit logs, two webhook ingress paths.
 ```
 Offer domain                          Order domain
 ────────────                          ────────────
-pending                               created
-accepted                              awb_generated
-paid          ─── handoff ──→         pickup_scheduled
-                                      in_transit
-declined                              out_for_delivery
+pending                               payment_pending
+accepted                              payment_failed (recoverable)
+paid          ─── handoff ──→         escrow_held       ← MARKETPLACE COMMITS
+                                      seller_confirmed
+declined                              shipped
 cancelled                             delivered
-expired                               escrow_held
-lost                                  escrow_released
-                                      completed
+expired                               inspection
+lost                                  completed
 
 Audit: offer_events                   cancelled
                                       disputed
                                       refunded
+                                      partially_refunded
 
                                       Audit: order_events
 ```
@@ -87,8 +99,13 @@ PAID IS TERMINAL FOR THE OFFER.
 
 When an offer transitions to paid:
   1. The offer lifecycle ends — no further offer-domain transitions.
-  2. An `orders` row is created in the same transaction.
-  3. The order lifecycle begins at `created`.
+  2. An `orders` row was already created at checkout-start
+     (status = payment_pending). At capture, that row transitions
+     to `escrow_held` atomically with the offer's transition to
+     `paid` and the listing's transition to `sold`.
+  3. The order continues its lifecycle from escrow_held onward
+     (seller_confirmed → shipped → delivered → inspection →
+     completed, with branches per the locked V1 contract below).
 ```
 
 The order is a separate entity with its own state machine, its own audit
@@ -141,68 +158,328 @@ Analytics (seller-ghosting vs buyer-ghosting) live in `offer_events`,
 not in the status enum. Status answers "what is true now"; the event log
 answers "how did we get here."
 
-### Order state machine (with branches, not a chain)
+### Order state machine — locked V1 contract (OQ#1 resolved 2026-05-30)
 
-Linear happy path:
+`escrow_held` means: **Audiobaaz has successfully captured the buyer's
+payment and is holding those funds pending delivery, inspection, dispute
+resolution (if any), and final settlement.**
+
+It is *not* offer acceptance, payment initiation, payment authorization,
+shipment, or delivery. It is specifically: money captured, money held,
+order funded. This is the point at which the marketplace commits to a
+winner — listing flips to `sold`, all competing offers cascade to
+`lost`, and the seller can begin shipping.
+
+Locked V1 lifecycle (linear happy path):
 
 ```
-created → awb_generated → pickup_scheduled → in_transit
-       → out_for_delivery → delivered → escrow_held
-       → escrow_released → completed
+payment_pending → escrow_held → seller_confirmed → shipped → delivered
+                                                            → inspection → completed
 ```
 
 Branches off the linear path:
 
 ```
-created          → cancelled         (pre-AWB; auto-refund)
-delivered        → disputed          (buyer raises within dispute window)
-escrow_held      → disputed          (seller-side or platform-side dispute)
-disputed         → refunded          (admin resolves in buyer's favour)
-disputed         → escrow_released   (admin resolves in seller's favour)
-cancelled        → refunded
+payment_pending  → payment_failed                 (capture declined; recoverable)
+payment_failed   → payment_pending                (buyer retries — non-terminal)
+payment_pending  → cancelled                      (buyer abandons before capture; auto-refund if any auth)
+inspection       → disputed                       (buyer raises within 48h window)
+disputed         → completed                      (admin resolves in seller's favour)
+disputed         → refunded                       (admin resolves in buyer's favour — full refund)
+disputed         → partially_refunded             (admin resolves in buyer's favour — partial refund)
 ```
 
-`escrow_held` is a distinct state from `delivered`. Delivery means the
-courier dropped the package; `escrow_held` means the dispute window is
-running. Releasing too eagerly on `delivered` is a class of bug.
+The state-machine diagram in domain-boundaries form:
+
+```
+Offer domain                          Order domain
+────────────                          ────────────
+pending                               payment_pending
+accepted                              payment_failed (recoverable)
+paid          ─── handoff ──→         escrow_held         ← MARKETPLACE COMMITS A WINNER HERE
+                                      seller_confirmed
+declined                              shipped
+cancelled                             delivered
+expired                               inspection
+lost                                  completed
+
+Audit: offer_events                   cancelled
+                                      disputed
+                                      refunded
+                                      partially_refunded
+
+                                      Audit: order_events
+```
+
+The seven sub-decisions taken with OQ#1:
+
+1. **Drop `created`.** The first order state is `payment_pending`. A
+   distinction between "order row exists" and "buyer is paying" carries
+   no observable meaning to buyer, seller, admin, or merchant.
+2. **`payment_failed` is non-terminal recoverable.** A failed capture
+   transitions `payment_pending → payment_failed`; the buyer can retry,
+   transitioning back to `payment_pending`. This matches the user
+   expectation "card failed, try again," not "card failed, order dead
+   forever."
+3. **Keep the schema's three shipping states** (`seller_confirmed →
+   shipped → delivered`). Shiprocket-event granularity (`pickup_scheduled`,
+   `in_transit`, `out_for_delivery`) is deferred to V2 once we have
+   real Shiprocket telemetry to tell us which events to trust.
+4. **Money-movement names live on `orders.status`.** `completed`,
+   `refunded`, `partially_refunded` describe what happened to the money.
+   Verdict (`resolved_buyer` / `resolved_seller`) lives on
+   `disputes.resolution`. The two are intentionally separate because the
+   verdict can produce any of the three money outcomes (e.g. a
+   `resolved_buyer` outcome may be a full refund, a partial refund, or
+   a future replacement).
+5. **No `escrow_released` state.** Order lifecycle ends at `completed`;
+   payout is tracked separately on `orders.payout_status` (`pending →
+   processing → paid`). One concept, one place.
+6. **Listing remains available until capture.** The listing flips
+   `approved → sold` *atomically with* `escrow_held`, never at offer
+   acceptance and never at order creation. Optimising for completed
+   sales: the V1 risk is "buyer A reserves, disappears, listing dead"
+   (kills liquidity), not "two buyers race for the same listing"
+   (engineerable). The schema's `reserve_listing` trigger
+   (`approved → reserved` on order INSERT) is dropped under this model.
+7. **`checkout_locks` table is the only first-line race defence.** A
+   short-TTL soft lock taken before issuing a Razorpay `order_id`,
+   keyed on `listing_id`. Not a reservation — buyers are not blocked
+   from browsing or offering. Reduces but does not eliminate the
+   simultaneous-capture window; the DB invariant (Hard Prerequisite #3)
+   and atomic RPC (#4) are what guarantee correctness.
+
+### Trust boundaries — what the invariant does and does not guarantee
+
+The locked V1 contract creates a clear separation between two systems
+of record. Confusing them is the fastest way to ship a refund-handling
+bug.
+
+**Razorpay is the system of record for "did money move."** Audiobaaz
+has zero authority to prevent two captures from happening at the
+gateway. Two buyers can press "Pay" at the same instant; Razorpay can
+process both. The DB invariant + the atomic RPC do **not** prevent
+this — they cannot. They live downstream of the gateway.
+
+**Audiobaaz is the system of record for "who owns the listing."** The
+DB invariant + atomic RPC guarantee:
+
+> Two captures may occur. Only one may win the marketplace state.
+> The other is refunded automatically.
+
+This is exactly why the race-loser refund (Hard Prerequisite #9) is a
+**normal business path** under the locked V1 contract, not an
+exception. Buyer-facing copy must read "another buyer completed
+payment first; your refund is on the way," not "payment failed."
+
+Anywhere code or documentation says or implies "the invariant prevents
+double-charge," that is wrong. The invariant prevents double-*winning*.
+The double-charge is impossible to prevent at the gateway level; we
+correct it after the fact via refund.
+
+### The lifetime invariant
+
+The invariant must cover the entire winning-order lineage, not just
+the `escrow_held` instant. Once a listing has had a winning capture,
+it has been sold once for all time — no other order may ever progress
+past `payment_pending` for that listing, regardless of what subsequently
+happens to the winner (delivery, dispute, refund).
+
+> **Invariant:** For any given listing, at most one row in `orders`
+> may ever have `status` in
+> `{escrow_held, seller_confirmed, shipped, delivered, inspection,
+> completed, disputed, refunded, partially_refunded}`.
+>
+> The complement (`payment_pending`, `payment_failed`, `cancelled`)
+> is the set of states that have not claimed the listing. Every other
+> state has.
+
+This is wider than "two `escrow_held` rows are forbidden." It covers
+the case where the winner has already moved on (e.g. to `refunded`
+after a buyer-favourable dispute) — the listing is still sold; no
+second order may exist with any winning-lineage status.
+
+### OQ#4 mechanism — locked
+
+`listings.sold_offer_id UUID UNIQUE NULL REFERENCES offers(id)`. Set
+once inside the atomic RPC at the moment of `escrow_held`. **Never
+unset and never updated.** The unique constraint enforces lifetime
+exclusivity.
+
+The audit's earlier alternative — a unique partial index keyed on
+`offers.status = 'paid'` — was rejected because it does not cover the
+post-refund case on its own; it would need a paired order-side
+constraint covering the entire winning-lineage status set. The
+ownership-on-the-listing model is also semantically cleaner: the
+thing being protected is not payment state but **ownership history**,
+and ownership belongs on the listing.
+
+The invariant maps almost one-to-one onto the column:
+
+> "A listing can have at most one winning offer." → `sold_offer_id` is
+> either `NULL` (listing still available) or a single UUID (listing
+> sold to that offer's buyer, for all time).
+
+### Refunded-winner rule (immutability of `sold_offer_id`)
+
+> If the winning order is later fully refunded — via a buyer-favourable
+> dispute resolution, partial refund, or any other path — the listing
+> **remains sold** and `sold_offer_id` **remains set**. The listing
+> does not return to inventory; the seller does not get the listing
+> back. Re-listing requires creating a new `listings` row.
+
+Rationale: the invariant the codebase just locked is "sold once,
+forever." Allowing `sold_offer_id` to clear on refund would
+re-introduce the auditability problem the invariant exists to prevent
+— specifically, the timeline:
+
+```
+Listing A → sold → refunded → unsold → sold again
+```
+
+would erase the original sale from listing-side state, leaving
+`order_events` and `offer_events` as the only record. That is exactly
+the kind of "marketplace state and audit log disagree" failure the
+locked V1 contract is designed to make impossible.
+
+This is correct for a used-audio marketplace where each physical item
+is a distinct unit. If the seller still has the item and wants to
+re-list it (e.g. after a buyer dispute that returned the goods), they
+create a new listing. The new listing has its own `id`, its own
+listing review, its own price history attribution. The old listing
+stays `sold` with its `sold_offer_id` permanently set, preserving the
+audit trail.
+
+If a future feature ever requires re-marketing an unsold-after-refund
+unit, that is a new product decision and a new schema migration — not
+a gap in the lifetime invariant.
+
+`escrow_held` is a distinct state from `delivered` and from
+`completed`. Delivery means the courier dropped the package; the 48h
+inspection window then runs. Releasing payout too eagerly on
+`delivered` is a class of bug — `payout_status = 'pending'` until
+`orders.status = 'completed'`.
 
 **Returns workflow is deferred.** No `return_pickup`, `return_in_transit`,
-or `return_completed` states in V1. Reverse logistics is a separate slice
-that will be designed after payments and forward shipping are live. Until
-then, refunds happen via dispute resolution, not via a return flow.
+or `return_completed` states in V1. Reverse logistics is a separate
+slice that will be designed after payments and forward shipping are
+live. Refunds happen via dispute resolution, not via a return flow.
 
 ### Race-loser refund flow (three layers)
 
-The DB invariant prevents two `paid` offers, but cannot prevent two
-captures from Razorpay. All three layers below must exist:
+Because Decision 6 means the listing stays available until capture,
+two captures for the same listing are an *expected* (not
+exceptional) outcome under high-traffic auctions. All three layers
+below must exist:
 
-1. **Pre-payment guard.** Before issuing a Razorpay `order_id`, take a
-   short TTL (~5 min) lock on `(listing_id)`. Reduces the race window
-   to "two near-simultaneous order_create calls."
+1. **Pre-payment soft lock.** Before issuing a Razorpay `order_id`,
+   take a short-TTL (~5 min) row in `checkout_locks` keyed on
+   `listing_id`. This is a soft lock — it reduces the race window to
+   "two near-simultaneous order_create calls" but does not block
+   competing offers from existing or future buyers from initiating
+   checkout once it expires.
 2. **Webhook winner selection.** First valid `payment.captured` whose
    transactional cascade succeeds is the winner. The DB invariant
-   (one paid offer per listing) decides; the handler does not pick.
-3. **Automatic refund job.** When the cascade fails for the second
-   capture, enqueue a refund for that `payment_id`. Buyer-facing message
-   is "another buyer completed payment first; your refund is on the way,"
-   not "payment failed."
+   (one paid offer per listing — Hard Prerequisite #3) decides; the
+   handler does not pick.
+3. **Automatic refund.** When the cascade fails for the second
+   capture, refund the losing capture. Buyer-facing message is
+   "another buyer completed payment first; your refund is on the way,"
+   not "payment failed." V1 implementation: synchronous refund call
+   inside the webhook handler. V2: queue-backed worker if volume
+   warrants (audit OQ#7 default).
+
+### Refund lifecycle as first-class state
+
+A refund call to Razorpay can fail or stall (gateway downtime, bank
+processing issues, network timeout). The marketplace has already
+decided the loser must be refunded — that decision lives on
+`payments.refund_reason` — but the money may not be back in the
+buyer's account yet, and may take several retries to land. Without
+an explicit refund-lifecycle state, support cannot answer "did we
+actually refund this person?" and any retry logic has no first-class
+home.
+
+Refund lifecycle lives on the `payments` table (not `orders.status`),
+because refund-completion is a money-movement concern, not a
+marketplace-state concern. Order-side state is unaffected by refund
+processing status: a buyer-favourable dispute lands the order at
+`refunded` (verdict reached) regardless of whether the gateway-side
+refund has finalised. This mirrors the locked V1 contract's earlier
+separation of `disputes.resolution` (verdict) from `orders.status`
+(money outcome).
+
+Target schema additions to `payments`:
+
+```
+refund_id          TEXT   NULL              ← Razorpay refund id when initiated
+refund_reason      TEXT   NULL              ← race_loss | dispute_buyer_favour | manual_admin
+refund_status      TEXT   NULL              ← null until a refund is initiated, then:
+                                            ←   'pending'    refund row created, gateway call not yet attempted
+                                            ←   'processing' Razorpay refund initiated, awaiting confirmation
+                                            ←   'succeeded'  Razorpay confirmed money returned to buyer
+                                            ←   'failed'     Razorpay rejected or repeatedly errored
+refund_initiated_at TIMESTAMPTZ NULL
+refund_completed_at TIMESTAMPTZ NULL        ← set on succeeded or failed
+refund_failure_reason TEXT NULL             ← Razorpay error code on failed
+```
+
+Lifecycle:
+
+```
+NULL → pending → processing → succeeded   (terminal)
+                          → failed       (recoverable — admin-driven retry)
+failed → processing                        (manual retry; lands back in succeeded or failed)
+```
+
+`payments.status = 'refunded'` (existing enum) is set only when
+`refund_status = 'succeeded'`. The two columns answer different
+questions:
+
+- `payments.status` answers "what happened to this payment overall?"
+  (one of `created`, `authorized`, `captured`, `failed`, `refunded`).
+- `payments.refund_status` answers "if a refund was initiated for
+  this payment, where is it?" — `null` if no refund was ever
+  initiated.
+
+Buyer-facing copy is gated on `refund_status`, not `payments.status`:
+
+| `refund_status` | Buyer sees |
+|-----------------|------------|
+| `pending` / `processing` | "Another buyer completed payment first; your refund is on the way (typically 5–10 business days)." |
+| `succeeded` | "Your refund has been processed. Funds will appear in your original payment method within a few business days." |
+| `failed` | "We hit an issue processing your refund. Our team has been notified and will reach out within 24 hours." |
+
+Admin retry path: a failed refund is the only `refund_status`
+transition admin can drive directly. There is no admin path to
+clear `refund_status` or roll it back to `null` — refund attempts
+are an append-only history (one row per attempt would be ideal in
+V2; V1 records on the `payments` row itself with an
+`order_events` audit row per transition).
+
+This makes "did we refund this person?" answerable from the database
+alone. Combined with the Scenario D auditability assertion, every
+loser refund has a status, a timestamp, a reason, and (on failure) a
+recovery path.
 
 ### Atomic transaction boundary
 
-A winning capture writes to four tables for the winner plus two tables
+A winning capture writes to five tables for the winner plus two tables
 for every other offer on the listing:
 
 - `offers.status` (winner: `accepted → paid`; losers: `* → lost`)
-- `orders` (insert one row for the winner)
-- `offer_events` (one row per transition, including loser cascades)
-- `order_events` (one row for `created`)
+- `orders.status` (winner: `payment_pending → escrow_held`)
+- `listings.status` (winner: `approved → sold` — atomic with `escrow_held`)
+- `offer_events` (one row per offer transition, including loser cascades)
+- `order_events` (one row for `escrow_held`)
 - `webhook_events` (mark this Razorpay event id as processed)
 
 All of these commit together or none commit. The "no winner, twelve
 losers" outcome is irrecoverable without manual intervention and is
 worse than a duplicate capture. Person 1 owns the transaction primitive
-(stored procedure, transactional API, or explicit BEGIN/COMMIT with
-serialization-failure retry).
+(`finalize_winning_payment(...)` RPC per audit §4.7). Failure modes
+return a typed conflict result the webhook handler converts into the
+race-loser refund.
 
 ---
 
@@ -216,14 +493,16 @@ decisions cross-cut.
 | # | Item | Owner | Notes |
 |---|------|-------|-------|
 | 1 | Offer enum lock (seven values incl. `lost`) | Product + Person 1 | Decision in this doc; migration owned by Person 1 |
-| 2 | Order state machine lock (states + branches) | Product + Person 4 | Decision in this doc; payments owns the lifecycle shape |
-| 3 | DB invariant: one paid offer per listing | Person 1 | Unique partial index OR `listings.sold_offer_id` with unique constraint |
-| 4 | Atomic transaction primitive covering winner cascade | Person 1 | RPC / stored procedure / serializable transaction |
+| 2 | Order state machine lock (states + branches) | Product + Person 4 | **RESOLVED 2026-05-30 — see "Order state machine — locked V1 contract (OQ#1 resolved)" below.** Schema migration items: drop `seller_must_ship_by` from a Razorpay-driven assumption, drop `reserve_listing` trigger, add `cancelled` terminal, no `escrow_released` state |
+| 3 | DB invariant: at-most-one winning-lineage order per listing | Person 1 | **Lifetime invariant** — at most one row in `orders` per listing may ever have `status` in `{escrow_held, seller_confirmed, shipped, delivered, inspection, completed, disputed, refunded, partially_refunded}`. **Mechanism locked: `listings.sold_offer_id UUID UNIQUE NULL REFERENCES offers(id)`**, set once inside the atomic RPC at `escrow_held`, **never unset, never updated** (refunded winners keep their `sold_offer_id`; relisting requires a new `listings` row). See "Trust boundaries", "The lifetime invariant", "OQ#4 mechanism — locked", and "Refunded-winner rule" sections above. **Phase 1 priority: 2.** |
+| 4 | Atomic transaction primitive covering winner cascade | Person 1 | `finalize_winning_payment(...)` RPC per audit §4.7; commits offers / orders / listings / offer_events / order_events / webhook_events together or rolls back. Without this, a crash mid-cascade leaves the marketplace in a state with no clean recovery — split-brain state (listing sold, offer not updated; or offer won, listing not sold) is the one thing the system cannot tolerate. **Phase 1 priority: 1 (highest — Scenario B is the hardest gate).** |
 | 5 | `webhook_events` table (idempotency by provider event id) | Person 1 | Shared across Razorpay, Shiprocket, future providers |
 | 6 | `offer_events` table (offer-domain audit) | Person 1 | event_name, actor, from_status, to_status, timestamp |
 | 7 | `order_events` table (order-domain audit) | Person 1 | Same shape as offer_events; separate so neither becomes misc_log |
-| 8 | Razorpay race-loser refund design (3-layer flow) | Person 4 | Pre-payment lock + winner cascade + automatic refund job; payments-domain concern, not persistence |
-| 9 | RLS policies on `offer_events` and `order_events` | Person 1 + Person 4 | Losing buyer can read their own `lost` reason; cannot read winning buyer's identity |
+| 8 | `checkout_locks` table (pre-payment soft lock) | Person 1 | Optimisation: reduces the number of races that need to be refunded. **Not** a correctness primitive — Hard Prerequisites #3 and #4 are what enforce correctness; the lock only narrows the simultaneous-capture window. Short TTL (~5 min), keyed on `listing_id`. **Phase 1 priority: 4 (lowest of the four).** |
+| 9 | Refund lifecycle on `payments` (refund_status enum + columns) | Person 1 | New `payments.refund_status`, `refund_id`, `refund_reason`, `refund_initiated_at`, `refund_completed_at`, `refund_failure_reason`. Lifecycle: `pending → processing → succeeded \| failed`; `failed → processing` on retry. See "Refund lifecycle as first-class state". Without this, "did we refund this person?" is unanswerable from the database alone. **Phase 1 priority: 3.** |
+| 10 | Razorpay race-loser refund design (synchronous in V1) | Person 4 | Under the locked V1 contract this is a **normal business path**, not an exception — see "Trust boundaries" above. Pre-payment lock + winner cascade + automatic refund call inside the webhook handler. Buyer-facing copy keyed on `payments.refund_status`. Implementation comes after Hard Prerequisite #9 lands. |
+| 11 | RLS policies on `offer_events` and `order_events` | Person 1 + Person 4 | Losing buyer can read their own `lost` reason; cannot read winning buyer's identity |
 
 If any of these slip into the wrong owner's scope, the phasing in the
 implementation plan blocks on a cross-team handoff that wasn't planned.
@@ -232,8 +511,11 @@ implementation plan blocks on a cross-team handoff that wasn't planned.
 
 ## Files This Feature Will Own (planned)
 
-Nothing on this list exists yet. Listed for shared expectations, not as
-a "done" marker.
+Nothing on this list exists on `dev`. Nine of them exist on the parked
+`feature/payments-shipping` branch (`f47ab10`). The audit at
+`docs/reviews/payments-session-zero.md` §2 Inventory C and §5.9
+Implementation Inventory record the file-by-file disposition that
+Phase 2 will follow. Listed below for shared expectations only.
 
 ```
 src/lib/razorpay/client.ts                       — singleton instance, throws on missing keys
@@ -382,14 +664,16 @@ part of normal operations.
 
 | Class | Risk | Mitigation |
 |-------|------|------------|
-| Race | Two captures for one listing | Pre-payment lock + DB invariant + race-loser refund job |
-| Atomicity | Partial winner cascade | Single transaction primitive (Person 1 deliverable) |
+| Race | Two captures for one listing | **Cannot be prevented at the gateway.** `checkout_locks` narrows the window; DB invariant + atomic RPC ensure one winner; loser is refunded synchronously |
+| Atomicity | Partial winner cascade | `finalize_winning_payment(...)` RPC (Person 1 deliverable) |
 | Replay | Webhook delivered twice | `webhook_events` idempotency on provider event id |
 | Spoof | Webhook from non-Razorpay/Shiprocket caller | Signature/token verification before any side effect |
 | RLS | Loser sees winner's identity in `offer_events` | Audit-table RLS policy denies cross-buyer reads |
-| Escrow | Funds released too early (on `delivered`, not after dispute window) | `escrow_held` is a distinct state; release is time-gated |
-| Refund | Captured-but-lost buyer sees "payment failed" | Layer-3 refund job + correct buyer messaging |
-| Operational | Manual payout step in V1 | Admin UI surfaces only orders in `escrow_released` |
+| Escrow | Funds released too early (payout fires before inspection completes) | `payout_status` only flips off `pending` after `orders.status = 'completed'` |
+| Refund | Captured-but-lost buyer sees "payment failed" | Synchronous race-loser refund + correct buyer messaging gated on `payments.refund_status`, not `orders.status` |
+| Refund | Refund call to gateway fails or stalls | First-class `payments.refund_status` (`pending → processing → succeeded \| failed`) makes "did we refund this person?" answerable from the database alone; admin can drive `failed → processing` retry |
+| Operational | Manual payout step in V1 | Admin UI surfaces only orders in `completed` with `payout_status = 'pending'` |
+| Liquidity | Listing held while buyer disappears mid-checkout | Decision 6 — listing stays `approved` until capture; `checkout_locks` TTL caps the window |
 
 ---
 
@@ -417,12 +701,71 @@ against, not what they can call today.
   `system_listing_sold` cascade from a verified capture.
 - `expired` stays collapsed for both timeout cases; analytics live in
   `offer_events`.
-- Order state machine has branches (cancelled, disputed, refunded) rather
-  than a linear chain.
-- `escrow_held` modeled as a distinct state from `delivered`.
-- Race-loser handling uses three layers: pre-payment lock, webhook
-  cascade, automatic refund job.
-- Winner cascade is a single transaction; partial commit is unacceptable.
+- **OQ#1 RESOLVED 2026-05-30** — `escrow_held` means: Audiobaaz has
+  successfully captured the buyer's payment and is holding those funds
+  pending delivery, inspection, dispute resolution (if any), and final
+  settlement. Locked V1 lifecycle: `payment_pending → escrow_held →
+  seller_confirmed → shipped → delivered → inspection → completed`,
+  with branches via `payment_failed` (recoverable), `cancelled`,
+  `disputed → completed | refunded | partially_refunded`.
+- **No `created` order state.** First state is `payment_pending`. A
+  pre-capture distinction has no observable meaning.
+- **`payment_failed` is non-terminal recoverable.** Buyer can retry
+  payment from `payment_failed → payment_pending`.
+- **Three shipping states, not Shiprocket-event granular.** Keep
+  `seller_confirmed → shipped → delivered` for V1; add
+  `pickup_scheduled / in_transit / out_for_delivery` only in V2 once
+  Shiprocket telemetry is observed.
+- **Money-movement names on `orders.status`; verdict on
+  `disputes.resolution`.** `completed` / `refunded` / `partially_refunded`
+  describe what happened to the money. The dispute verdict is a separate
+  field because one verdict can produce different money outcomes.
+- **No `escrow_released` state.** Order lifecycle ends at `completed`;
+  payout tracked separately on `orders.payout_status`.
+- **Listing remains available until capture.** Listing flips
+  `approved → sold` atomically with `escrow_held`. The schema's
+  `reserve_listing` trigger is dropped under this model. Optimising
+  for completed sales over racing-prevention.
+- **`checkout_locks` is the only first-line race defence.** Soft lock
+  on `listing_id` before Razorpay order creation; not an inventory
+  reservation. **Not** a correctness primitive — narrows the
+  simultaneous-capture window only.
+- **Razorpay is the system of record for "did money move." Audiobaaz
+  is the system of record for "who owns the listing."** The DB
+  invariant + atomic RPC do not prevent two captures from happening
+  at the gateway; they prevent two winning orders from existing.
+  Race-loser refund is a normal business path, not an exception.
+- **Lifetime invariant.** At most one order per listing may ever have
+  `status` in the winning-lineage set (`escrow_held`,
+  `seller_confirmed`, `shipped`, `delivered`, `inspection`,
+  `completed`, `disputed`, `refunded`, `partially_refunded`). Once a
+  listing has had a winner, it is sold for all time, regardless of
+  what subsequently happens to the winning order.
+- **OQ#4 mechanism locked.** `listings.sold_offer_id UUID UNIQUE NULL
+  REFERENCES offers(id)`. Ownership belongs on the listing, not on
+  offers or orders. The unique partial index alternative was rejected
+  because it does not cover the post-refund lineage on its own.
+- **Refunded-winner rule (immutability).** `listings.sold_offer_id` is
+  set once at `escrow_held` and never updated. A buyer-favourable
+  dispute or full refund leaves both `listings.status = 'sold'` and
+  `listings.sold_offer_id` intact. Relisting requires a new
+  `listings` row, never a state regression on the original.
+- **Refund lifecycle is first-class state on `payments`.** New
+  `payments.refund_status` column (`pending → processing → succeeded |
+  failed`, with `failed → processing` retry path). Refund-completion
+  is a money-movement concern; `orders.status` reflects the
+  marketplace verdict (e.g. `refunded` lands when admin resolves the
+  dispute) regardless of where the gateway-side refund stands.
+  Buyer-facing copy is gated on `refund_status`, not `orders.status`.
+- **Atomicity precedes invariant in Phase 1 priority.** Split-brain
+  state is the one thing the system cannot tolerate; demonstrate
+  Scenario B (mid-cascade crash) before any lock-table or
+  refund-optimisation work.
+- Race-loser handling V1: synchronous refund call inside the webhook
+  handler when the winner cascade fails the DB invariant. Queue-backed
+  worker deferred to V2.
+- Winner cascade is a single transaction (`finalize_winning_payment`
+  RPC); partial commit is unacceptable.
 - `webhook_events` is shared across providers (Razorpay, Shiprocket,
   future). `offer_events` and `order_events` are separate per domain.
 
@@ -432,14 +775,15 @@ against, not what they can call today.
 
 | Needs | From | Status |
 |-------|------|--------|
-| `offers.status` enum incl. `lost` | Person 1 (DB schema) | Pending |
-| `orders` table + state enum | Person 1 (DB schema) | Pending |
-| One-paid-offer-per-listing invariant | Person 1 (DB schema) | Pending |
-| Atomic transaction primitive (RPC / sproc) | Person 1 (DB schema) | Pending |
-| `webhook_events` table | Person 1 (DB schema) | Pending |
-| `offer_events` + `order_events` tables | Person 1 (DB schema) | Pending |
-| Audit-table RLS | Person 1 + Person 4 | Pending |
-| Buyer checkout entry point | Person 2 (buyer-flow) | Exists (mock-backed) |
+| `offers.status` enum incl. `lost` | Person 1 (DB schema) | Pending — Phase 1 |
+| `orders.status` enum amended to locked V1 contract | Person 1 (DB schema) | Pending — Phase 1; drop `created`, add `cancelled`, drop `escrow_released`, drop `seller_confirmed` rename if applicable; drop `reserve_listing` trigger |
+| One-paid-offer-per-listing invariant | Person 1 (DB schema) | Pending — Phase 1; default mechanism `listings.sold_offer_id UNIQUE NULLABLE` |
+| `finalize_winning_payment(...)` RPC | Person 1 (DB schema) | Pending — Phase 1; contract per audit §4.7, updated to commit `listings.status = 'sold'` atomically with `escrow_held` |
+| `webhook_events` table | Person 1 (DB schema) | Pending — Phase 1 |
+| `offer_events` + `order_events` tables | Person 1 (DB schema) | Pending — Phase 1 |
+| `checkout_locks` table (TTL ~5min, keyed on listing_id) | Person 1 (DB schema) | Pending — Phase 1 |
+| Audit-table RLS | Person 1 + Person 4 | Pending — Phase 1 |
+| Buyer checkout entry point | Person 2 (buyer-flow) | Exists (mock-backed); switches to `/api/payments/create` in Phase 2 |
 | Seller dashboard Orders section | Person 3 (seller-flow) | Exists (mock-backed) |
 | Admin payout / dispute UIs | Person 3 (admin-panel) | Exists (mock-backed) |
 
@@ -447,19 +791,145 @@ against, not what they can call today.
 
 ## Next Session Starts Here
 
-Before writing any code in this feature:
+OQ#1 was resolved on 2026-05-30 with the locked V1 contract above.
+The remaining critical Open Questions before Phase 1 can start are
+**OQ#4** (one-paid-offer invariant) and **OQ#5** (atomic RPC). Both
+became safety-critical specifically *because* of Decision 6: the
+listing stays available until capture, so race correctness lives
+entirely in the DB invariant + atomic transaction, not in
+application-layer reservations.
 
-1. Confirm with Person 1 that all nine Hard Prerequisites are agreed
-   in writing. Do not start Phase 2 (Razorpay) without items 1–9 merged
-   to dev (or, for items owned by Person 4, designed and reviewed).
-2. Read this file, `src/lib/offers/state.ts`, `src/lib/offers/types.ts`,
-   and `docs/integrations/razorpay.md` + `docs/integrations/shiprocket.md`.
-3. Produce the session-zero implementation report (architecture review,
-   dependency mapping, phased plan). Do not write code in that session.
-4. Phase 1 begins only after Person 1 reports prerequisites complete.
-   Phase 1 is a no-op for Person 4 in terms of code — it is verification
-   that the schema, RLS, transaction primitive, and audit tables behave
-   correctly under concurrent test inserts.
+### Phase 1 priority order (recorded 2026-05-30; re-prioritised 2026-05-30)
 
-The Razorpay implementation in Phase 2 is the first place real code
-lands in this feature. Everything before that is design and verification.
+Driving principle: **split-brain state is the one thing the system
+cannot tolerate.** Atomicity precedes invariant precedes refund flow
+precedes lock optimisation.
+
+1. **OQ#5 — Atomic `finalize_winning_payment(...)` RPC.** Highest
+   priority. If the RPC is wrong, the marketplace produces split-brain
+   state: listing sold but offer not updated, or offer won but listing
+   not sold. Person 1 should demonstrate **Scenario B** (mid-cascade
+   crash → all-or-nothing) before any lock-table or refund-optimisation
+   work begins. Scenario B is the hardest gate; if it passes, the
+   other three become straightforward.
+2. **OQ#4 — Lifetime invariant.** Second priority. Mechanism locked
+   (`listings.sold_offer_id UUID UNIQUE NULL`); the work is wiring
+   the constraint and proving Scenarios A, C, D pass.
+3. **OQ#7 — Refund flow + refund lifecycle.** Third priority.
+   Synchronous refund call inside the webhook handler under the locked
+   V1 contract; gated on the new `payments.refund_status` column
+   landing first (Hard Prerequisite #9). Without first-class refund
+   state, "did we refund this person?" is unanswerable from the
+   database.
+4. **OQ#6 — `checkout_locks` table.** Fourth priority. Optimisation,
+   not correctness. The system runs correctly without it if priorities
+   1–3 are correct; lock failure just generates more loser refunds.
+
+### Phase 1 schema PR scope
+
+Person 1 produces a single PR covering:
+
+- `orders.status` enum amendment to the locked V1 lifecycle.
+- `offers.status` enum: add `lost`.
+- `listings.sold_offer_id UUID UNIQUE NULL REFERENCES offers(id)` —
+  OQ#4 mechanism locked. Set once inside the atomic RPC at
+  `escrow_held`. Never unset, never updated.
+- `finalize_winning_payment(...)` RPC.
+- `webhook_events`, `offer_events`, `order_events`, `checkout_locks`
+  tables.
+- `payments.refund_status`, `refund_id`, `refund_reason`,
+  `refund_initiated_at`, `refund_completed_at`, `refund_failure_reason`
+  columns. New refund-lifecycle enum.
+- RLS policies on the audit tables.
+- Drop `reserve_listing` trigger.
+
+### Phase 1 acceptance criteria — four scenarios at the database layer
+
+Before any application code is written against the new schema, the
+Phase 1 PR must demonstrate the following four scenarios pass at the
+database layer (Postgres-level test, not application-level mock).
+These are the failure modes that destroy escrow marketplaces; if the
+schema can survive all four, the marketplace core is largely
+de-risked.
+
+**Scenario A — Concurrent captures, one winner**
+```
+Buyer A captures
+Buyer B captures (concurrent)
+Result: A wins (orders.status = escrow_held; listings.sold_offer_id set)
+        B refunded (orders.status = cancelled or payment_failed;
+                    payment refund initiated)
+        Exactly one row in winning-lineage status for the listing
+```
+
+**Scenario B — Mid-cascade crash**
+```
+Buyer A captures
+RPC starts the winner cascade
+Process crashes halfway through (after offers update, before
+  listings.sold_offer_id set)
+Result: Either nothing committed (rollback)
+        Or everything committed (atomic completion)
+        Never half-state (e.g. offer = paid but listing still
+        approved, or listing sold but no order row)
+```
+
+**Scenario C — Refunded winner, no inventory return**
+```
+Buyer A captures
+Order progresses to delivered
+Buyer A raises dispute
+Admin resolves in buyer's favour → refunded
+Result: listings.status = sold (unchanged)
+        listings.sold_offer_id still references A's offer (immutable)
+        No second order can be created for this listing
+        New listing requires a new listings.id
+```
+
+**Scenario D — High-concurrency race**
+```
+10 buyers attempt checkout for the same listing simultaneously
+All 10 captures succeed at the gateway (Razorpay-side)
+Result: 1 winner (orders.status = escrow_held)
+        9 losers (refunded, with correct buyer-facing message)
+        0 ownership corruption (exactly one row in winning-lineage
+        status; listings.sold_offer_id set exactly once)
+```
+
+Auditability assertion (must also pass for Scenario A and Scenario D):
+all 9 losers must be **discoverable and recoverable** from the
+database alone. The audit trail must answer, without recourse to
+Razorpay dashboards or application logs:
+
+- Which order won? (`listings.sold_offer_id` → winning offer →
+  winning order)
+- Which orders lost, and when? (`order_events` rows recording the
+  cascade transition + timestamp; `offer_events` rows for `* → lost`)
+- Why was each loser refunded? (`payments.refund_reason`)
+- What is the current status of each refund? (`payments.refund_status`
+  — see "Refund lifecycle as first-class state" below)
+
+A race that refunds correctly but leaves no trace is a support
+nightmare; it is treated as a Scenario D failure.
+
+If Person 1's PR demonstrates these four scenarios, the marketplace
+core is considered de-risked and Phase 2 (Razorpay integration) can
+proceed.
+
+### Sequencing rules
+
+1. ~~Resolve OQ#1 (lifecycle).~~ **Done — see "Order state machine —
+   locked V1 contract" above.**
+2. Person 1 lands the Phase 1 schema PR per the priority and scope
+   above.
+3. Person 4 + Person 1 sign off on the Schema Contract (audit §4) as
+   amended by this resolution.
+4. Wipe synthetic `payments WHERE razorpay_order_id LIKE 'mock_%'`
+   rows before Phase 2 begins.
+
+Phase 2 (Razorpay) begins only after Phase 1 lands on `dev`. Audit
+§5.9 dictates how the parked `feature/payments-shipping` files
+migrate; the verify and webhook routes need rework to commit the
+locked V1 transition (capture → `escrow_held` + listing `sold` +
+loser cascade) inside the RPC. Everything before Phase 2 is design
+and verification — no new code in this feature lands on `dev`.

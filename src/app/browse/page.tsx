@@ -27,6 +27,8 @@ import { ListingGrid } from "@/components/listing/ListingGrid";
 import { cn } from "@/lib/utils/cn";
 import type { ConditionGrade, ProductCategory } from "@/types";
 
+export const dynamic = 'force-dynamic';
+
 export const metadata = {
   title: "Browse — Audiobaaz",
   description: "Browse condition-graded, escrow-protected secondhand audio gear.",

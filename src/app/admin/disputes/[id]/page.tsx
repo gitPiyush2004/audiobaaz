@@ -2,7 +2,24 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { formatPrice, formatDate } from '@/lib/utils/formatting';
+import { pickOne } from '@/lib/utils/relations';
 import { ResolveActions } from './ResolveActions';
+
+type ListingRow = { product_name: string; brand: string; photos: string[] | null };
+type OrderRow = {
+  id: string;
+  paid_price: number;
+  listing_price: number;
+  shipping_fee: number;
+  status: string | null;
+  listings: ListingRow | ListingRow[] | null;
+};
+type PartyRow = {
+  full_name: string | null;
+  city: string | null;
+  buyer_score?: number | null;
+  seller_score?: number | null;
+};
 
 const reasonLabels: Record<string, string> = {
   condition_mismatch:  'Condition mismatch',
@@ -33,10 +50,10 @@ export default async function AdminDisputeDetailPage({ params }: { params: { id:
 
   if (!dispute) notFound();
 
-  const order   = (Array.isArray(dispute.orders)  ? dispute.orders[0]  : dispute.orders)  as any;
-  const listing = (Array.isArray(order?.listings) ? order.listings[0]  : order?.listings) as any;
-  const buyer   = (Array.isArray(dispute.buyers)  ? dispute.buyers[0]  : dispute.buyers)  as any;
-  const seller  = (Array.isArray(dispute.sellers) ? dispute.sellers[0] : dispute.sellers) as any;
+  const order   = pickOne<OrderRow>(dispute.orders);
+  const listing = pickOne<ListingRow>(order?.listings);
+  const buyer   = pickOne<PartyRow>(dispute.buyers);
+  const seller  = pickOne<PartyRow>(dispute.sellers);
 
   return (
     <div>
@@ -117,13 +134,16 @@ export default async function AdminDisputeDetailPage({ params }: { params: { id:
 
           {/* Parties */}
           <div className="grid grid-cols-2 gap-4">
-            {[{ label: 'Buyer', person: buyer, scoreKey: 'buyer_score' }, { label: 'Seller', person: seller, scoreKey: 'seller_score' }].map(({ label, person, scoreKey }) => (
+            {([
+              { label: 'Buyer',  person: buyer,  score: buyer?.buyer_score   ?? null },
+              { label: 'Seller', person: seller, score: seller?.seller_score ?? null },
+            ] as const).map(({ label, person, score }) => (
               <div key={label} className="rounded-xl border border-border bg-surface p-4">
                 <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-text-2">{label}</p>
                 <p className="font-medium text-foreground">{person?.full_name ?? 'Unknown'}</p>
                 {person?.city && <p className="text-sm text-text-2">{person.city}</p>}
                 <p className="mt-2 text-xs text-text-2">
-                  Score: <span className="font-mono font-bold text-foreground">{person?.[scoreKey] ?? '—'}</span>
+                  Score: <span className="font-mono font-bold text-foreground">{score ?? '—'}</span>
                 </p>
               </div>
             ))}

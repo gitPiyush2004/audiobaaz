@@ -1,6 +1,10 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import { formatPrice, formatDate } from '@/lib/utils/formatting';
+import { pickOne } from '@/lib/utils/relations';
 import { PayoutTrigger } from './PayoutTrigger';
+
+type ListingRow = { product_name: string | null; brand: string | null };
+type SellerRow = { full_name: string | null; upi_id: string | null };
 
 const payoutStatusStyles: Record<string, string> = {
   pending:    'bg-warning/10 text-warning',
@@ -73,8 +77,8 @@ export default async function AdminPayoutsPage() {
               </thead>
               <tbody className="divide-y divide-border bg-bg">
                 {pending.map((o) => {
-                  const seller  = (Array.isArray(o.sellers)  ? o.sellers[0]  : o.sellers)  as any;
-                  const listing = (Array.isArray(o.listings) ? o.listings[0] : o.listings) as any;
+                  const seller  = pickOne<SellerRow>(o.sellers);
+                  const listing = pickOne<ListingRow>(o.listings);
                   return (
                     <tr key={o.id} className="transition-colors hover:bg-surface">
                       <td className="px-4 py-3">
@@ -125,8 +129,8 @@ export default async function AdminPayoutsPage() {
               </thead>
               <tbody className="divide-y divide-border bg-bg">
                 {history.map((o) => {
-                  const seller  = (Array.isArray(o.sellers)  ? o.sellers[0]  : o.sellers)  as any;
-                  const listing = (Array.isArray(o.listings) ? o.listings[0] : o.listings) as any;
+                  const seller  = pickOne<SellerRow>(o.sellers);
+                  const listing = pickOne<ListingRow>(o.listings);
                   return (
                     <tr key={o.id} className="transition-colors hover:bg-surface">
                       <td className="px-4 py-3 font-medium text-foreground">{seller?.full_name ?? '—'}</td>
