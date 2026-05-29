@@ -33,7 +33,9 @@ single listing page, checkout, order dashboard, watchlist, saved searches.
 [x] Nav updated (Person 1) — profile avatar dropdown; My Orders counts both offers + orders tables; links to /orders/purchases
 [x] Mock checkout flow (Person 1) — /buy/checkout/[listingId] collects delivery address (pre-filled from profile); POST /api/checkout/mock skips Razorpay, creates order (escrow_held) + mock payment, marks listing sold, Telegrams seller
 [x] /orders/purchases — lists all buy-now orders with status + links to order detail
-[x] /orders/purchase/[orderId] — order confirmation + detail page
+[x] /orders/purchase/[orderId] — full order detail page: status timeline, delivery address, price breakdown, dev advance-order button, dispute form during inspection window
+[x] POST /api/disputes — buyer raises dispute; validates inspection window, creates dispute record, marks order disputed
+[x] POST /api/dev/advance-order — dev-only; pushes order to inspection (delivered_at + inspection_expires_at = now+48h)
 [ ] Watchlist, saved searches, disputes, orders dashboard, ratings — defer
 [ ] /buy/checkout/[listingId], /buy/confirm/[orderId] — defer until persistence + Person 4's payments are wired
 ```
