@@ -25,19 +25,28 @@ edge that fires from a verified Razorpay capture.
 
 ```
 [ ] Not started
-[x] In progress — architecture locked, persistence pending, no code yet
+[ ] In progress
 [ ] Complete
-[ ] Blocked — see "Hard Prerequisites" below
+[x] Blocked — architecture locked; session-zero audit complete
+    (docs/reviews/payments-session-zero.md is the authoritative
+    artifact; Schema Contract §4 is the primary review surface);
+    implementation deferred pending OQ#1 (lifecycle) and Phase 1
+    schema work. feature/payments-shipping branch parked at f47ab10.
 ```
 
-This file previously claimed nine files were complete (`src/lib/razorpay/*`,
-`src/lib/shiprocket/*`, several `/api/payments/*` routes). Those files
-do not exist in the repo. Earlier draft was forward-looking notes
-mistakenly checked off as done. Section is now reset to actual state.
+Status reality (audit-verified):
+- No payment or shipping code on `dev`. `src/app/api/` has no
+  `payments/` or `shipping/` directories.
+- Nine Razorpay/Shiprocket files exist on the parked
+  `feature/payments-shipping` branch (HEAD `f47ab10`); audit §5.9
+  ("Implementation Inventory") records the file-by-file disposition
+  (5 keep, 4 revise, 0 rewrite).
+- Buyer flow on `dev` uses `/api/checkout/mock` as a transitional
+  stand-in. Replaced in Phase 2 (audit §8).
 
-The only offer-domain code that exists today is mock-backed
-(`src/lib/offers/*` + `src/lib/mock/offers.ts`). Nothing in the repo
-talks to Razorpay or Shiprocket yet.
+Offer-domain code on `dev` remains mock-backed (`src/lib/offers/*` +
+`src/lib/mock/offers.ts`). Nothing on `dev` talks to Razorpay or
+Shiprocket.
 
 ---
 
@@ -232,8 +241,11 @@ implementation plan blocks on a cross-team handoff that wasn't planned.
 
 ## Files This Feature Will Own (planned)
 
-Nothing on this list exists yet. Listed for shared expectations, not as
-a "done" marker.
+Nothing on this list exists on `dev`. Nine of them exist on the parked
+`feature/payments-shipping` branch (`f47ab10`). The audit at
+`docs/reviews/payments-session-zero.md` §2 Inventory C and §5.9
+Implementation Inventory record the file-by-file disposition that
+Phase 2 will follow. Listed below for shared expectations only.
 
 ```
 src/lib/razorpay/client.ts                       — singleton instance, throws on missing keys
@@ -447,19 +459,23 @@ against, not what they can call today.
 
 ## Next Session Starts Here
 
-Before writing any code in this feature:
+Implementation is blocked on schema decisions, not on engineering
+capacity. The session-zero audit
+(`docs/reviews/payments-session-zero.md`) is the authoritative current
+artifact. Read it in full before any further work.
 
-1. Confirm with Person 1 that all nine Hard Prerequisites are agreed
-   in writing. Do not start Phase 2 (Razorpay) without items 1–9 merged
-   to dev (or, for items owned by Person 4, designed and reviewed).
-2. Read this file, `src/lib/offers/state.ts`, `src/lib/offers/types.ts`,
-   and `docs/integrations/razorpay.md` + `docs/integrations/shiprocket.md`.
-3. Produce the session-zero implementation report (architecture review,
-   dependency mapping, phased plan). Do not write code in that session.
-4. Phase 1 begins only after Person 1 reports prerequisites complete.
-   Phase 1 is a no-op for Person 4 in terms of code — it is verification
-   that the schema, RLS, transaction primitive, and audit tables behave
-   correctly under concurrent test inserts.
+Before Phase 1 can start:
 
-The Razorpay implementation in Phase 2 is the first place real code
-lands in this feature. Everything before that is design and verification.
+1. Resolve Open Question #1 (lifecycle / `escrow_held` semantics) with
+   Product + Person 1 + Person 4. Audit §9 OQ#1 records the two
+   candidate target contracts; the choice is product-strategic, not
+   technical.
+2. Resolve OQ#2 (`lost` enum + cascade) and OQ#4 (one-paid-offer
+   invariant mechanism). These are required for Phase 1 schema work.
+3. Person 1 produces the Phase 1 schema PR (audit §8 Phase 1).
+4. Person 4 + Person 1 sign off on the Schema Contract (audit §4).
+
+Phase 2 (Razorpay) begins only after Phase 1 lands on `dev`. Audit
+§5.9 dictates how the parked `feature/payments-shipping` files
+migrate. Everything before Phase 2 is design and verification — no
+new code in this feature lands on `dev`.

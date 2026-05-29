@@ -37,7 +37,7 @@ single listing page, checkout, order dashboard, watchlist, saved searches.
 [x] POST /api/disputes — buyer raises dispute; validates inspection window, creates dispute record, marks order disputed
 [x] POST /api/dev/advance-order — dev-only; pushes order to inspection (delivered_at + inspection_expires_at = now+48h)
 [ ] Watchlist, saved searches, disputes, orders dashboard, ratings — defer
-[ ] /buy/checkout/[listingId], /buy/confirm/[orderId] — defer until persistence + Person 4's payments are wired
+[x] /buy/checkout/[listingId] (mock) + /orders/purchase/[orderId] (post-purchase) — live; real Razorpay swap deferred to Person 4's Phase 2 (see docs/reviews/payments-session-zero.md §8)
 ```
 
 ---
@@ -53,6 +53,9 @@ single listing page, checkout, order dashboard, watchlist, saved searches.
 | `/orders` | Redirect to `/orders/offers` | protected | `src/app/orders/page.tsx` |
 | `/orders/offers` | Buyer offer dashboard (3 sections) | protected | `src/app/orders/offers/page.tsx` |
 | `/orders/offers/[id]` | Offer detail | protected | `src/app/orders/offers/[id]/page.tsx` |
+| `/buy/checkout/[listingId]` | Mock checkout — collects delivery address, calls `/api/checkout/mock` | protected | `src/app/buy/checkout/[listingId]/page.tsx` |
+| `/orders/purchases` | Buyer purchases list (buy-now orders) | protected | `src/app/orders/purchases/page.tsx` |
+| `/orders/purchase/[orderId]` | Order detail — status timeline, address, dispute form during inspection window, dev advance-order button | protected | `src/app/orders/purchase/[orderId]/page.tsx` |
 
 `protected` routes redirect anonymous users to `/login?redirect=<path>` via `src/middleware.ts`.
 
@@ -427,10 +430,11 @@ component owns rendering.
 | disputes | INSERT, SELECT | Raise and track disputes |
 | users | SELECT | Seller profile on listing page |
 
-Today the buyer surface runs entirely on mock data — no Supabase queries
-in any buyer-flow file. The persistence slice will replace mock bodies
-inside `src/lib/listings/*` and `src/lib/offers/*` without touching pages
-or components.
+Today the buyer surface is split: discovery (browse, listing detail, homepage
+featured strip) and purchase (mock checkout, orders list, order detail,
+disputes) run on real Supabase. Offers persistence is still mock-backed
+(`src/lib/offers/*`). The next persistence slice replaces those mock
+bodies inside `src/lib/offers/*` without touching pages or components.
 
 ---
 
@@ -478,30 +482,25 @@ Locked invariants encoded in the transition table:
 
 ## Open Questions
 
-Recorded in `src/lib/offers/state.ts` next to the transition table. Recorded,
-NOT answered — solving marketplace edge cases before there is enough usage
-to understand them is the bigger mistake.
+Originally recorded in `src/lib/offers/state.ts` next to the transition
+table. **All three are now resolved at project level** in
+`docs/context/payments-shipping.md` and confirmed by the session-zero
+audit (`docs/reviews/payments-session-zero.md`). Kept here for design
+history; do not re-litigate.
 
-1. **Listing visibility while an offer is `accepted`.** Current assumption:
-   the listing remains `approved` and parallel negotiations continue until
-   someone pays. ENGINEERING.md says parallel negotiations are allowed and first
-   to pay wins. The state machine has no `accepted → reserved` notion —
-   reservation is a listing concept, not an offer one.
+1. **Listing visibility while an offer is `accepted`** — Resolved.
+   Listing remains `approved`; parallel negotiations continue. Decided
+   in `payments-shipping.md` "Locked Architecture Decisions".
 
-2. **An `accepted` offer that loses because another buyer paid first.**
-   No dedicated terminal status today. Two candidates:
-   - (a) Resolve to `expired` (collapsed with the payment-window timeout);
-     buyer-facing message changes to "another buyer purchased this".
-   - (b) Add a separate terminal status (e.g. `lost`) so analytics can
-     distinguish "buyer didn't pay" from "buyer was outraced by another".
-   Decide before the offers table is persisted; DB migrations on terminal-
-   status enums are painful.
+2. **An `accepted` offer that loses because another buyer paid first** —
+   Resolved (Option b). Adds `lost` terminal status to the offer enum,
+   reached only via `system_listing_sold` cascade from a verified
+   capture. See `payments-shipping.md` "New offer-domain event" and
+   audit §4.3 / §4.7.
 
-3. **`expired` collapses two distinct events.** From `pending` it means
-   seller-no-response; from `accepted` it means buyer-no-payment. Verify
-   with usage data whether buyer/seller need to distinguish these on the
-   dashboard. If yes, split the terminal status; if no, keep collapsed and
-   rely on `system_expire_*` event names for analytics.
+3. **`expired` collapses two distinct events** — Resolved. Stays
+   collapsed; analytics live in `offer_events`, not the status enum.
+   See `payments-shipping.md` "`expired` stays collapsed".
 
 ---
 

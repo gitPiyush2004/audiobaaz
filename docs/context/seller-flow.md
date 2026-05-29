@@ -23,7 +23,7 @@ seller dashboard (7 sections).
 [x] 6-step listing intake form UI — /sell/new/page.tsx (UI complete, backend wired)
 [x] Supabase client files — src/lib/supabase/client.ts, server.ts, admin.ts
 [x] Auth middleware — src/middleware.ts (protects /sell/new, /sell/draft, /dashboard, /onboarding)
-[x] Login page — /login (email magic link via Supabase Auth)
+[x] Login page — /login (email magic link via Supabase Auth + Google OAuth — commit 15ff3f1)
 [x] Auth callback — /auth/callback (exchanges code; redirects to /onboarding if full_name not set, else to destination)
 [x] Onboarding page — /onboarding (mandatory on first login; collects first name, last name, phone +91, telegram username, city)
 [x] POST /api/listings — creates listing with status=pending on submit
@@ -111,7 +111,8 @@ src/app/auth/callback/route.ts                             ✓ updated (handles 
 ## Key Architecture Decisions Made
 
 ### Auth
-- Email OTP only for now (phone OTP requires Twilio — deferred)
+- Email OTP (magic link) for now (phone OTP requires Twilio — deferred)
+- Google OAuth added to login page (commit 15ff3f1) — preferred long-term path because it sidesteps Supabase email-OTP rate limits and lowers signup friction. Magic link kept as fallback.
 - `phone` column made nullable; phone collected in profile completion
 - Middleware protects: /sell/new, /sell/draft, /dashboard
 - `handle_new_auth_user` trigger creates public.users row on auth signup

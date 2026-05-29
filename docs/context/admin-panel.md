@@ -156,6 +156,7 @@ Remaining work:
 ## Known Issues Fixed This Session
 
 - **RLS bug**: All admin page server components were using `createClient()` (anon key, RLS-bound) instead of `createAdminClient()` (service role). RLS policies only allow users to read their own listings/orders/disputes, so the entire admin panel was returning empty data. Fixed in commit `e0d1cb5` on `feature/admin-panel`, synced to dev.
+- **Vercel build lint failures**: Twelve `@typescript-eslint/no-explicit-any` errors across `src/app/admin/disputes/[id]/page.tsx`, `src/app/admin/payouts/page.tsx`, `src/app/api/admin/disputes/[id]/resolve/route.ts`, and `src/app/api/admin/payouts/[id]/trigger/route.ts` were blocking Vercel deployment of the `dev` branch. Resolved in commit `e0d84e4` by introducing a typed `pickOne<T>(rel)` helper at `src/lib/utils/relations.ts` and replacing the `as any` Supabase nested-relation casts with typed `pickOne<RowType>(...)` calls. The unused `router` import in `src/app/(auth)/onboarding/page.tsx` was also removed in the same commit. Four `<img>` warnings remain (non-blocking) — replacing them with `next/image` is a separate UI pass.
 
 ---
 
