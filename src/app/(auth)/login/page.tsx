@@ -42,14 +42,39 @@ function LoginForm() {
     if (!email) { setError('Enter an email first'); return; }
     setLoading(true);
     setError(null);
+
+    // 1. Get OTP from server (no email sent)
     const res  = await fetch('/api/dev/sign-in', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ email, next: redirect }),
+      body:    JSON.stringify({ email }),
     });
     const json = await res.json();
     if (json.error) { setError(json.error); setLoading(false); return; }
-    window.location.href = json.url;
+
+    // 2. Verify OTP directly in the browser — sets up the session
+    const { error: otpError } = await supabase.auth.verifyOtp({
+      email:  json.email,
+      token:  json.email_otp,
+      type:   'email',
+    });
+    if (otpError) { setError(otpError.message); setLoading(false); return; }
+
+    // 3. Check if onboarding is needed
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const { data: profile } = await supabase
+        .from('users')
+        .select('full_name')
+        .eq('id', user.id)
+        .single();
+      if (!profile?.full_name) {
+        window.location.href = `/onboarding?next=${encodeURIComponent(redirect)}`;
+        return;
+      }
+    }
+
+    window.location.href = redirect;
   }
 
   return (
