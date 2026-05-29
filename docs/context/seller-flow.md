@@ -22,17 +22,18 @@ seller dashboard (7 sections).
 [x] Sell With Us landing page — /sell/page.tsx
 [x] 6-step listing intake form UI — /sell/new/page.tsx (UI complete, backend wired)
 [x] Supabase client files — src/lib/supabase/client.ts, server.ts, admin.ts
-[x] Auth middleware — src/middleware.ts (protects /sell/new, /sell/draft, /dashboard)
+[x] Auth middleware — src/middleware.ts (protects /sell/new, /sell/draft, /dashboard, /onboarding)
 [x] Login page — /login (email magic link via Supabase Auth)
-[x] Auth callback — /auth/callback (exchanges code, redirects to destination)
+[x] Auth callback — /auth/callback (exchanges code; redirects to /onboarding if full_name not set, else to destination)
+[x] Onboarding page — /onboarding (mandatory on first login; collects first name, last name, phone +91, telegram username, city)
 [x] POST /api/listings — creates listing with status=pending on submit
-[x] PATCH /api/listings/[id] — delist + status transitions
+[x] PATCH /api/listings/[id] — delist + status transitions (incl. rejected→draft for resubmit)
 [x] POST /api/upload — uploads photos to Supabase Storage (listings bucket)
 [x] PATCH /api/offers/[id] — accept/decline offers
-[x] PATCH /api/users/me — update profile
+[x] PATCH /api/users/me — update profile (full_name, city, pincode, upi_id, availability, phone, telegram_chat_id)
 [x] Dashboard layout — shared sidebar with active link highlighting
 [x] Dashboard: Overview — stat cards + recent listings + submitted banner
-[x] Dashboard: My Listings — tabbed (Live/Pending/Draft/Sold/Delisted) + Delist
+[x] Dashboard: My Listings — tabbed (Live/Pending/Rejected/Draft/Sold/Delisted) + Delist + rejection reason banner + Edit & resubmit
 [x] Dashboard: Offers — accept/decline, countdown, past offers
 [x] Dashboard: Orders — status timeline
 [x] Dashboard: Payouts — UPI management + earnings history
@@ -43,6 +44,7 @@ seller dashboard (7 sections).
 [x] Real price oracle — GET /api/price-oracle?model=X&brand=Y queries price_history ILIKE; fetched on entering step 5; falls back to empty state gracefully
 [x] Product search — GET /api/products/search?q=X uses ilike on name/brand; autocomplete dropdown in step 1; selecting fills brand/name/category
 [x] Telegram lib — src/lib/telegram/index.ts; wired into POST /api/listings (listing submitted) and PATCH /api/offers/[id] (offer accepted/declined); no-ops if TELEGRAM_BOT_TOKEN is empty
+[x] Nav redesign — profile avatar (initials) replaces all auth links for logged-in users; dropdown shows My Orders (dynamic offer count from DB), Seller Dashboard, Profile, Sign out
 ```
 
 ---
@@ -65,13 +67,18 @@ src/app/api/products/search/route.ts            ✓ done (GET — queries produc
 src/app/api/upload/route.ts                     ✓ done
 src/lib/telegram/index.ts                       ✓ done (sendTelegramMessage — no-ops if BOT_TOKEN empty)
 
-src/app/(main)/sell/draft/[id]/page.tsx         ✓ done
-src/app/(main)/dashboard/page.tsx               ✓ done
-src/app/(main)/dashboard/listings/page.tsx      ✓ done
-src/app/(main)/dashboard/offers/page.tsx        ✓ done
-src/app/(main)/dashboard/orders/page.tsx        ✓ done
-src/app/(main)/dashboard/payouts/page.tsx       ✓ done
-src/app/(main)/dashboard/account/page.tsx       ✓ done
+src/app/(main)/sell/draft/[id]/page.tsx                    ✓ done
+src/app/(main)/dashboard/page.tsx                          ✓ done
+src/app/(main)/dashboard/listings/page.tsx                 ✓ done (Rejected tab + rejection reason + resubmit)
+src/app/(main)/dashboard/listings/ResubmitButton.tsx       ✓ done
+src/app/(main)/dashboard/offers/page.tsx                   ✓ done
+src/app/(main)/dashboard/orders/page.tsx                   ✓ done
+src/app/(main)/dashboard/payouts/page.tsx                  ✓ done
+src/app/(main)/dashboard/account/page.tsx                  ✓ done
+src/app/(auth)/onboarding/page.tsx                         ✓ done
+src/components/layout/ProfileMenu.tsx                      ✓ done
+src/app/api/dev/sign-in/route.ts                           ✓ done (dev only, blocked in production)
+src/app/auth/callback/route.ts                             ✓ updated (handles PKCE code + token_hash flows)
 ```
 
 ---
@@ -191,15 +198,14 @@ src/app/(main)/dashboard/account/page.tsx       ✓ done
 
 ## Next Session Starts Here
 
-**Seller flow is COMPLETE for V1.** All deferred items from the previous session are now done.
+**Seller flow is COMPLETE for V1.** All features including onboarding and nav are done.
 
 Remaining items (V1.5 / nice-to-have, not blocking launch):
 1. Wire TELEGRAM_BOT_TOKEN once the bot is set up — the lib and calls are in place, just needs the token
 2. Populate the `products` table — product search degrades gracefully, but needs data to be useful
-3. Admin flow (Person 3) needs to add `pending→approved` and `pending→rejected` transitions to PATCH /api/listings/[id]
-
-Check ENGINEERING.md "Current Build Status" table and update Person 1 row to IN PROGRESS
-before starting the next session.
+3. Profile photo upload — onboarding currently uses initials avatar; Supabase Storage `avatars` bucket needed
+4. Nav order count queries all-time offers + orders; could filter to active-only in future
+5. Mock checkout (`POST /api/checkout/mock`) is a temporary bypass — replace with real Razorpay flow when Person 4's payments are ready
 
 ---
 

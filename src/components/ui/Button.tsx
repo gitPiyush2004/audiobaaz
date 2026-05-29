@@ -1,5 +1,5 @@
 import { forwardRef, type ButtonHTMLAttributes } from "react";
-import { cn } from "@/lib/utils/formatting";
+import { cn } from "@/lib/utils/cn";
 
 type ButtonVariant = "primary" | "secondary" | "ghost" | "danger";
 type ButtonSize    = "sm" | "md" | "lg";

@@ -78,6 +78,13 @@ inspection → completed
                               ↘ refunded
 ```
 
+> **Source of truth:** `docs/context/payments-shipping.md` is canonical
+> for the offer enum, the order state machine (incl. branches), the
+> offer→order handoff at `paid`, escrow timing, race-condition handling,
+> and refund flow. The two diagrams above are summary views; if they
+> disagree with `payments-shipping.md`, the context file wins. Update
+> both together.
+
 ---
 
 ## Design System
@@ -194,12 +201,23 @@ These are final. Do not suggest alternatives.
 
 | Person | Tool | Feature | Status |
 |--------|------|---------|--------|
-| Person 1 | AI coding tool | Seller flow + dashboard | COMPLETE — all V1 features done, see docs/context/seller-flow.md |
-| Person 2 | Kiro | Buyer flow + listing page | NOT STARTED |
-| Person 3 | - | Admin panel | NOT STARTED |
-| Person 4 | AI coding tool | Payments + shipping | IN PROGRESS — payment + shipping APIs done, see docs/context/payments-shipping.md |
+| Person 1 | AI coding tool | Seller flow + dashboard | COMPLETE — onboarding, nav profile menu, rejected listings tab, resubmit flow all done. See docs/context/seller-flow.md |
+| Person 2 | Kiro | Buyer flow + listing page | IN PROGRESS — browse + listing detail on real Supabase. Mock checkout flow live (buy now → checkout → order confirmed). Offers persistence still mock. See docs/context/buyer-flow.md |
+| Person 3 | - | Admin panel | IN PROGRESS — core panel complete (listings, disputes, users, payouts), orders stub pending. See docs/context/admin-panel.md |
+| Person 4 | AI coding tool | Payments + shipping | IN PROGRESS — architecture locked, persistence pending, no code yet. See docs/context/payments-shipping.md |
 
 > Update this table when features change status.
+
+---
+
+## Development Utilities
+
+### Dev sign-in bypass (email rate limit workaround)
+- Route: `POST /api/dev/sign-in` — blocked in production (`NODE_ENV === 'production'`)
+- Usage: on the `/login` page, enter any email and click **⚡ Dev: sign in without email**
+- Uses admin client to generate a magic link server-side without sending an email
+- Full auth flow still runs (onboarding check, session creation, redirects)
+- Use this whenever Supabase's email rate limit is hit during testing
 
 ---
 
@@ -279,8 +297,47 @@ Components modified or created that affect multiple features. If you use or modi
 | `Nav` | `src/components/layout/Nav.tsx` | Person 1 | Auth-aware — shows Dashboard + New Listing when logged in, Log in + Sell With Us when logged out. Imports `createClient` from supabase/server (server component). |
 | `ListingForm` | `src/components/forms/ListingForm.tsx` | Person 1 | 6-step listing intake form. Accepts `draftId?` and `initialData?` props. Used by `/sell/new` and `/sell/draft/[id]`. |
 | `DashboardNav` | `src/components/layout/DashboardNav.tsx` | Person 1 | Seller dashboard sidebar. Client component, uses `usePathname`. |
+| `AdminNav` | `src/components/layout/AdminNav.tsx` | Person 3 | Admin panel sidebar. Used inside `src/app/admin/layout.tsx`. |
 | `Button` | `src/components/ui/Button.tsx` | Scaffold | Primary, secondary, ghost, danger variants. sm/md/lg sizes. |
 | `Card` | `src/components/ui/Card.tsx` | Scaffold | Basic surface card. Accepts all div props. |
+| `cn` | `src/lib/utils/cn.ts` | Scaffold | Canonical class-name helper (`clsx` + `tailwind-merge`). The ONLY place to import `cn` from. Do not duplicate. |
+| Buyer view-models | `src/lib/listings/types.ts` | Person 2 | Canonical home for `ListingCardData`, `ListingDetailData`, `SellerCardData`, `BrowseFilters`, `BrowseSort`, `PriceBucket`. One import path per type — no re-exports from component or access-function files. View-models are intentionally lossy; server-only fields (`floor_price`, scores, contact data) cannot be members. |
+| `ConditionBadge` | `src/components/listing/ConditionBadge.tsx` | Person 2 | Color-coded grade pill (S/A/B/C/D). Props: `grade`, `variant?: "compact" \| "full"`, `size?: "sm" \| "md"`, `className?`. Server component. |
+| `ListingCard` | `src/components/listing/ListingCard.tsx` | Person 2 | Listing grid card. Props: `listing: ListingCardData`, `priority?`, `className?`. `ListingCardData` is a structural subset of `Listing` — never pass server-only fields like `floor_price`. Wraps `next/image` (4:3 cover) and links to `/listing/[slug \|\| id]`. Server component. |
+| `ListingGrid` | `src/components/listing/ListingGrid.tsx` | Person 2 | Responsive grid (1/2/3/4 cols). Props: `children?`, `loading?`, `skeletonCount?`, `empty?`, `className?`. Pure layout — no data shape coupling. |
+| `PhotoGallery` | `src/components/listing/PhotoGallery.tsx` | Person 2 | Listing detail photo gallery. Props: `photos: string[]`, `alt: string`, `className?`. Server-component shell + small client island (`PhotoGalleryView`) for active-photo state. No lightbox/zoom yet. |
+| `SellerCard` | `src/components/listing/SellerCard.tsx` | Person 2 | Public seller summary. Props: `seller: SellerCardData`, `className?`. `SellerCardData` is a strict subset (full_name, city, rating, rating_count, member_since) — never spread a raw `User` row. Server component. |
+| `AccessoryList` | `src/components/listing/AccessoryList.tsx` | Person 2 | ✓/✗ checklist of inclusions. Props: `inclusions: Record<string, boolean>`, `className?`. Server component. |
+| Offer view-models | `src/lib/offers/types.ts` | Person 2 | Canonical home for `OfferRange`, `OfferDraftData`, `OfferStatus`, `OfferSummary`, `OfferDetailData`. Same intentionally-lossy rules as the listings types module — `floor_price`, `auto_accept_threshold`, scores, contact data cannot be members. Offers and listings are separate domains; do not fold types together. |
+| Offer state machine | `src/lib/offers/state.ts` | Person 2 | Pure module — single source of truth for offer transitions and predicates. Anywhere a UI needs "can the buyer cancel?" / "can the seller accept?", call the predicates here. Display helpers (`buyerStatusLabel`, `statusToneToken`) are buyer-side; seller surfaces should ship a sibling label helper but reuse the same tone tokens. |
+| `OfferStatusBadge` | `src/components/offers/OfferStatusBadge.tsx` | Person 2 | Buyer-facing offer status pill — `<Badge variant={statusToneToken(status)}>{buyerStatusLabel(status)}</Badge>`. Server component. |
+| `OfferAmountInput` | `src/components/offers/OfferAmountInput.tsx` | Person 2 | Slider + numeric input for offer composition. Client island. Validates against `OfferRange` via `validateOfferAmount()`. Hidden input is what the form submits. |
+
+---
+
+## Project-Level Known Issues
+
+Cross-feature blockers tracked here so individual feature context files don't
+re-document them. Add to this section only when the issue affects more than
+one feature or the project as a whole.
+
+### `next build` lint phase fails on `dev` (admin-panel)
+
+Owner: Person 3. Files: `src/app/admin/**`, `src/app/api/admin/**`.
+
+Twelve `@typescript-eslint/no-explicit-any` errors plus four
+`@next/next/no-img-element` warnings landed on `dev` via the admin-panel
+merge. Compilation itself passes; only the lint phase of `next build`
+fails. None of the failing files are outside the admin paths.
+
+Fix belongs to Person 3 in a separate follow-up PR. Do not patch with
+`eslint-disable` comments from other branches — that masks the underlying
+process problem.
+
+Systemic root cause: there is no CI gate enforcing `tsc + lint + build` on
+PRs into `dev`. Until that exists, the always-green-dev rule depends on
+developer discipline alone. A CI workflow on PRs into `dev` is the right
+durable fix.
 
 ---
 

@@ -1,8 +1,8 @@
 import type { ReactNode } from "react";
-import { cn } from "@/lib/utils/formatting";
+import { cn } from "@/lib/utils/cn";
 import type { ConditionGrade } from "@/types";
 
-type StatusVariant = "success" | "warning" | "error" | "info";
+type StatusVariant = "success" | "warning" | "error" | "info" | "neutral";
 
 type BadgeProps =
   | { variant: StatusVariant; grade?: never; children: ReactNode; className?: string }
@@ -13,6 +13,9 @@ const statusStyles: Record<StatusVariant, string> = {
   warning: "bg-warning/10 text-warning border-warning/20",
   error:   "bg-error/10   text-error   border-error/20",
   info:    "bg-info/10    text-info    border-info/20",
+  // Neutral — for resolved/terminal states where neither success nor error
+  // is right (e.g. an offer that expired or was cancelled).
+  neutral: "bg-surface-2 text-muted-foreground border-border",
 };
 
 const gradeStyles: Record<ConditionGrade, string> = {

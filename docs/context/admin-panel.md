@@ -1,7 +1,7 @@
 # Admin Panel — Context File
 **Owner:** Person 3
 **Branch:** feature/admin-panel
-**Last updated:** [date]
+**Last updated:** 2026-05-29 (session 2)
 
 ---
 
@@ -16,26 +16,49 @@ Accessible only to users with role = 'admin'. Lives at /admin/*.
 ## Current Status
 
 ```
-[ ] Not started
+[x] Admin layout + role gate — src/app/admin/layout.tsx
+[x] AdminNav sidebar — src/components/layout/AdminNav.tsx
+[x] Overview dashboard — src/app/admin/page.tsx (4 live stat cards)
+[x] Listing review queue — src/app/admin/listings/page.tsx
+[x] Single listing review — src/app/admin/listings/[id]/page.tsx
+[x] Approve/reject API — src/app/api/admin/listings/[id]/review/route.ts
+[x] Disputes queue — src/app/admin/disputes/page.tsx
+[x] Single dispute resolution — src/app/admin/disputes/[id]/page.tsx
+[x] Resolve dispute API — src/app/api/admin/disputes/[id]/resolve/route.ts
+[x] Users list + search — src/app/admin/users/page.tsx
+[x] User detail + actions — src/app/admin/users/[id]/page.tsx
+[x] User management API — src/app/api/admin/users/[id]/route.ts
+[x] Seller payouts queue + history — src/app/admin/payouts/page.tsx
+[x] Trigger payout API — src/app/api/admin/payouts/[id]/trigger/route.ts
+[x] middleware.ts updated — /admin added to protected paths
+[ ] Orders monitor — stub only, not built
+[x] Bug fix: all admin page components switched from createClient() to createAdminClient() — pages were returning empty data due to RLS blocking non-owner reads
 ```
 
 ---
 
-## Files To Create
+## Files Created
 
 ```
-src/app/admin/layout.tsx                        # Admin layout + role check
-src/app/admin/page.tsx                          # Overview dashboard
-src/app/admin/listings/page.tsx                 # Review queue
-src/app/admin/listings/[id]/page.tsx            # Review single listing
-src/app/admin/orders/page.tsx                   # All orders
-src/app/admin/disputes/page.tsx                 # Dispute queue
-src/app/admin/disputes/[id]/page.tsx            # Resolve dispute
-src/app/admin/users/page.tsx                    # User management
-src/app/admin/payouts/page.tsx                  # Payout management
-src/app/api/admin/listings/[id]/review/route.ts # Approve/reject listing
-src/app/api/admin/disputes/[id]/resolve/route.ts # Resolve dispute
-src/app/api/admin/payouts/[id]/trigger/route.ts  # Trigger payout
+src/app/admin/layout.tsx                              ✓ done
+src/app/admin/page.tsx                                ✓ done
+src/app/admin/listings/page.tsx                       ✓ done
+src/app/admin/listings/[id]/page.tsx                  ✓ done
+src/app/admin/listings/[id]/ReviewActions.tsx         ✓ done
+src/app/admin/disputes/page.tsx                       ✓ done
+src/app/admin/disputes/[id]/page.tsx                  ✓ done
+src/app/admin/disputes/[id]/ResolveActions.tsx        ✓ done
+src/app/admin/users/page.tsx                          ✓ done
+src/app/admin/users/[id]/page.tsx                     ✓ done
+src/app/admin/users/[id]/UserActions.tsx              ✓ done
+src/app/admin/orders/page.tsx                         stub only
+src/app/admin/payouts/page.tsx                        ✓ done
+src/app/admin/payouts/PayoutTrigger.tsx               ✓ done
+src/components/layout/AdminNav.tsx                    ✓ done
+src/app/api/admin/listings/[id]/review/route.ts       ✓ done
+src/app/api/admin/disputes/[id]/resolve/route.ts      ✓ done
+src/app/api/admin/users/[id]/route.ts                 ✓ done
+src/app/api/admin/payouts/[id]/trigger/route.ts       ✓ done
 ```
 
 ---
@@ -46,73 +69,102 @@ src/app/api/admin/payouts/[id]/trigger/route.ts  # Trigger payout
 |-------|-----------|-------|
 | listings | SELECT, UPDATE | Review queue, approve/reject |
 | listing_reviews | INSERT | Log every review action |
-| orders | SELECT, UPDATE | Monitor all orders |
+| orders | SELECT, UPDATE | Monitor orders, trigger payouts |
 | disputes | SELECT, UPDATE | Review and resolve |
 | users | SELECT, UPDATE | Manage accounts, scores |
-| payments | SELECT | Payment status |
+| payments | SELECT | Payment status (not yet built) |
 | notifications | INSERT | Send Telegram alerts |
 
 ---
 
-## Key Business Logic
+## Key Business Logic Implemented
 
 ### Route protection
-- Admin layout checks: if user.role !== 'admin' → redirect to homepage
-- Use Supabase server client to verify role server-side
-- Never trust client-side role checks alone
+- `middleware.ts` — `/admin` added to protected paths (redirects unauthenticated to login)
+- `admin/layout.tsx` — server-side role check via Supabase, redirects non-admins to `/`
+- All API routes double-check `role === 'admin'` independently
 
-### Listing review queue
-- Show all listings with status = 'pending', oldest first
-- Per listing show: all photos, condition, inclusions, ownership proof
-- 5-point manual checklist:
-  1. Photo quality and angles complete
-  2. Contact info visible in photos (phone, social, QR)
-  3. Condition grade matches photos
-  4. Declared inclusions visible in photos
-  5. Price sanity check
-- Actions: Approve → status = 'approved' | Reject → status = 'rejected'
-- On approve: send Telegram to seller with listing URL
-- On reject: send Telegram to seller with specific reason
-- Log action in listing_reviews table
+### Listing review
+- Queue: `status = 'pending'`, oldest first
+- 5-point checklist must be fully checked before Approve button enables
+- Approve → `status = 'approved'`, Reject → `status = 'rejected'` + `rejection_reason`
+- Every action logged in `listing_reviews` table
+- Telegram sent to seller on both outcomes
+- `floor_price` visible to admin (server-side only, excluded from buyer-facing APIs)
 
 ### Dispute resolution
-- Show all disputes with status = 'open' or 'under_review'
-- Show: buyer claim, evidence photos/video, order details
-- Resolution options:
-  - Full refund → refund buyer, no seller payout
-  - Partial refund → specify amount in paise
-  - Reject dispute → release escrow to seller
-- On resolution: update dispute status, trigger appropriate payout/refund
-- Update buyer_score or seller_score based on outcome
+- Resolution options: `full_refund` / `partial_refund` / `rejected`
+- Partial refund: input in ₹, stored internally as paise
+- Trust score adjustment: loser gets -5 (floored at 0)
+- Order status updated: `completed` (dispute rejected) or `refunded`
+- Telegram sent to both buyer and seller
 
 ### User management
-- View all users
-- See seller_score and buyer_score (internal only)
-- Suspend user: set is_active = false
-- Add strike: increment strike_count
-- Promote to admin: set role = 'admin'
+- Search by name, email, phone (`?q=` query param)
+- Actions: suspend / reactivate / add strike / promote to admin
+- Guards: cannot perform actions on own account, validates current state
+- Scores displayed with colour coding: green ≥80, amber ≥50, red <50
 
-### Payout management
-- Show all orders with status = 'completed' and payout_status = 'pending'
-- Trigger payout: send to seller UPI, update payout_status = 'paid'
-- Show payout history
+### Payouts
+- Queue: `status = 'completed'` + `payout_status = 'pending'`
+- Blocks trigger if seller has no UPI ID
+- Sets `processing` first to prevent double-trigger
+- V1: marks `paid` immediately (manual UPI transfer) with reference ID `PAY-XXXXXXXX-timestamp`
+- V2 slot: Razorpay Payouts API integration
+- Telegram sent to seller with amount, UPI ID, and reference
+
+---
+
+## Key Invariants — Never Break These
+
+- **Role check is always server-side** — layout.tsx + every API route independently verify `role === 'admin'`
+- **floor_price visible to admin** — it's excluded from buyer-facing APIs but admin needs it for price sanity check
+- **Payout double-trigger prevention** — API sets `payout_status = 'processing'` before updating to `paid`
+- **listing_reviews log is append-only** — never update or delete, only INSERT
+
+---
+
+## Dependencies On Other Features
+
+| What | Owner | Notes |
+|------|-------|-------|
+| `PATCH /api/listings/[id]` | Person 1 | Admin uses its own `/api/admin/listings/[id]/review` route — no overlap |
+| `src/lib/supabase/server.ts` | Person 1 | Used in all admin server components |
+| `src/lib/supabase/admin.ts` | Person 1 | Used in all admin API routes (bypasses RLS) |
+| `src/lib/telegram/index.ts` | Person 1 | Used for seller/buyer notifications |
+| `src/middleware.ts` | Person 1 | Added `/admin` to protected paths — coordinate before modifying |
+
+---
+
+## What Other Features Can Use From Here
+
+- `AdminNav` — `src/components/layout/AdminNav.tsx` — if admin gains more sections
+- Admin API pattern — role double-check in every route is the established pattern
 
 ---
 
 ## Next Session Starts Here
 
-Initialize this file when starting. First task:
-Build the admin layout at src/app/admin/layout.tsx.
-It must check if the logged-in user has role = 'admin' using
-Supabase server client. If not admin, redirect to '/'.
-Then build the listing review queue at src/app/admin/listings/page.tsx.
+Core admin panel is complete and verified working end-to-end with seller flow (listing submitted → appears in review queue → approve/reject works).
+
+Remaining work:
+1. Orders monitor — `src/app/admin/orders/page.tsx` — currently a stub
+   Build: list all orders with status filter, search by order ID or buyer name
+2. Wire up real Razorpay Payouts API in `src/app/api/admin/payouts/[id]/trigger/route.ts` (Person 4 dependency)
+3. Add `/admin` link to `Nav.tsx` for users with `role = 'admin'` (coordinate with Person 1)
+
+## Known Issues Fixed This Session
+
+- **RLS bug**: All admin page server components were using `createClient()` (anon key, RLS-bound) instead of `createAdminClient()` (service role). RLS policies only allow users to read their own listings/orders/disputes, so the entire admin panel was returning empty data. Fixed in commit `e0d1cb5` on `feature/admin-panel`, synced to dev.
 
 ---
 
 ## Decisions Made In This Feature
 
-- Admin panel is part of main repo — not a separate app
-- Role check happens server-side in layout.tsx — not middleware alone
-- Every approval/rejection logged in listing_reviews table
-- Dispute resolution updates user trust scores
-- Payout triggered manually by admin in V1 — automated in V2
+- Admin panel lives in main repo, not a separate app
+- Role check is server-side in layout.tsx AND in every API route — defence in depth
+- Admin has its own API routes (`/api/admin/*`) — never reuses seller/buyer routes
+- Listing review uses a separate `listing_reviews` log table — full audit trail
+- Dispute resolution adjusts trust scores immediately (-5 to loser)
+- Payouts are manual V1 — processing flag prevents double-trigger
+- Orders page is stubbed — not needed for core V1 admin flow
