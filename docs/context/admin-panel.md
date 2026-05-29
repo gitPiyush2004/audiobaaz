@@ -1,7 +1,7 @@
 # Admin Panel — Context File
 **Owner:** Person 3
 **Branch:** feature/admin-panel
-**Last updated:** 2026-05-29
+**Last updated:** 2026-05-29 (session 2)
 
 ---
 
@@ -32,6 +32,7 @@ Accessible only to users with role = 'admin'. Lives at /admin/*.
 [x] Trigger payout API — src/app/api/admin/payouts/[id]/trigger/route.ts
 [x] middleware.ts updated — /admin added to protected paths
 [ ] Orders monitor — stub only, not built
+[x] Bug fix: all admin page components switched from createClient() to createAdminClient() — pages were returning empty data due to RLS blocking non-owner reads
 ```
 
 ---
@@ -142,27 +143,19 @@ src/app/api/admin/payouts/[id]/trigger/route.ts       ✓ done
 
 ---
 
-## Known Issues (Owned By This Feature)
-
-- **`next build` lint phase fails on `dev` from this feature's code.**
-  Twelve `@typescript-eslint/no-explicit-any` errors and four
-  `@next/next/no-img-element` warnings across `src/app/admin/**` and
-  `src/app/api/admin/**`. Compilation passes; only lint fails. Detail and
-  exact file:line list in ENGINEERING.md "Project-Level Known Issues". This
-  belongs to Person 3 to fix in a small follow-up PR — replace `any` with
-  proper types for the dispute/payout payload shapes, and switch the four
-  raw `<img>` tags to `next/image` (or add a justified per-file disable if
-  unavoidable, with a comment explaining why).
-
----
-
 ## Next Session Starts Here
 
-Core admin panel is complete. Remaining work:
+Core admin panel is complete and verified working end-to-end with seller flow (listing submitted → appears in review queue → approve/reject works).
+
+Remaining work:
 1. Orders monitor — `src/app/admin/orders/page.tsx` — currently a stub
    Build: list all orders with status filter, search by order ID or buyer name
 2. Wire up real Razorpay Payouts API in `src/app/api/admin/payouts/[id]/trigger/route.ts` (Person 4 dependency)
 3. Add `/admin` link to `Nav.tsx` for users with `role = 'admin'` (coordinate with Person 1)
+
+## Known Issues Fixed This Session
+
+- **RLS bug**: All admin page server components were using `createClient()` (anon key, RLS-bound) instead of `createAdminClient()` (service role). RLS policies only allow users to read their own listings/orders/disputes, so the entire admin panel was returning empty data. Fixed in commit `e0d1cb5` on `feature/admin-panel`, synced to dev.
 
 ---
 
