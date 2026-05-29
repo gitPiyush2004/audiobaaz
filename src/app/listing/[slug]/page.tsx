@@ -141,7 +141,9 @@ export default async function ListingPage({ params }: ListingPageProps) {
             ) : (
               <>
                 <Link
-                  href="/login"
+                  href={user
+                    ? `/buy/checkout/${listing.id}`
+                    : `/login?redirect=/buy/checkout/${listing.id}`}
                   className="inline-flex h-11 w-full items-center justify-center rounded-lg bg-accent text-sm font-semibold text-black transition-all hover:bg-accent-hover active:scale-[0.99]"
                 >
                   Buy now
