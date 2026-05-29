@@ -189,23 +189,28 @@ function OfferCard({ row, now }: OfferCardProps) {
         </div>
 
         {(canPay || canCancel) && (
-          <div className="mt-1 flex flex-wrap gap-2">
+          <div className="mt-1 flex flex-wrap items-center gap-2">
             {canPay && (
-              <Link
-                href="/login"
-                className="inline-flex h-8 items-center rounded-md bg-accent px-3 text-xs font-semibold text-black transition-all hover:bg-accent-hover active:scale-[0.98]"
+              <button
+                type="button"
+                disabled
+                title="Available in next milestone"
+                className="inline-flex h-8 cursor-not-allowed items-center rounded-md bg-accent/40 px-3 text-xs font-semibold text-black/60"
               >
                 Pay now
-              </Link>
+              </button>
             )}
             {canCancel && (
-              <Link
-                href="/login"
-                className="inline-flex h-8 items-center rounded-md border border-border bg-surface px-3 text-xs font-medium text-muted-foreground transition-colors hover:bg-surface-2 hover:text-foreground"
+              <button
+                type="button"
+                disabled
+                title="Available in next milestone"
+                className="inline-flex h-8 cursor-not-allowed items-center rounded-md border border-border bg-surface px-3 text-xs font-medium text-dim-foreground"
               >
                 Cancel offer
-              </Link>
+              </button>
             )}
+            <span className="text-[11px] text-dim-foreground">Available in next milestone</span>
           </div>
         )}
       </div>

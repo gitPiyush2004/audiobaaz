@@ -150,23 +150,32 @@ export default async function OfferDetailPage({ params }: OfferDetailPageProps) 
 
       {/* Actions */}
       {(canPay || canCancel) && (
-        <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-          {canCancel && (
-            <Link
-              href="/login"
-              className="inline-flex h-11 items-center justify-center rounded-lg border border-border bg-surface px-5 text-sm font-medium text-muted-foreground transition-colors hover:bg-surface-2 hover:text-foreground"
-            >
-              Cancel offer
-            </Link>
-          )}
-          {canPay && (
-            <Link
-              href="/login"
-              className="inline-flex h-11 items-center justify-center rounded-lg bg-accent px-6 text-sm font-semibold text-black transition-all hover:bg-accent-hover active:scale-[0.99]"
-            >
-              Pay now
-            </Link>
-          )}
+        <div className="mt-6 flex flex-col gap-3">
+          <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+            {canCancel && (
+              <button
+                type="button"
+                disabled
+                title="Available in next milestone"
+                className="inline-flex h-11 cursor-not-allowed items-center justify-center rounded-lg border border-border bg-surface px-5 text-sm font-medium text-dim-foreground"
+              >
+                Cancel offer
+              </button>
+            )}
+            {canPay && (
+              <button
+                type="button"
+                disabled
+                title="Available in next milestone"
+                className="inline-flex h-11 cursor-not-allowed items-center justify-center rounded-lg bg-accent/40 px-6 text-sm font-semibold text-black/60"
+              >
+                Pay now
+              </button>
+            )}
+          </div>
+          <p className="text-right text-[11px] text-dim-foreground">
+            Payment and cancellation arrive in the next milestone.
+          </p>
         </div>
       )}
     </div>
