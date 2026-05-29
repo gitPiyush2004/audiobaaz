@@ -30,7 +30,10 @@ single listing page, checkout, order dashboard, watchlist, saved searches.
 [ ] Real offers persistence — replace mock createOfferDraft / getMyOffers / getOfferDetail with Supabase
 [ ] Buyer-side offer cancel — RLS policy + API route (coordinate with Person 1 first)
 [ ] Real Pay now flow — checkout / Razorpay (Person 4 dependency)
-[x] Nav updated (Person 1) — profile avatar dropdown replaces text links; My Orders section shows dynamic offer count from DB (buyer_id query); no hardcoded links
+[x] Nav updated (Person 1) — profile avatar dropdown; My Orders counts both offers + orders tables; links to /orders/purchases
+[x] Mock checkout flow (Person 1) — /buy/checkout/[listingId] collects delivery address (pre-filled from profile); POST /api/checkout/mock skips Razorpay, creates order (escrow_held) + mock payment, marks listing sold, Telegrams seller
+[x] /orders/purchases — lists all buy-now orders with status + links to order detail
+[x] /orders/purchase/[orderId] — order confirmation + detail page
 [ ] Watchlist, saved searches, disputes, orders dashboard, ratings — defer
 [ ] /buy/checkout/[listingId], /buy/confirm/[orderId] — defer until persistence + Person 4's payments are wired
 ```

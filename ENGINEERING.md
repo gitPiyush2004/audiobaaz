@@ -202,7 +202,7 @@ These are final. Do not suggest alternatives.
 | Person | Tool | Feature | Status |
 |--------|------|---------|--------|
 | Person 1 | AI coding tool | Seller flow + dashboard | COMPLETE — onboarding, nav profile menu, rejected listings tab, resubmit flow all done. See docs/context/seller-flow.md |
-| Person 2 | Kiro | Buyer flow + listing page | IN PROGRESS — browse + listing detail now on real Supabase data. Offers still mock. Persistence (real `offers` table + RLS) is the next slice. See docs/context/buyer-flow.md |
+| Person 2 | Kiro | Buyer flow + listing page | IN PROGRESS — browse + listing detail on real Supabase. Mock checkout flow live (buy now → checkout → order confirmed). Offers persistence still mock. See docs/context/buyer-flow.md |
 | Person 3 | - | Admin panel | IN PROGRESS — core panel complete (listings, disputes, users, payouts), orders stub pending. See docs/context/admin-panel.md |
 | Person 4 | AI coding tool | Payments + shipping | IN PROGRESS — architecture locked, persistence pending, no code yet. See docs/context/payments-shipping.md |
 

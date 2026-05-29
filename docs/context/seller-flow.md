@@ -77,6 +77,8 @@ src/app/(main)/dashboard/payouts/page.tsx                  ✓ done
 src/app/(main)/dashboard/account/page.tsx                  ✓ done
 src/app/(auth)/onboarding/page.tsx                         ✓ done
 src/components/layout/ProfileMenu.tsx                      ✓ done
+src/app/api/dev/sign-in/route.ts                           ✓ done (dev only, blocked in production)
+src/app/auth/callback/route.ts                             ✓ updated (handles PKCE code + token_hash flows)
 ```
 
 ---
@@ -202,7 +204,8 @@ Remaining items (V1.5 / nice-to-have, not blocking launch):
 1. Wire TELEGRAM_BOT_TOKEN once the bot is set up — the lib and calls are in place, just needs the token
 2. Populate the `products` table — product search degrades gracefully, but needs data to be useful
 3. Profile photo upload — onboarding currently uses initials avatar; Supabase Storage `avatars` bucket needed
-4. Nav offer count currently queries all-time offers; could filter to active-only (pending/accepted) in future
+4. Nav order count queries all-time offers + orders; could filter to active-only in future
+5. Mock checkout (`POST /api/checkout/mock`) is a temporary bypass — replace with real Razorpay flow when Person 4's payments are ready
 
 ---
 
