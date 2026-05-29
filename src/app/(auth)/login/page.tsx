@@ -38,6 +38,20 @@ function LoginForm() {
     setLoading(false);
   }
 
+  async function devSignIn() {
+    if (!email) { setError('Enter an email first'); return; }
+    setLoading(true);
+    setError(null);
+    const res  = await fetch('/api/dev/sign-in', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ email, next: redirect }),
+    });
+    const json = await res.json();
+    if (json.error) { setError(json.error); setLoading(false); return; }
+    window.location.href = json.url;
+  }
+
   return (
     <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center px-4">
       <div className="w-full max-w-sm">
@@ -99,6 +113,17 @@ function LoginForm() {
             >
               {loading ? 'Sending…' : 'Send sign-in link'}
             </button>
+
+            {process.env.NODE_ENV !== 'production' && (
+              <button
+                type="button"
+                onClick={devSignIn}
+                disabled={loading || !email}
+                className="inline-flex h-11 w-full items-center justify-center rounded-lg border border-dashed border-warning/40 bg-warning/5 text-sm font-medium text-warning transition-all hover:bg-warning/10 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                ⚡ Dev: sign in without email
+              </button>
+            )}
           </form>
         ) : (
           <button
