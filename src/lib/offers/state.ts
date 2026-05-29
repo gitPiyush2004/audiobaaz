@@ -40,6 +40,43 @@ import type { OfferStatus } from "@/lib/offers/types";
 // ─────────────────────────────────────────────────────────────────────────
 
 /**
+ * ⚠ Open marketplace questions affecting this state machine.
+ *
+ * Recorded, NOT answered. Solving these before there is enough usage to
+ * understand them is the bigger mistake. When a real answer arrives,
+ * resolve the question here AND update the transition table accordingly —
+ * the table below is the single source of truth, and these notes are the
+ * reasons it is shaped the way it is.
+ *
+ * 1. Listing visibility while an offer is `accepted`.
+ *    Current assumption: the listing remains `approved` and parallel
+ *    negotiations continue until SOMEONE pays. ENGINEERING.md "Locked Product
+ *    Decisions" says: parallel negotiations allowed, first to pay wins,
+ *    no "sale pending" indicator on the listing page. The state machine
+ *    has no `accepted → reserved` notion because reservation is a listing
+ *    concept, not an offer one.
+ *
+ * 2. An `accepted` offer that loses because another buyer paid first.
+ *    Current state machine has NO dedicated terminal status for this.
+ *    The two leading candidates:
+ *      a) Resolve to `expired` (collapsed with payment-window timeout).
+ *         Buyer-facing message changes: "another buyer purchased this".
+ *      b) Add a separate terminal status (e.g. `lost`) so reporting and
+ *         analytics can distinguish "buyer didn't pay" from "buyer was
+ *         outraced by another buyer".
+ *    Decide before the offers table is persisted; DB migrations on
+ *    terminal-status enums are painful.
+ *
+ * 3. The single `expired` status today represents two distinct events:
+ *    - From `pending`: 24h passed with no seller response.
+ *    - From `accepted`: 24h passed with no buyer payment.
+ *    Verify (with usage data, not by guessing) whether buyer/seller need
+ *    to distinguish these on the dashboard. If yes, split the terminal
+ *    status; if no, keep collapsed and rely on `system_expire_*` events
+ *    for analytics.
+ */
+
+/**
  * Named events that can drive a transition. The actor (buyer / seller /
  * system) is encoded in the event name so call sites are explicit and the
  * state machine can decline transitions that come from the wrong actor.
