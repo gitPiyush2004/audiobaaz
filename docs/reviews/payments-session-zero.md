@@ -1644,16 +1644,49 @@ recommended resolution is the most defensible default, not a decision.
 - Code (Razorpay branch + mock checkout + buyer-flow timeline component): aligned with schema.
 
 **Severity:** Critical.
-**Status:** UNRESOLVED.
+**Status:** **RESOLVED 2026-05-30 — Candidate B (schema model)** with
+six product sub-decisions. Locked V1 contract recorded in
+`docs/context/payments-shipping.md` under "Order state machine —
+locked V1 contract (OQ#1 resolved)". Summary:
+
+> `escrow_held` means: Audiobaaz has successfully captured the buyer's
+> payment and is holding those funds pending delivery, inspection,
+> dispute resolution (if any), and final settlement.
+
+Locked V1 lifecycle:
+```
+payment_pending → escrow_held → seller_confirmed → shipped → delivered
+                                                            → inspection → completed
+```
+
+Branches: `payment_failed` (recoverable), `cancelled`, `disputed →
+completed | refunded | partially_refunded`.
+
+Sub-decisions (full reasoning in `payments-shipping.md`):
+1. Drop `created` — first state is `payment_pending`.
+2. `payment_failed` is non-terminal recoverable.
+3. Keep schema's three shipping states (`seller_confirmed → shipped →
+   delivered`); Shiprocket-event granularity deferred to V2.
+4. Money-movement names on `orders.status`; verdict on
+   `disputes.resolution`.
+5. No `escrow_released` state; payout tracked on
+   `orders.payout_status`.
+6. Listing remains `approved` until capture; flips to `sold`
+   atomically with `escrow_held`. Drop `reserve_listing` trigger.
+7. `checkout_locks` table is the only first-line race defence
+   (promoted from "nice-to-have" to required).
+
 **Owner:** Product + Person 1 + Person 4 (joint).
 
-**Recommended resolution path:**
-- 30-minute joint review of the two candidate target contracts in §4.4.
-- Choose Candidate A (doc model) or Candidate B (schema model).
-- Amend `payments-shipping.md` and `supabase/schema.sql` to converge.
-- Coordinate timeline component change with Person 2.
+This resolution promotes OQ#4 (one-paid-offer invariant) and OQ#5
+(atomic RPC) to safety-critical specifically *because* of Decision 6:
+race correctness now lives entirely in the DB invariant + atomic
+transaction, not in application-layer reservations.
 
-Either candidate is internally coherent. The decision is product-strategic.
+§4.4 of this audit ("Candidate B — Schema model") becomes the target
+contract, amended such that `listings.status` flips `approved → sold`
+atomically with `escrow_held` (was: at order creation under the
+`reserve_listing` trigger).
 
 ### Open Question #2 — `lost` enum and `system_listing_sold` cascade
 
@@ -1818,7 +1851,7 @@ Phase: cleanup, can be done in parallel with Phase 1.
 
 | OQ | Severity | Owner | Default if no decision is made |
 |---|---|---|---|
-| 1 | Critical | Joint | Block all subsequent phases (no default acceptable). |
+| 1 | Critical | Joint | **RESOLVED 2026-05-30 — Candidate B with 6 sub-decisions; see OQ#1 entry above and `payments-shipping.md`.** |
 | 2 | High | P1 + P4 | Implement as locked in doc. |
 | 3 | Critical | P1 | Implement as locked in doc. |
 | 4 | Critical | P1 | Default to `listings.sold_offer_id` mechanism. |
@@ -1834,7 +1867,7 @@ Phase: cleanup, can be done in parallel with Phase 1.
 
 ## 10. Final Readiness Verdict
 
-### Architecture Status: **Partially Ready**
+### Architecture Status: **Partially Ready** (OQ#1 resolved; remaining Critical OQs unresolved)
 
 Strengthened relative to a hypothetical pre-implementation start:
 - Buyer purchase flow exists end-to-end (mock-backed).
@@ -1842,27 +1875,38 @@ Strengthened relative to a hypothetical pre-implementation start:
 - Dispute UI exists.
 - Razorpay/Shiprocket integration code exists on a feature branch.
 - Database schema exists and is applied.
+- **OQ#1 (lifecycle / `escrow_held` semantics) RESOLVED 2026-05-30**
+  with the locked V1 contract documented in `payments-shipping.md`.
+  The single most consequential ambiguity is closed.
 
 Still blocking:
-- **Lifecycle conflict unresolved (OQ#1).** The single most consequential
-  ambiguity. Two coherent alternative architectures both have evidence
-  in the codebase. No resolution can be defended without a decision.
+- ~~**Lifecycle conflict unresolved (OQ#1).**~~ ✅ Resolved.
 - **Missing event tables (OQ#3).** No audit trail exists for any state
   transition. Replay, debugging, analytics, and dispute reconstruction
   all depend on these tables.
 - **Missing webhook event store (OQ#3).** Idempotency by current-state-
   check works for one event type; doesn't generalize.
 - **Missing winner-selection invariant (OQ#4).** Two captures for one
-  listing produces two paid offers today.
+  listing produces two paid offers today. Now safety-critical because
+  Decision 6 (listing stays available until capture) means the DB
+  invariant is the only correctness guarantee against simultaneous
+  captures.
 - **Missing atomic transaction primitive (OQ#5).** Crashes mid-cascade
-  produce irrecoverable states.
+  produce irrecoverable states. Now safety-critical for the same
+  reason.
 - **Missing race-loser refund flow (OQ#7).** Captured-but-lost buyers
-  have no automated path to refund.
-- **Schema contract not yet accepted (this document).** Person 1 has
-  not reviewed the contract in §4 against their understanding.
+  have no automated path to refund. Promoted in importance because the
+  resolved OQ#1 contract makes captures-then-refunds a normal path,
+  not an exception.
+- **Missing `checkout_locks` table (OQ#6, promoted by OQ#1
+  resolution).** Soft lock before Razorpay order creation; first-line
+  race defence under the locked V1 contract.
+- **Schema contract not yet accepted (this document, §4).** Person 1
+  has not reviewed the contract in §4 against their understanding.
+  §4.4 now points at Candidate B as the target.
 - **Doc/schema/implementation divergence (§3).** Eleven recorded
-  conflicts, all blocking implementation that wants to satisfy the
-  locked architecture.
+  conflicts; the §3.2/§3.3/§3.4 lifecycle conflicts collapse with the
+  resolved OQ#1, but the remaining ones still block.
 
 ### Why not "Architecture Ready, Implementation Not Ready"
 
@@ -1883,9 +1927,24 @@ exists and most tables are correct. This is much further along than
 
 ### Path to "Implementation Ready"
 
-1. Joint meeting on OQ#1. Choose lifecycle. Document decision in this report and amend `payments-shipping.md` + `supabase/schema.sql` plan.
-2. Person 1 PR landing all Phase 1 schema changes (migrations or amended `schema.sql`).
-3. Schema Contract (§4) accepted in writing by Person 1 and Person 4.
+1. ~~Joint meeting on OQ#1. Choose lifecycle.~~ **Done 2026-05-30 —
+   Candidate B with six sub-decisions. See OQ#1 entry in §9 and the
+   locked V1 contract in `payments-shipping.md`.**
+2. Person 1 PR landing all Phase 1 schema changes (migrations or
+   amended `schema.sql`) — now scoped specifically by the resolved
+   OQ#1 contract:
+   - `orders.status` enum amendment to the locked V1 lifecycle.
+   - `offers.status` enum: add `lost`.
+   - One-paid-offer invariant (default mechanism:
+     `listings.sold_offer_id UUID UNIQUE NULLABLE`).
+   - `finalize_winning_payment(...)` RPC committing `escrow_held` +
+     `listings.status = 'sold'` + offer transitions atomically.
+   - `webhook_events`, `offer_events`, `order_events`,
+     `checkout_locks` tables.
+   - RLS policies on the audit tables.
+   - Drop `reserve_listing` trigger.
+3. Schema Contract (§4) accepted in writing by Person 1 and Person 4
+   as amended by the OQ#1 resolution.
 4. Cleanup of mock-checkout `payments` rows.
 5. Razorpay integration doc rewritten (OQ#11).
 
