@@ -1,9 +1,14 @@
 /**
- * Mock offer fixtures shaped as `OfferSummary` — the offers domain object,
- * not the dashboard projection. The dashboard's `getMyOffers()` access
- * function reads these and projects them into `BuyerOfferRow`.
+ * Mock offer fixtures. Stored shape is `MockOffer` — `OfferSummary` plus
+ * the detail-only fields (`message`, `listing_was_negotiable`) so a single
+ * fixture array drives both the dashboard and the offer detail page.
  *
- * Designed to exercise every branch the dashboard renders:
+ * The dashboard's `getMyOffers()` reads only the OfferSummary subset and
+ * projects to `BuyerOfferRow`. The detail page's `getOfferDetail()` reads
+ * the full row and projects to `OfferDetailData`. Each access function is
+ * responsible for narrowing — fixtures don't enforce.
+ *
+ * Designed to exercise every branch:
  *   - one `pending` close to the seller-response deadline
  *   - one `pending` with plenty of time left
  *   - one `accepted` with hours remaining on the buyer-payment deadline
@@ -13,14 +18,36 @@
  *   - one `cancelled`    (terminal — buyer retracted)
  *   - one without `listing_thumbnail` so the row's no-photo path renders
  *   - one without `listing_slug` so id-based fallback links exercise
+ *   - one with `message` populated so the detail page exercises that field
+ *   - one with `listing_was_negotiable: false` so the detail page
+ *     exercises the "seller doesn't usually accept offers" footnote
  *
  * Timestamps are computed relative to `MOCK_NOW` so the "time remaining"
- * displays in the dashboard are always realistic regardless of when dev
- * is running. Replace the implementation in `src/lib/offers/dashboard.ts`
- * — not the call sites — when the offers table comes online.
+ * displays are always realistic regardless of when dev is running.
+ * Replace the implementations in `src/lib/offers/dashboard.ts` and
+ * `src/lib/offers/queries.ts` — not the call sites — when the offers
+ * table comes online.
  */
 
 import type { OfferSummary } from "@/lib/offers/types";
+
+/**
+ * Storage shape for the mock array. Carries the union of fields used by
+ * any offers access function. Each access function projects down to its
+ * own view-model.
+ */
+export interface MockOffer extends OfferSummary {
+  /** Optional buyer message — surfaces on `OfferDetailData`. */
+  message?: string;
+  /**
+   * Snapshot of the listing's `is_negotiable` flag at the time the offer
+   * was placed. Listings can be flipped between negotiable and fixed-
+   * price by the seller; we store the value at offer-creation time so
+   * the buyer's history reflects the listing as it was when they acted.
+   * Surfaces on `OfferDetailData.listing_was_negotiable`.
+   */
+  listing_was_negotiable: boolean;
+}
 
 /**
  * Anchor "now" for fixture timestamps. Slightly in the past so that
@@ -33,7 +60,7 @@ const HOUR = 60 * 60 * 1000;
 const t = (offsetMs: number): string =>
   new Date(MOCK_NOW + offsetMs).toISOString();
 
-export const mockOffers: OfferSummary[] = [
+export const mockOffers: MockOffer[] = [
   // pending — close to seller-response deadline (3 hours left)
   {
     id:                "mock-offer-aa11bb22",
@@ -46,6 +73,8 @@ export const mockOffers: OfferSummary[] = [
     status:            "pending",
     created_at:        t(-21 * HOUR),
     expires_at:        t(3 * HOUR),
+    message:           "Hi! Picking up my first set of mid-range IEMs and these are top of my list. Can do ₹19k cash if you're flexible.",
+    listing_was_negotiable: true,
   },
   // pending — fresh, ~22 hours remaining
   {
@@ -59,6 +88,7 @@ export const mockOffers: OfferSummary[] = [
     status:            "pending",
     created_at:        t(-2 * HOUR),
     expires_at:        t(22 * HOUR),
+    listing_was_negotiable: true,
   },
   // accepted — buyer must pay; ~6 hours of payment window left
   {
@@ -72,6 +102,8 @@ export const mockOffers: OfferSummary[] = [
     status:            "accepted",
     created_at:        t(-26 * HOUR),
     expires_at:        t(6 * HOUR),
+    message:           "Thanks for considering. Pads look fine in the photos — works for me at this price.",
+    listing_was_negotiable: true,
   },
   // paid — terminal success
   {
@@ -84,6 +116,9 @@ export const mockOffers: OfferSummary[] = [
     asking_price:      1690000,
     status:            "paid",
     created_at:        t(-72 * HOUR),
+    // Realistic edge case: the buyer paid asking on what was a non-negotiable
+    // listing — they used Buy now, but it still creates an offer record.
+    listing_was_negotiable: false,
   },
   // declined — seller said no (no thumbnail in the fixture, exercises fallback)
   {
@@ -95,6 +130,7 @@ export const mockOffers: OfferSummary[] = [
     asking_price:      1100000, // ₹11,000
     status:            "declined",
     created_at:        t(-48 * HOUR),
+    listing_was_negotiable: true,
   },
   // expired — pending timed out (24h no seller response)
   {
@@ -107,6 +143,7 @@ export const mockOffers: OfferSummary[] = [
     asking_price:      2400000, // ₹24,000
     status:            "expired",
     created_at:        t(-50 * HOUR),
+    listing_was_negotiable: true,
   },
   // cancelled — buyer retracted before acceptance
   // (no slug — exercises id-fallback link)
@@ -119,5 +156,6 @@ export const mockOffers: OfferSummary[] = [
     asking_price:      320000,  // ₹3,200
     status:            "cancelled",
     created_at:        t(-30 * HOUR),
+    listing_was_negotiable: true,
   },
 ];
