@@ -1373,7 +1373,7 @@ Each writes to `order_events` and (for state-changing events)
 
 | # | Risk | Impact | Likelihood | Mitigation |
 |---|---|---|---|---|
-| H1 | Two captures for one listing → double payment from buyers | Direct money loss; manual refund effort; reputation | High (no DB invariant exists) | OQ#4 + OQ#7. DB invariant + race-loser refund flow. |
+| H1 | Two captures for one listing → double payment from buyers | Captures cannot be prevented at the gateway — Razorpay can process two payments for the same listing. The risk is that we **fail to refund the loser**, leaving the buyer charged with no marketplace state. | High under the locked V1 contract — listing stays available until capture, so simultaneous captures are an *expected* (not exceptional) outcome. | OQ#4 (lifetime invariant — guarantees one winner) + OQ#5 (atomic RPC — guarantees consistent state) + OQ#7 (synchronous race-loser refund — guarantees loser gets their money back). The combination is what makes the marketplace safe; no single one is sufficient. |
 | H2 | Partial winner cascade → orphan listing or duplicate state | Hard-to-recover state; manual ops; data corruption | Medium (any crash mid-handler) | OQ#5. Atomic RPC. |
 | H3 | Loser offers stuck in `accepted` forever | Buyer believes offer is live; supports complaints | Certain (no cascade implemented) | OQ#2. `system_listing_sold` cascade. |
 | H4 | Webhook replay re-processes captured payment | Possible double-write to listings/orders | Medium (Razorpay does retry) | OQ#8. `webhook_events` table. |
@@ -1721,18 +1721,39 @@ product disagreement expected; this is execution.
 - Schema: not present.
 - Implementation: relies on application-layer state checks only.
 
-**Severity:** Critical.
-**Status:** UNRESOLVED — locked as required, mechanism not chosen.
+**Severity:** Critical. **Promoted to Phase 1 priority #1** following
+the OQ#1 resolution: with the listing staying available until capture,
+race correctness lives entirely in this invariant.
+
+**Status:** UNRESOLVED — locked as required, mechanism not yet
+implemented.
 **Owner:** Person 1.
 
-**Recommended resolution:** Choose between:
-1. Unique partial index on `offers WHERE status = 'paid'` keyed on `listing_id`.
-2. `listings.sold_offer_id UUID UNIQUE NULLABLE REFERENCES offers(id)`.
+**Refined invariant (post-OQ#1 resolution):** lifetime, not
+instant-of-capture.
 
-Both satisfy the invariant. Option 2 is slightly easier to query
-("what was the winning offer for this listing?") at the cost of one
-column. Option 1 is more idiomatic Postgres. Recommendation: **Option 2**
-unless Person 1 has a strong preference otherwise.
+> For any given listing, at most one row in `orders` may ever have
+> `status` in
+> `{escrow_held, seller_confirmed, shipped, delivered, inspection,
+> completed, disputed, refunded, partially_refunded}`.
+
+The complement (`payment_pending`, `payment_failed`, `cancelled`) is
+the set of states that have not claimed the listing. Once a listing
+has had a winner, no second order may ever progress past
+`payment_pending` for that listing — regardless of what subsequently
+happens to the winner (delivery, dispute, refund).
+
+**Recommended resolution:** `listings.sold_offer_id UUID UNIQUE
+NULLABLE REFERENCES offers(id)`, set once inside the atomic RPC at
+the moment of `escrow_held`, never unset. The unique constraint
+enforces lifetime exclusivity regardless of what state the winning
+order moves to afterward.
+
+The audit's earlier Option 1 (unique partial index keyed on
+`offers.status = 'paid'`) does not by itself cover the lineage
+property — it would need to be paired with an order-side constraint
+covering the winning-lineage status set. `listings.sold_offer_id` is
+strictly cleaner under the locked V1 contract.
 
 ### Open Question #5 — Atomic transaction primitive
 
@@ -1930,19 +1951,24 @@ exists and most tables are correct. This is much further along than
 1. ~~Joint meeting on OQ#1. Choose lifecycle.~~ **Done 2026-05-30 —
    Candidate B with six sub-decisions. See OQ#1 entry in §9 and the
    locked V1 contract in `payments-shipping.md`.**
-2. Person 1 PR landing all Phase 1 schema changes (migrations or
-   amended `schema.sql`) — now scoped specifically by the resolved
-   OQ#1 contract:
-   - `orders.status` enum amendment to the locked V1 lifecycle.
-   - `offers.status` enum: add `lost`.
-   - One-paid-offer invariant (default mechanism:
-     `listings.sold_offer_id UUID UNIQUE NULLABLE`).
-   - `finalize_winning_payment(...)` RPC committing `escrow_held` +
-     `listings.status = 'sold'` + offer transitions atomically.
-   - `webhook_events`, `offer_events`, `order_events`,
-     `checkout_locks` tables.
-   - RLS policies on the audit tables.
-   - Drop `reserve_listing` trigger.
+2. Person 1 PR landing all Phase 1 schema changes in this priority
+   order (recorded 2026-05-30 — drives by safety-critical first):
+   - **Priority 1 — OQ#4 lifetime invariant.** Default mechanism:
+     `listings.sold_offer_id UUID UNIQUE NULLABLE REFERENCES offers(id)`.
+     Without this the entire model is unsafe.
+   - **Priority 2 — OQ#5 atomic `finalize_winning_payment(...)`
+     RPC.** Without this a crash mid-cascade is irrecoverable.
+   - **Priority 3 — OQ#6 `checkout_locks` table.** Optimisation,
+     not correctness; reduces the rate of loser refunds.
+   - **Priority 4 — OQ#7 race-loser refund flow.** Synchronous
+     refund call inside the webhook handler when the cascade fails.
+     Normal business path under the locked V1 contract, not an
+     exception.
+   - Plus the audit-table set (`offer_events`, `order_events`,
+     `webhook_events`) and RLS policies (audit §4.8–4.10).
+   - Plus `orders.status` and `offers.status` enum amendments
+     (locked V1 contract + `lost`).
+   - Plus dropping the `reserve_listing` trigger.
 3. Schema Contract (§4) accepted in writing by Person 1 and Person 4
    as amended by the OQ#1 resolution.
 4. Cleanup of mock-checkout `payments` rows.

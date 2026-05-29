@@ -249,6 +249,66 @@ The seven sub-decisions taken with OQ#1:
    simultaneous-capture window; the DB invariant (Hard Prerequisite #3)
    and atomic RPC (#4) are what guarantee correctness.
 
+### Trust boundaries — what the invariant does and does not guarantee
+
+The locked V1 contract creates a clear separation between two systems
+of record. Confusing them is the fastest way to ship a refund-handling
+bug.
+
+**Razorpay is the system of record for "did money move."** Audiobaaz
+has zero authority to prevent two captures from happening at the
+gateway. Two buyers can press "Pay" at the same instant; Razorpay can
+process both. The DB invariant + the atomic RPC do **not** prevent
+this — they cannot. They live downstream of the gateway.
+
+**Audiobaaz is the system of record for "who owns the listing."** The
+DB invariant + atomic RPC guarantee:
+
+> Two captures may occur. Only one may win the marketplace state.
+> The other is refunded automatically.
+
+This is exactly why the race-loser refund (Hard Prerequisite #9) is a
+**normal business path** under the locked V1 contract, not an
+exception. Buyer-facing copy must read "another buyer completed
+payment first; your refund is on the way," not "payment failed."
+
+Anywhere code or documentation says or implies "the invariant prevents
+double-charge," that is wrong. The invariant prevents double-*winning*.
+The double-charge is impossible to prevent at the gateway level; we
+correct it after the fact via refund.
+
+### The lifetime invariant
+
+The invariant must cover the entire winning-order lineage, not just
+the `escrow_held` instant. Once a listing has had a winning capture,
+it has been sold once for all time — no other order may ever progress
+past `payment_pending` for that listing, regardless of what subsequently
+happens to the winner (delivery, dispute, refund).
+
+> **Invariant:** For any given listing, at most one row in `orders`
+> may ever have `status` in
+> `{escrow_held, seller_confirmed, shipped, delivered, inspection,
+> completed, disputed, refunded, partially_refunded}`.
+>
+> The complement (`payment_pending`, `payment_failed`, `cancelled`)
+> is the set of states that have not claimed the listing. Every other
+> state has.
+
+This is wider than "two `escrow_held` rows are forbidden." It covers
+the case where the winner has already moved on (e.g. to `refunded`
+after a buyer-favourable dispute) — the listing is still sold; no
+second order may exist with any winning-lineage status.
+
+The default OQ#4 mechanism (`listings.sold_offer_id UUID UNIQUE NULLABLE
+REFERENCES offers(id)`) satisfies this naturally: it is set once
+inside the atomic RPC at the moment of `escrow_held` and never
+unset, so the unique constraint enforces lifetime exclusivity
+regardless of what state the winning order moves to afterward. The
+alternative mechanism (unique partial index keyed on
+`offers.status = 'paid'`) would require pairing with an
+order-side constraint to cover the same lifetime — which is why
+`listings.sold_offer_id` is the recommended default.
+
 `escrow_held` is a distinct state from `delivered` and from
 `completed`. Delivery means the courier dropped the package; the 48h
 inspection window then runs. Releasing payout too eagerly on
@@ -316,13 +376,13 @@ decisions cross-cut.
 |---|------|-------|-------|
 | 1 | Offer enum lock (seven values incl. `lost`) | Product + Person 1 | Decision in this doc; migration owned by Person 1 |
 | 2 | Order state machine lock (states + branches) | Product + Person 4 | **RESOLVED 2026-05-30 — see "Order state machine — locked V1 contract (OQ#1 resolved)" below.** Schema migration items: drop `seller_must_ship_by` from a Razorpay-driven assumption, drop `reserve_listing` trigger, add `cancelled` terminal, no `escrow_released` state |
-| 3 | DB invariant: one paid offer per listing | Person 1 | Default mechanism: `listings.sold_offer_id UUID UNIQUE NULLABLE REFERENCES offers(id)`; alternative: unique partial index on `offers WHERE status='paid'`. Both satisfy the invariant — see audit §9 OQ#4 |
-| 4 | Atomic transaction primitive covering winner cascade | Person 1 | `finalize_winning_payment(...)` RPC per audit §4.7; commits offers / orders / listings / offer_events / order_events / webhook_events together or rolls back |
+| 3 | DB invariant: at-most-one winning-lineage order per listing | Person 1 | **Lifetime invariant** — at most one row in `orders` per listing may ever have `status` in `{escrow_held, seller_confirmed, shipped, delivered, inspection, completed, disputed, refunded, partially_refunded}`. Default mechanism: `listings.sold_offer_id UUID UNIQUE NULLABLE REFERENCES offers(id)`, set once inside the atomic RPC at `escrow_held`, never unset. Alternative (unique partial index on `offers.status='paid'`) requires a paired order-side constraint to cover the lineage. See "Trust boundaries" + "The lifetime invariant" sections above. **Phase 1 priority: 1 (highest).** |
+| 4 | Atomic transaction primitive covering winner cascade | Person 1 | `finalize_winning_payment(...)` RPC per audit §4.7; commits offers / orders / listings / offer_events / order_events / webhook_events together or rolls back. Without this, a crash mid-cascade leaves the marketplace in a state with no clean recovery — worse than a duplicate capture. **Phase 1 priority: 2.** |
 | 5 | `webhook_events` table (idempotency by provider event id) | Person 1 | Shared across Razorpay, Shiprocket, future providers |
 | 6 | `offer_events` table (offer-domain audit) | Person 1 | event_name, actor, from_status, to_status, timestamp |
 | 7 | `order_events` table (order-domain audit) | Person 1 | Same shape as offer_events; separate so neither becomes misc_log |
-| 8 | `checkout_locks` table (pre-payment soft lock) | Person 1 | Promoted from "nice-to-have" to required by Decision 6: listing stays available until capture, so the lock is the only first-line race defence. Short TTL (~5 min), keyed on `listing_id`. Not a reservation |
-| 9 | Razorpay race-loser refund design (synchronous in V1) | Person 4 | Pre-payment lock + winner cascade + automatic refund call inside webhook handler; payments-domain concern, not persistence |
+| 8 | `checkout_locks` table (pre-payment soft lock) | Person 1 | Optimisation: reduces the number of races that need to be refunded. **Not** a correctness primitive — Hard Prerequisites #3 and #4 are what enforce correctness; the lock only narrows the simultaneous-capture window. Short TTL (~5 min), keyed on `listing_id`. **Phase 1 priority: 3.** |
+| 9 | Razorpay race-loser refund design (synchronous in V1) | Person 4 | Under the locked V1 contract this is a **normal business path**, not an exception — see "Trust boundaries" above. Pre-payment lock + winner cascade + automatic refund call inside the webhook handler. Buyer-facing copy must read "another buyer completed payment first; your refund is on the way." **Phase 1 priority: 4.** |
 | 10 | RLS policies on `offer_events` and `order_events` | Person 1 + Person 4 | Losing buyer can read their own `lost` reason; cannot read winning buyer's identity |
 
 If any of these slip into the wrong owner's scope, the phasing in the
@@ -485,7 +545,7 @@ part of normal operations.
 
 | Class | Risk | Mitigation |
 |-------|------|------------|
-| Race | Two captures for one listing | `checkout_locks` soft lock + DB invariant + synchronous race-loser refund |
+| Race | Two captures for one listing | **Cannot be prevented at the gateway.** `checkout_locks` narrows the window; DB invariant + atomic RPC ensure one winner; loser is refunded synchronously |
 | Atomicity | Partial winner cascade | `finalize_winning_payment(...)` RPC (Person 1 deliverable) |
 | Replay | Webhook delivered twice | `webhook_events` idempotency on provider event id |
 | Spoof | Webhook from non-Razorpay/Shiprocket caller | Signature/token verification before any side effect |
@@ -548,7 +608,19 @@ against, not what they can call today.
   for completed sales over racing-prevention.
 - **`checkout_locks` is the only first-line race defence.** Soft lock
   on `listing_id` before Razorpay order creation; not an inventory
-  reservation.
+  reservation. **Not** a correctness primitive — narrows the
+  simultaneous-capture window only.
+- **Razorpay is the system of record for "did money move." Audiobaaz
+  is the system of record for "who owns the listing."** The DB
+  invariant + atomic RPC do not prevent two captures from happening
+  at the gateway; they prevent two winning orders from existing.
+  Race-loser refund is a normal business path, not an exception.
+- **Lifetime invariant.** At most one order per listing may ever have
+  `status` in the winning-lineage set (`escrow_held`,
+  `seller_confirmed`, `shipped`, `delivered`, `inspection`,
+  `completed`, `disputed`, `refunded`, `partially_refunded`). Once a
+  listing has had a winner, it is sold for all time, regardless of
+  what subsequently happens to the winning order.
 - Race-loser handling V1: synchronous refund call inside the webhook
   handler when the winner cascade fails the DB invariant. Queue-backed
   worker deferred to V2.
@@ -581,30 +653,52 @@ against, not what they can call today.
 
 OQ#1 was resolved on 2026-05-30 with the locked V1 contract above.
 The remaining critical Open Questions before Phase 1 can start are
-**OQ#4** (one-paid-offer invariant mechanism) and **OQ#5** (atomic
-RPC). Both become safety-critical specifically *because* of Decision 6:
-the listing stays available until capture, so race correctness lives
+**OQ#4** (one-paid-offer invariant) and **OQ#5** (atomic RPC). Both
+became safety-critical specifically *because* of Decision 6: the
+listing stays available until capture, so race correctness lives
 entirely in the DB invariant + atomic transaction, not in
 application-layer reservations.
 
-Before Phase 1 can start:
+### Phase 1 priority order (recorded 2026-05-30)
+
+1. **OQ#4 — Lifetime invariant.** Highest priority. Without this, the
+   entire model is unsafe. Default mechanism: `listings.sold_offer_id
+   UUID UNIQUE NULLABLE REFERENCES offers(id)`, set once inside the
+   atomic RPC at `escrow_held`, never unset.
+2. **OQ#5 — Atomic `finalize_winning_payment(...)` RPC.** Second
+   highest. Without this, a crash mid-cascade produces inconsistent
+   state — worse than a duplicate capture.
+3. **OQ#6 — `checkout_locks` table.** Optimisation, not correctness.
+   The system can technically function without it if OQ#4 and OQ#5
+   are correct; you just generate more loser refunds.
+4. **OQ#7 — Race-loser refund flow.** Under the locked V1 contract
+   this is a normal business path, not an exception. Synchronous
+   refund call inside the webhook handler when the winner cascade
+   fails the DB invariant. V2: queue-backed worker if volume warrants.
+
+### Phase 1 schema PR scope
+
+Person 1 produces a single PR covering:
+
+- `orders.status` enum amendment to the locked V1 lifecycle.
+- `offers.status` enum: add `lost`.
+- `listings.sold_offer_id UUID UNIQUE NULLABLE REFERENCES offers(id)`
+  (OQ#4 default mechanism).
+- `finalize_winning_payment(...)` RPC.
+- `webhook_events`, `offer_events`, `order_events`, `checkout_locks`
+  tables.
+- RLS policies on the audit tables.
+- Drop `reserve_listing` trigger.
+
+### Sequencing rules
 
 1. ~~Resolve OQ#1 (lifecycle).~~ **Done — see "Order state machine —
    locked V1 contract" above.**
-2. Person 1 chooses OQ#4 mechanism (default: `listings.sold_offer_id`)
-   and OQ#5 RPC shape (default: audit §4.7 contract, amended to commit
-   `listings.status = 'sold'` atomically with `escrow_held`).
-3. Person 1 produces the Phase 1 schema PR (audit §8 Phase 1) covering:
-   - `orders.status` enum amendment (per locked V1 contract)
-   - `offers.status` enum amendment (add `lost`)
-   - `listings.sold_offer_id` column or unique partial index (OQ#4)
-   - `finalize_winning_payment(...)` RPC
-   - `webhook_events`, `offer_events`, `order_events`, `checkout_locks` tables
-   - RLS policies on all of the above
-   - Drop `reserve_listing` trigger
-4. Person 4 + Person 1 sign off on the Schema Contract (audit §4) as
+2. Person 1 lands the Phase 1 schema PR per the priority and scope
+   above.
+3. Person 4 + Person 1 sign off on the Schema Contract (audit §4) as
    amended by this resolution.
-5. Wipe synthetic `payments WHERE razorpay_order_id LIKE 'mock_%'`
+4. Wipe synthetic `payments WHERE razorpay_order_id LIKE 'mock_%'`
    rows before Phase 2 begins.
 
 Phase 2 (Razorpay) begins only after Phase 1 lands on `dev`. Audit
