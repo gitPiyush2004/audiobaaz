@@ -552,10 +552,219 @@ ROLLBACK TO SAVEPOINT scenario_d;
 
 
 -- ============================================================
+-- SCENARIO E — Webhook replay is idempotent
+-- ============================================================
+-- Razorpay retries webhooks (network timeout, 5xx, etc.). The
+-- same captured-payment event can hit finalize_winning_payment()
+-- multiple times. Each replay must:
+--
+--   (a) return result='noop' with reason='payment_already_captured'
+--   (b) write zero additional rows to order_events / offer_events
+--   (c) leave marketplace state byte-for-byte unchanged
+--
+-- This is the most operationally important test in the suite.
+-- Payment providers retry aggressively under load; an RPC that
+-- silently double-cascades on replay produces duplicate audit
+-- rows and (depending on the cascade) ownership corruption.
+--
+-- Two replay shapes are tested:
+--   E1 — same payment_id replayed sequentially
+--   E2 — replay arriving while another payment_id (a second
+--        buyer's capture) hits the same listing — the replay
+--        must still no-op while the second capture conflicts.
+
+\echo
+\echo '=== Scenario E1 — Webhook replay (same payment_id) ==='
+
+SAVEPOINT scenario_e1;
+
+DO $e1$
+DECLARE
+  ids                  JSONB := phase1_test_setup('E1');
+  result_first         JSONB;
+  result_replay_1      JSONB;
+  result_replay_2      JSONB;
+  events_after_first   INTEGER;
+  events_after_replays INTEGER;
+  pre_listing          RECORD;
+  post_listing         RECORD;
+  pre_order            RECORD;
+  post_order           RECORD;
+  pre_payment          RECORD;
+  post_payment         RECORD;
+BEGIN
+  -- First webhook: captures successfully
+  result_first := finalize_winning_payment(
+    (ids->>'payment_a')::UUID,
+    'rzp_pay_e1_xyz',
+    'sig_e1',
+    'card',
+    (ids->>'buyer_a')::UUID
+  );
+
+  IF result_first->>'result' != 'winner' THEN
+    RAISE EXCEPTION 'Scenario E1: first capture should be winner, got %', result_first;
+  END IF;
+
+  -- Snapshot post-first-call state
+  SELECT * INTO pre_listing FROM listings WHERE id = (ids->>'listing')::UUID;
+  SELECT * INTO pre_order   FROM orders   WHERE id = (ids->>'order_a')::UUID;
+  SELECT * INTO pre_payment FROM payments WHERE id = (ids->>'payment_a')::UUID;
+
+  SELECT COUNT(*) INTO events_after_first FROM order_events
+   WHERE order_id = (ids->>'order_a')::UUID;
+
+  -- Replay #1: same payment_id, same razorpay_payment_id
+  result_replay_1 := finalize_winning_payment(
+    (ids->>'payment_a')::UUID,
+    'rzp_pay_e1_xyz',
+    'sig_e1',
+    'card',
+    (ids->>'buyer_a')::UUID
+  );
+
+  IF result_replay_1->>'result' != 'noop' THEN
+    RAISE EXCEPTION 'Scenario E1: first replay should be noop, got %', result_replay_1;
+  END IF;
+  IF result_replay_1->>'reason' != 'payment_already_captured' THEN
+    RAISE EXCEPTION 'Scenario E1: replay reason should be payment_already_captured, got %', result_replay_1;
+  END IF;
+
+  -- Replay #2: belt-and-braces — third call, same payment_id
+  result_replay_2 := finalize_winning_payment(
+    (ids->>'payment_a')::UUID,
+    'rzp_pay_e1_xyz',
+    'sig_e1',
+    'card',
+    (ids->>'buyer_a')::UUID
+  );
+
+  IF result_replay_2->>'result' != 'noop' THEN
+    RAISE EXCEPTION 'Scenario E1: second replay should be noop, got %', result_replay_2;
+  END IF;
+
+  -- Marketplace state must be byte-for-byte unchanged across replays
+  SELECT * INTO post_listing FROM listings WHERE id = (ids->>'listing')::UUID;
+  SELECT * INTO post_order   FROM orders   WHERE id = (ids->>'order_a')::UUID;
+  SELECT * INTO post_payment FROM payments WHERE id = (ids->>'payment_a')::UUID;
+
+  IF pre_listing.status      != post_listing.status      THEN RAISE EXCEPTION 'Scenario E1: listing.status changed across replay'; END IF;
+  IF pre_listing.sold_offer_id IS DISTINCT FROM post_listing.sold_offer_id THEN RAISE EXCEPTION 'Scenario E1: sold_offer_id changed across replay'; END IF;
+  IF pre_listing.sold_at     != post_listing.sold_at     THEN RAISE EXCEPTION 'Scenario E1: sold_at changed across replay'; END IF;
+
+  IF pre_order.status         != post_order.status         THEN RAISE EXCEPTION 'Scenario E1: order.status changed across replay'; END IF;
+  IF pre_order.escrow_held_at != post_order.escrow_held_at THEN RAISE EXCEPTION 'Scenario E1: escrow_held_at changed across replay'; END IF;
+
+  IF pre_payment.status              != post_payment.status              THEN RAISE EXCEPTION 'Scenario E1: payment.status changed across replay'; END IF;
+  IF pre_payment.razorpay_payment_id != post_payment.razorpay_payment_id THEN RAISE EXCEPTION 'Scenario E1: razorpay_payment_id changed across replay'; END IF;
+
+  -- And — the most important assertion — no additional events were written
+  SELECT COUNT(*) INTO events_after_replays FROM order_events
+   WHERE order_id = (ids->>'order_a')::UUID;
+
+  IF events_after_replays != events_after_first THEN
+    RAISE EXCEPTION 'Scenario E1: replay produced duplicate order_events (% → %)',
+      events_after_first, events_after_replays;
+  END IF;
+
+  RAISE NOTICE 'Scenario E1 PASSED — replay is byte-for-byte idempotent';
+END;
+$e1$;
+
+ROLLBACK TO SAVEPOINT scenario_e1;
+
+
+\echo
+\echo '=== Scenario E2 — Replay interleaved with second buyer capture ==='
+
+SAVEPOINT scenario_e2;
+
+DO $e2$
+DECLARE
+  ids                JSONB := phase1_test_setup('E2');
+  result_a_first     JSONB;
+  result_b           JSONB;
+  result_a_replay    JSONB;
+  events_a_count     INTEGER;
+  events_b_count     INTEGER;
+  cancelled_b_events INTEGER;
+BEGIN
+  -- Buyer A captures, becomes winner
+  result_a_first := finalize_winning_payment(
+    (ids->>'payment_a')::UUID,
+    'rzp_pay_e2_a',
+    'sig_e2_a',
+    'card',
+    (ids->>'buyer_a')::UUID
+  );
+  IF result_a_first->>'result' != 'winner' THEN
+    RAISE EXCEPTION 'Scenario E2: A first call should be winner, got %', result_a_first;
+  END IF;
+
+  -- Buyer B captures (different payment_id, same listing) → conflict
+  result_b := finalize_winning_payment(
+    (ids->>'payment_b')::UUID,
+    'rzp_pay_e2_b',
+    'sig_e2_b',
+    'card',
+    (ids->>'buyer_b')::UUID
+  );
+  IF result_b->>'result' != 'conflict' THEN
+    RAISE EXCEPTION 'Scenario E2: B capture should be conflict, got %', result_b;
+  END IF;
+
+  -- Now Razorpay replays A's webhook AFTER B's conflict has been recorded.
+  -- The replay must still no-op against A's payment without modifying B's state.
+  result_a_replay := finalize_winning_payment(
+    (ids->>'payment_a')::UUID,
+    'rzp_pay_e2_a',
+    'sig_e2_a',
+    'card',
+    (ids->>'buyer_a')::UUID
+  );
+  IF result_a_replay->>'result' != 'noop' THEN
+    RAISE EXCEPTION 'Scenario E2: A replay should be noop, got %', result_a_replay;
+  END IF;
+
+  -- A's order_events: payment_captured exactly once. No duplicates.
+  SELECT COUNT(*) INTO events_a_count FROM order_events
+   WHERE order_id = (ids->>'order_a')::UUID
+     AND event_name = 'payment_captured';
+  IF events_a_count != 1 THEN
+    RAISE EXCEPTION 'Scenario E2: expected 1 payment_captured for A, got %', events_a_count;
+  END IF;
+
+  -- B's order_events: order_cancelled exactly once. The replay
+  -- of A's webhook must NOT re-cascade B (or anyone else).
+  SELECT COUNT(*) INTO cancelled_b_events FROM order_events
+   WHERE order_id = (ids->>'order_b')::UUID
+     AND event_name = 'order_cancelled';
+  IF cancelled_b_events != 1 THEN
+    RAISE EXCEPTION 'Scenario E2: expected 1 order_cancelled for B, got %', cancelled_b_events;
+  END IF;
+
+  -- Cascade events on offer_events from A's win: zero (these orders
+  -- are direct buy-now with no offer rows). If a regression later
+  -- adds offers to the test fixture, this assertion catches the
+  -- cascade firing twice on replay.
+  SELECT COUNT(*) INTO events_b_count FROM offer_events
+   WHERE metadata->>'winning_order_id' = (ids->>'order_a')::TEXT;
+  IF events_b_count != 0 THEN
+    RAISE EXCEPTION 'Scenario E2: expected 0 cascade offer_events (no offers exist), got %', events_b_count;
+  END IF;
+
+  RAISE NOTICE 'Scenario E2 PASSED — replay does not re-cascade or re-cancel';
+END;
+$e2$;
+
+ROLLBACK TO SAVEPOINT scenario_e2;
+
+
+-- ============================================================
 -- Cleanup
 -- ============================================================
 
 DROP FUNCTION IF EXISTS phase1_test_setup(TEXT);
 
 \echo
-\echo '=== ALL FOUR SCENARIOS PASSED ==='
+\echo '=== ALL FIVE SCENARIOS PASSED ==='

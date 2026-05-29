@@ -844,89 +844,77 @@ Person 1 produces a single PR covering:
 - RLS policies on the audit tables.
 - Drop `reserve_listing` trigger.
 
-### Phase 1 acceptance criteria — four scenarios at the database layer
+### Phase 1 acceptance criteria — five scenarios + stress harness
 
 Before any application code is written against the new schema, the
-Phase 1 PR must demonstrate the following four scenarios pass at the
-database layer (Postgres-level test, not application-level mock).
-These are the failure modes that destroy escrow marketplaces; if the
-schema can survive all four, the marketplace core is largely
-de-risked.
+Phase 1 PR must demonstrate the following at the database layer
+(Postgres-level test, not application-level mock). These are the
+failure modes that destroy escrow marketplaces; if the schema can
+survive all of them, the marketplace core is largely de-risked.
 
-**Scenario A — Concurrent captures, one winner**
-```
-Buyer A captures
-Buyer B captures (concurrent)
-Result: A wins (orders.status = escrow_held; listings.sold_offer_id set)
-        B refunded (orders.status = cancelled or payment_failed;
-                    payment refund initiated)
-        Exactly one row in winning-lineage status for the listing
-```
+**Must pass (acceptance gate, no merge to `dev` without all three):**
 
-**Scenario B — Mid-cascade crash**
-```
-Buyer A captures
-RPC starts the winner cascade
-Process crashes halfway through (after offers update, before
-  listings.sold_offer_id set)
-Result: Either nothing committed (rollback)
-        Or everything committed (atomic completion)
-        Never half-state (e.g. offer = paid but listing still
-        approved, or listing sold but no order row)
-```
+1. **All five SQL scenarios** in `supabase/tests/phase1_scenarios.sql`
+   pass:
+   - **A — Concurrent captures:** two simultaneous captures →
+     exactly one winner, the other refunded.
+   - **B — Mid-cascade crash:** RPC interrupted halfway →
+     everything committed or nothing committed; never half-state.
+     **Gate-of-gates.** If this fails, fix before continuing —
+     atomicity bugs cannot be papered over with retries.
+   - **C — Refunded winner immutability:** dispute resolved in
+     buyer's favour → `listings.status` and `sold_offer_id`
+     unchanged; no second order possible for that listing.
+   - **D — High-concurrency race:** 10 sequential captures at the
+     gateway → exactly 1 marketplace winner, 9 refunded losers, 0
+     ownership corruption.
+   - **E — Webhook replay:** Razorpay retries the same
+     captured-payment webhook → first call wins; subsequent calls
+     return `noop` with byte-for-byte identical state and zero
+     duplicate audit rows. Two sub-tests: E1 (replay alone) and E2
+     (replay interleaved with a second buyer's capture).
+2. **Multi-connection stress** at concurrency = 100 via
+   `supabase/tests/phase1_stress.sh` (pgbench harness):
+   100 parallel pgbench clients each call
+   `finalize_winning_payment()` for a distinct payment on the
+   same listing. Marketplace state must be byte-perfect: exactly
+   1 winner, 99 losers, full audit trail. Single-session SQL
+   tests prove correctness against the invariant + `FOR UPDATE`
+   locks; the stress harness proves they hold under true OS-level
+   parallelism. *If you skip this, you do not actually know
+   whether the system survives concurrent captures — you have a
+   hypothesis.*
+3. **Schema Contract review (audit §4)** signed off by Person 1
+   and Person 4 as amended by the OQ#1 resolution.
 
-**Scenario C — Refunded winner, no inventory return**
-```
-Buyer A captures
-Order progresses to delivered
-Buyer A raises dispute
-Admin resolves in buyer's favour → refunded
-Result: listings.status = sold (unchanged)
-        listings.sold_offer_id still references A's offer (immutable)
-        No second order can be created for this listing
-        New listing requires a new listings.id
-```
+**Auditability assertion (applies to A, D, and E):** all losers
+must be discoverable and recoverable from the database alone. The
+audit trail must answer "which order won, which lost, when, why
+was each refunded, and what is the current refund status of each
+loser" without recourse to Razorpay dashboards or application logs.
 
-**Scenario D — High-concurrency race**
-```
-10 buyers attempt checkout for the same listing simultaneously
-All 10 captures succeed at the gateway (Razorpay-side)
-Result: 1 winner (orders.status = escrow_held)
-        9 losers (refunded, with correct buyer-facing message)
-        0 ownership corruption (exactly one row in winning-lineage
-        status; listings.sold_offer_id set exactly once)
-```
+If all three gates pass, the marketplace core is considered
+de-risked and Phase 2 (Razorpay integration) can proceed.
 
-Auditability assertion (must also pass for Scenario A and Scenario D):
-all 9 losers must be **discoverable and recoverable** from the
-database alone. The audit trail must answer, without recourse to
-Razorpay dashboards or application logs:
+If all three gates pass, the marketplace core is considered
+de-risked and Phase 2 (Razorpay integration) can proceed.
 
-- Which order won? (`listings.sold_offer_id` → winning offer →
-  winning order)
-- Which orders lost, and when? (`order_events` rows recording the
-  cascade transition + timestamp; `offer_events` rows for `* → lost`)
-- Why was each loser refunded? (`payments.refund_reason`)
-- What is the current status of each refund? (`payments.refund_status`
-  — see "Refund lifecycle as first-class state" below)
-
-A race that refunds correctly but leaves no trace is a support
-nightmare; it is treated as a Scenario D failure.
-
-If Person 1's PR demonstrates these four scenarios, the marketplace
-core is considered de-risked and Phase 2 (Razorpay integration) can
-proceed.
+The full per-scenario narrative — exactly what each test sets up,
+runs, and asserts — lives in `supabase/tests/phase1_scenarios.sql`
+and `supabase/tests/README.md`. Treat those files as the source of
+truth for what "passes" means; this section names the gates, the
+test file proves them.
 
 ### Sequencing rules
 
 1. ~~Resolve OQ#1 (lifecycle).~~ **Done — see "Order state machine —
    locked V1 contract" above.**
 2. ~~Land Phase 1 schema substrate.~~ **In code on
-   feature/payments-shipping** (commits c3ed389 / ab49e76 / e72caa4).
-   **Not yet verified** — the four-scenario acceptance test
-   (`supabase/tests/phase1_scenarios.sql`) has not been run against
-   a live Postgres because this machine has no psql / supabase CLI /
-   docker. **Run the tests before merging to dev.**
+   feature/payments-shipping** (commits c3ed389 / ab49e76 / e72caa4
+   plus the Scenario E + stress harness follow-up).
+   **Not yet verified** — the acceptance scenarios have not been
+   run against a live Postgres because this machine has no psql /
+   supabase CLI / docker. **Code written ≠ correctness proven.**
 3. Person 1 + Person 4 sign off on the Schema Contract (audit §4)
    as amended by the OQ#1 resolution.
 4. Merge feature/payments-shipping → dev (schema only — Phase 2
