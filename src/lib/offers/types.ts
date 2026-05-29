@@ -73,6 +73,10 @@ export interface OfferRange {
 // Offer draft (what the buyer is composing pre-submission)
 // ─────────────────────────────────────────────────────────────────────────
 
+// ─────────────────────────────────────────────────────────────────────────
+// Offer draft (what the buyer is composing pre-submission)
+// ─────────────────────────────────────────────────────────────────────────
+
 /**
  * In-flight offer the buyer is composing on `/offer/new/[listing]`.
  *
@@ -98,4 +102,104 @@ export interface OfferDraftData {
   offer_amount: number;
   /** Optional free-text message to the seller. Defer to a later slice. */
   message?: string;
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Offer status (state machine — see src/lib/offers/state.ts)
+// ─────────────────────────────────────────────────────────────────────────
+
+/**
+ * Offer lifecycle. Source of truth for transitions is `src/lib/offers/state.ts`.
+ *
+ * Mirrors ENGINEERING.md's "Offer Status Flow":
+ *
+ *   pending  → accepted → paid       (terminal: success)
+ *           ↘ declined               (terminal: seller said no)
+ *           ↘ expired                (terminal: 24h no seller response,
+ *                                     OR accepted but buyer didn't pay in 24h)
+ *           ↘ cancelled              (terminal: buyer retracted before accept)
+ *
+ * Locked product decisions (ENGINEERING.md):
+ *   - No counter-offers — only accept/decline.
+ *   - Parallel offers permitted — first to pay wins.
+ *   - Offer retraction allowed before seller acceptance.
+ *   - No payment hold on offers — soft commitment only.
+ */
+export type OfferStatus =
+  | "pending"
+  | "accepted"
+  | "paid"
+  | "declined"
+  | "expired"
+  | "cancelled";
+
+// ─────────────────────────────────────────────────────────────────────────
+// Offer summary (list / dashboard surface)
+// ─────────────────────────────────────────────────────────────────────────
+
+/**
+ * Compact view-model for an offer in a list — the buyer's "Active offers"
+ * dashboard, the seller's incoming offers queue (eventually), or any
+ * surface that lists offers without the full listing context.
+ *
+ * Source mappings (DB → view-model):
+ *   id                ← offers.id
+ *   listing_id        ← offers.listing_id
+ *   listing_slug      ← join to listings.slug (for linking back)
+ *   listing_title     ← `${brand} ${product_name}` from joined listing
+ *   listing_thumbnail ← listings.photos[0]
+ *   offer_amount      ← offers.offer_amount       (PAISE)
+ *   asking_price      ← joined listings.asking_price (PAISE)
+ *   status            ← offers.status
+ *   created_at        ← offers.created_at
+ *   expires_at        ← offers.expires_at — depending on status this is
+ *                       either the seller-response deadline or the
+ *                       buyer-payment deadline. UI labels accordingly.
+ *
+ * NOT here, intentionally: floor_price, auto_accept_threshold,
+ * seller_score, buyer_score, contact data, internal moderation flags.
+ */
+export interface OfferSummary {
+  id:                 string;
+  listing_id:         string;
+  listing_slug?:      string;
+  listing_title:      string;
+  listing_thumbnail?: string;
+  /** Offer amount in PAISE. */
+  offer_amount:       number;
+  /** Listing asking price in PAISE — for the "X% of asking" display only. */
+  asking_price:       number;
+  status:             OfferStatus;
+  /** ISO timestamp. */
+  created_at:         string;
+  /**
+   * ISO timestamp. Meaning depends on status:
+   *   - pending  → seller-response deadline (24h after creation)
+   *   - accepted → buyer-payment deadline (24h after acceptance)
+   *   - others   → undefined / not surfaced
+   */
+  expires_at?:        string;
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Offer detail (single-offer surface)
+// ─────────────────────────────────────────────────────────────────────────
+
+/**
+ * Detailed view-model for the buyer's single-offer page or modal.
+ *
+ * Extends `OfferSummary` with optional buyer message and the listing's
+ * negotiability info. The seller view (eventually a separate type or a
+ * widened version with seller-only fields gated server-side) is NOT this
+ * type — admin / seller surfaces have their own access boundaries.
+ */
+export interface OfferDetailData extends OfferSummary {
+  /** Optional free-text message the buyer sent with the offer. */
+  message?: string;
+  /**
+   * Whether the listing was negotiable when this offer was placed. Some
+   * UIs want to show "this seller doesn't usually accept offers" context
+   * even after the offer has resolved.
+   */
+  listing_was_negotiable: boolean;
 }
