@@ -19,7 +19,7 @@ single listing page, checkout, order dashboard, watchlist, saved searches.
 
 ```
 [x] Foundation slice — primitives (cn, ConditionBadge, ListingCard, ListingGrid)
-[x] Browse slice — getBrowseListings() now queries real Supabase (status=approved, createAdminClient, filters+sort at DB level, seller ratings batch-fetched); homepage featured strip live
+[x] Browse slice — getBrowseListings() queries real Supabase (status=approved, createAdminClient, filters+sort at DB level, seller ratings batch-fetched); force-dynamic on browse + homepage prevents stale router cache after purchases
 [x] Listing detail slice — getListingDetail() now queries real Supabase (createAdminClient, by slug or UUID, seller data joined); /listing/[slug] detects seller vs buyer server-side (shows "This is your listing" + dashboard link for own listings)
 [x] Offer composition slice — /offer/new/[listing], OfferAmountInput, getOfferRange, parseOfferDraftFromSearchParams, buildOfferAuthRedirect, validateOfferAmount
 [x] Offer domain slice — OfferStatus, state machine (state.ts), createOfferDraft (mock), wired into /offer/new server action
