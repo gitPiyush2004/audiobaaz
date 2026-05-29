@@ -299,15 +299,60 @@ the case where the winner has already moved on (e.g. to `refunded`
 after a buyer-favourable dispute) — the listing is still sold; no
 second order may exist with any winning-lineage status.
 
-The default OQ#4 mechanism (`listings.sold_offer_id UUID UNIQUE NULLABLE
-REFERENCES offers(id)`) satisfies this naturally: it is set once
-inside the atomic RPC at the moment of `escrow_held` and never
-unset, so the unique constraint enforces lifetime exclusivity
-regardless of what state the winning order moves to afterward. The
-alternative mechanism (unique partial index keyed on
-`offers.status = 'paid'`) would require pairing with an
-order-side constraint to cover the same lifetime — which is why
-`listings.sold_offer_id` is the recommended default.
+### OQ#4 mechanism — locked
+
+`listings.sold_offer_id UUID UNIQUE NULL REFERENCES offers(id)`. Set
+once inside the atomic RPC at the moment of `escrow_held`. **Never
+unset and never updated.** The unique constraint enforces lifetime
+exclusivity.
+
+The audit's earlier alternative — a unique partial index keyed on
+`offers.status = 'paid'` — was rejected because it does not cover the
+post-refund case on its own; it would need a paired order-side
+constraint covering the entire winning-lineage status set. The
+ownership-on-the-listing model is also semantically cleaner: the
+thing being protected is not payment state but **ownership history**,
+and ownership belongs on the listing.
+
+The invariant maps almost one-to-one onto the column:
+
+> "A listing can have at most one winning offer." → `sold_offer_id` is
+> either `NULL` (listing still available) or a single UUID (listing
+> sold to that offer's buyer, for all time).
+
+### Refunded-winner rule (immutability of `sold_offer_id`)
+
+> If the winning order is later fully refunded — via a buyer-favourable
+> dispute resolution, partial refund, or any other path — the listing
+> **remains sold** and `sold_offer_id` **remains set**. The listing
+> does not return to inventory; the seller does not get the listing
+> back. Re-listing requires creating a new `listings` row.
+
+Rationale: the invariant the codebase just locked is "sold once,
+forever." Allowing `sold_offer_id` to clear on refund would
+re-introduce the auditability problem the invariant exists to prevent
+— specifically, the timeline:
+
+```
+Listing A → sold → refunded → unsold → sold again
+```
+
+would erase the original sale from listing-side state, leaving
+`order_events` and `offer_events` as the only record. That is exactly
+the kind of "marketplace state and audit log disagree" failure the
+locked V1 contract is designed to make impossible.
+
+This is correct for a used-audio marketplace where each physical item
+is a distinct unit. If the seller still has the item and wants to
+re-list it (e.g. after a buyer dispute that returned the goods), they
+create a new listing. The new listing has its own `id`, its own
+listing review, its own price history attribution. The old listing
+stays `sold` with its `sold_offer_id` permanently set, preserving the
+audit trail.
+
+If a future feature ever requires re-marketing an unsold-after-refund
+unit, that is a new product decision and a new schema migration — not
+a gap in the lifetime invariant.
 
 `escrow_held` is a distinct state from `delivered` and from
 `completed`. Delivery means the courier dropped the package; the 48h
@@ -376,7 +421,7 @@ decisions cross-cut.
 |---|------|-------|-------|
 | 1 | Offer enum lock (seven values incl. `lost`) | Product + Person 1 | Decision in this doc; migration owned by Person 1 |
 | 2 | Order state machine lock (states + branches) | Product + Person 4 | **RESOLVED 2026-05-30 — see "Order state machine — locked V1 contract (OQ#1 resolved)" below.** Schema migration items: drop `seller_must_ship_by` from a Razorpay-driven assumption, drop `reserve_listing` trigger, add `cancelled` terminal, no `escrow_released` state |
-| 3 | DB invariant: at-most-one winning-lineage order per listing | Person 1 | **Lifetime invariant** — at most one row in `orders` per listing may ever have `status` in `{escrow_held, seller_confirmed, shipped, delivered, inspection, completed, disputed, refunded, partially_refunded}`. Default mechanism: `listings.sold_offer_id UUID UNIQUE NULLABLE REFERENCES offers(id)`, set once inside the atomic RPC at `escrow_held`, never unset. Alternative (unique partial index on `offers.status='paid'`) requires a paired order-side constraint to cover the lineage. See "Trust boundaries" + "The lifetime invariant" sections above. **Phase 1 priority: 1 (highest).** |
+| 3 | DB invariant: at-most-one winning-lineage order per listing | Person 1 | **Lifetime invariant** — at most one row in `orders` per listing may ever have `status` in `{escrow_held, seller_confirmed, shipped, delivered, inspection, completed, disputed, refunded, partially_refunded}`. **Mechanism locked: `listings.sold_offer_id UUID UNIQUE NULL REFERENCES offers(id)`**, set once inside the atomic RPC at `escrow_held`, **never unset, never updated** (refunded winners keep their `sold_offer_id`; relisting requires a new `listings` row). See "Trust boundaries", "The lifetime invariant", "OQ#4 mechanism — locked", and "Refunded-winner rule" sections above. **Phase 1 priority: 1 (highest).** |
 | 4 | Atomic transaction primitive covering winner cascade | Person 1 | `finalize_winning_payment(...)` RPC per audit §4.7; commits offers / orders / listings / offer_events / order_events / webhook_events together or rolls back. Without this, a crash mid-cascade leaves the marketplace in a state with no clean recovery — worse than a duplicate capture. **Phase 1 priority: 2.** |
 | 5 | `webhook_events` table (idempotency by provider event id) | Person 1 | Shared across Razorpay, Shiprocket, future providers |
 | 6 | `offer_events` table (offer-domain audit) | Person 1 | event_name, actor, from_status, to_status, timestamp |
@@ -621,6 +666,15 @@ against, not what they can call today.
   `completed`, `disputed`, `refunded`, `partially_refunded`). Once a
   listing has had a winner, it is sold for all time, regardless of
   what subsequently happens to the winning order.
+- **OQ#4 mechanism locked.** `listings.sold_offer_id UUID UNIQUE NULL
+  REFERENCES offers(id)`. Ownership belongs on the listing, not on
+  offers or orders. The unique partial index alternative was rejected
+  because it does not cover the post-refund lineage on its own.
+- **Refunded-winner rule (immutability).** `listings.sold_offer_id` is
+  set once at `escrow_held` and never updated. A buyer-favourable
+  dispute or full refund leaves both `listings.status = 'sold'` and
+  `listings.sold_offer_id` intact. Relisting requires a new
+  `listings` row, never a state regression on the original.
 - Race-loser handling V1: synchronous refund call inside the webhook
   handler when the winner cascade fails the DB invariant. Queue-backed
   worker deferred to V2.
@@ -682,13 +736,71 @@ Person 1 produces a single PR covering:
 
 - `orders.status` enum amendment to the locked V1 lifecycle.
 - `offers.status` enum: add `lost`.
-- `listings.sold_offer_id UUID UNIQUE NULLABLE REFERENCES offers(id)`
-  (OQ#4 default mechanism).
+- `listings.sold_offer_id UUID UNIQUE NULL REFERENCES offers(id)` —
+  OQ#4 mechanism locked. Set once inside the atomic RPC at
+  `escrow_held`. Never unset, never updated.
 - `finalize_winning_payment(...)` RPC.
 - `webhook_events`, `offer_events`, `order_events`, `checkout_locks`
   tables.
 - RLS policies on the audit tables.
 - Drop `reserve_listing` trigger.
+
+### Phase 1 acceptance criteria — four scenarios at the database layer
+
+Before any application code is written against the new schema, the
+Phase 1 PR must demonstrate the following four scenarios pass at the
+database layer (Postgres-level test, not application-level mock).
+These are the failure modes that destroy escrow marketplaces; if the
+schema can survive all four, the marketplace core is largely
+de-risked.
+
+**Scenario A — Concurrent captures, one winner**
+```
+Buyer A captures
+Buyer B captures (concurrent)
+Result: A wins (orders.status = escrow_held; listings.sold_offer_id set)
+        B refunded (orders.status = cancelled or payment_failed;
+                    payment refund initiated)
+        Exactly one row in winning-lineage status for the listing
+```
+
+**Scenario B — Mid-cascade crash**
+```
+Buyer A captures
+RPC starts the winner cascade
+Process crashes halfway through (after offers update, before
+  listings.sold_offer_id set)
+Result: Either nothing committed (rollback)
+        Or everything committed (atomic completion)
+        Never half-state (e.g. offer = paid but listing still
+        approved, or listing sold but no order row)
+```
+
+**Scenario C — Refunded winner, no inventory return**
+```
+Buyer A captures
+Order progresses to delivered
+Buyer A raises dispute
+Admin resolves in buyer's favour → refunded
+Result: listings.status = sold (unchanged)
+        listings.sold_offer_id still references A's offer (immutable)
+        No second order can be created for this listing
+        New listing requires a new listings.id
+```
+
+**Scenario D — High-concurrency race**
+```
+10 buyers attempt checkout for the same listing simultaneously
+All 10 captures succeed at the gateway (Razorpay-side)
+Result: 1 winner (orders.status = escrow_held)
+        9 losers (refunded, with correct buyer-facing message)
+        0 ownership corruption (exactly one row in winning-lineage
+        status; listings.sold_offer_id set exactly once)
+```
+
+If Person 1's PR demonstrates these four scenarios, the marketplace
+core is considered de-risked and Phase 2 (Razorpay integration) can
+proceed.
 
 ### Sequencing rules
 

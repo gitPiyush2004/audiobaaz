@@ -1725,8 +1725,10 @@ product disagreement expected; this is execution.
 the OQ#1 resolution: with the listing staying available until capture,
 race correctness lives entirely in this invariant.
 
-**Status:** UNRESOLVED — locked as required, mechanism not yet
-implemented.
+**Status:** **MECHANISM LOCKED 2026-05-30** —
+`listings.sold_offer_id UUID UNIQUE NULL REFERENCES offers(id)`. Set
+once inside the atomic RPC at `escrow_held`, never unset, never
+updated. Implementation pending in Phase 1.
 **Owner:** Person 1.
 
 **Refined invariant (post-OQ#1 resolution):** lifetime, not
@@ -1743,17 +1745,29 @@ has had a winner, no second order may ever progress past
 `payment_pending` for that listing — regardless of what subsequently
 happens to the winner (delivery, dispute, refund).
 
-**Recommended resolution:** `listings.sold_offer_id UUID UNIQUE
-NULLABLE REFERENCES offers(id)`, set once inside the atomic RPC at
-the moment of `escrow_held`, never unset. The unique constraint
-enforces lifetime exclusivity regardless of what state the winning
-order moves to afterward.
+**Locked mechanism rationale:** the thing being protected is not
+payment state but **ownership history**. Ownership belongs on the
+listing — not on offers, not on orders. The invariant maps directly
+onto a single column:
 
-The audit's earlier Option 1 (unique partial index keyed on
-`offers.status = 'paid'`) does not by itself cover the lineage
-property — it would need to be paired with an order-side constraint
-covering the winning-lineage status set. `listings.sold_offer_id` is
-strictly cleaner under the locked V1 contract.
+> "A listing can have at most one winning offer." → `sold_offer_id`
+> is either `NULL` (still available) or one UUID (sold, for all time).
+
+The audit's earlier alternative (unique partial index keyed on
+`offers.status = 'paid'`) was rejected because it does not cover the
+refunded-winner case on its own; it would need to be paired with an
+order-side constraint covering the entire winning-lineage status set.
+`listings.sold_offer_id` covers the lineage natively because it is
+never updated after the initial set — a refund that flips the
+order's status to `refunded` does not affect the listing.
+
+**Refunded-winner rule (immutability).** Documented in
+`payments-shipping.md` "Refunded-winner rule" section: a fully-
+refunded winning order leaves both `listings.status = 'sold'` and
+`listings.sold_offer_id` intact. Relisting requires a new `listings`
+row, never a state regression on the original. This preserves the
+audit trail and prevents the failure mode `Listing → sold → refunded
+→ unsold → sold again`.
 
 ### Open Question #5 — Atomic transaction primitive
 
@@ -1875,7 +1889,7 @@ Phase: cleanup, can be done in parallel with Phase 1.
 | 1 | Critical | Joint | **RESOLVED 2026-05-30 — Candidate B with 6 sub-decisions; see OQ#1 entry above and `payments-shipping.md`.** |
 | 2 | High | P1 + P4 | Implement as locked in doc. |
 | 3 | Critical | P1 | Implement as locked in doc. |
-| 4 | Critical | P1 | Default to `listings.sold_offer_id` mechanism. |
+| 4 | Critical | P1 | **MECHANISM LOCKED 2026-05-30 — `listings.sold_offer_id UUID UNIQUE NULL` (immutable post-set); refunded-winner rule recorded.** Implementation pending in Phase 1. |
 | 5 | Critical | P1 + P4 | Implement RPC per §4.7. |
 | 6 | Medium | P4 | Default to `checkout_locks` table. |
 | 7 | Critical | P4 | Default to synchronous refund call for V1. |
@@ -1953,9 +1967,10 @@ exists and most tables are correct. This is much further along than
    locked V1 contract in `payments-shipping.md`.**
 2. Person 1 PR landing all Phase 1 schema changes in this priority
    order (recorded 2026-05-30 — drives by safety-critical first):
-   - **Priority 1 — OQ#4 lifetime invariant.** Default mechanism:
-     `listings.sold_offer_id UUID UNIQUE NULLABLE REFERENCES offers(id)`.
-     Without this the entire model is unsafe.
+   - **Priority 1 — OQ#4 lifetime invariant.** Locked mechanism:
+     `listings.sold_offer_id UUID UNIQUE NULL REFERENCES offers(id)`,
+     set once at `escrow_held`, immutable thereafter. Without this
+     the entire model is unsafe.
    - **Priority 2 — OQ#5 atomic `finalize_winning_payment(...)`
      RPC.** Without this a crash mid-cascade is irrecoverable.
    - **Priority 3 — OQ#6 `checkout_locks` table.** Optimisation,
@@ -1969,6 +1984,21 @@ exists and most tables are correct. This is much further along than
    - Plus `orders.status` and `offers.status` enum amendments
      (locked V1 contract + `lost`).
    - Plus dropping the `reserve_listing` trigger.
+   - **The PR must demonstrate four database-layer scenarios pass**
+     before any application code is written against the new schema:
+     - **A — Concurrent captures:** two simultaneous captures →
+       exactly one winner, the other refunded.
+     - **B — Mid-cascade crash:** RPC interrupted halfway →
+       everything committed or nothing committed; never half-state.
+     - **C — Refunded winner immutability:** dispute resolved in
+       buyer's favour → `listings.status` and `sold_offer_id`
+       unchanged; no second order possible for that listing.
+     - **D — High-concurrency race:** 10 simultaneous captures
+       succeed at the gateway → exactly 1 marketplace winner, 9
+       refunded losers, 0 ownership corruption.
+     Acceptance criteria detail in `payments-shipping.md`
+     "Phase 1 acceptance criteria — four scenarios at the
+     database layer".
 3. Schema Contract (§4) accepted in writing by Person 1 and Person 4
    as amended by the OQ#1 resolution.
 4. Cleanup of mock-checkout `payments` rows.
