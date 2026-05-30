@@ -199,7 +199,9 @@ BEGIN
 END;
 $$;
 
-ALTER FUNCTION initiate_refund(UUID, TEXT, UUID) SECURITY DEFINER;
+ALTER FUNCTION initiate_refund(UUID, TEXT, UUID)
+  SECURITY DEFINER
+  SET search_path = public, pg_temp;
 REVOKE EXECUTE ON FUNCTION initiate_refund(UUID, TEXT, UUID) FROM PUBLIC;
 GRANT  EXECUTE ON FUNCTION initiate_refund(UUID, TEXT, UUID) TO service_role;
 
@@ -317,6 +319,8 @@ BEGIN
 END;
 $$;
 
-ALTER FUNCTION record_refund_outcome(UUID, TEXT, TEXT, TEXT, UUID) SECURITY DEFINER;
+ALTER FUNCTION record_refund_outcome(UUID, TEXT, TEXT, TEXT, UUID)
+  SECURITY DEFINER
+  SET search_path = public, pg_temp;
 REVOKE EXECUTE ON FUNCTION record_refund_outcome(UUID, TEXT, TEXT, TEXT, UUID) FROM PUBLIC;
 GRANT  EXECUTE ON FUNCTION record_refund_outcome(UUID, TEXT, TEXT, TEXT, UUID) TO service_role;

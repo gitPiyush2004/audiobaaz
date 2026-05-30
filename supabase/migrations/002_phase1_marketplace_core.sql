@@ -513,9 +513,15 @@ $$;
 --   2. Inputs are typed and validated; no SQL is built from text.
 --   3. The function has a single well-defined purpose with no
 --      free-form parameters.
+--   4. search_path is pinned to (public, pg_temp) so a malicious
+--      schema higher in the user's search path cannot shadow our
+--      tables/functions and execute under elevated privileges.
+--      This is the standard hardening for SECURITY DEFINER and
+--      catches the entire class of CVE-2018-1058-style bugs.
 
 ALTER FUNCTION finalize_winning_payment(UUID, TEXT, TEXT, TEXT, UUID)
-  SECURITY DEFINER;
+  SECURITY DEFINER
+  SET search_path = public, pg_temp;
 
 REVOKE EXECUTE ON FUNCTION finalize_winning_payment(UUID, TEXT, TEXT, TEXT, UUID)
   FROM PUBLIC;

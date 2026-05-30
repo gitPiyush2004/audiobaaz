@@ -111,7 +111,9 @@ BEGIN
 END;
 $$;
 
-ALTER FUNCTION acquire_checkout_lock(UUID, UUID, INTEGER) SECURITY DEFINER;
+ALTER FUNCTION acquire_checkout_lock(UUID, UUID, INTEGER)
+  SECURITY DEFINER
+  SET search_path = public, pg_temp;
 REVOKE EXECUTE ON FUNCTION acquire_checkout_lock(UUID, UUID, INTEGER) FROM PUBLIC;
 GRANT  EXECUTE ON FUNCTION acquire_checkout_lock(UUID, UUID, INTEGER) TO service_role;
 
@@ -149,7 +151,9 @@ BEGIN
 END;
 $$;
 
-ALTER FUNCTION release_checkout_lock(UUID, UUID) SECURITY DEFINER;
+ALTER FUNCTION release_checkout_lock(UUID, UUID)
+  SECURITY DEFINER
+  SET search_path = public, pg_temp;
 REVOKE EXECUTE ON FUNCTION release_checkout_lock(UUID, UUID) FROM PUBLIC;
 GRANT  EXECUTE ON FUNCTION release_checkout_lock(UUID, UUID) TO service_role;
 

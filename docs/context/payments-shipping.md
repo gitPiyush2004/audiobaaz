@@ -751,6 +751,16 @@ against, not what they can call today.
   dispute or full refund leaves both `listings.status = 'sold'` and
   `listings.sold_offer_id` intact. Relisting requires a new
   `listings` row, never a state regression on the original.
+- **Listing-status terminal at `sold`** (decided 2026-05-30 during
+  invariant-guard review). Once a listing is sold, it stays sold.
+  Settlement (`orders.status = 'completed'`), payout
+  (`orders.payout_status = 'paid'`), and price-history attribution
+  (`record_price_history` trigger on `orders`, not `listings`) all
+  live on the order, not the listing. The legacy `completed` value
+  in the listing-status enum is preserved for migration safety but
+  is no longer reachable from `sold`. This keeps inventory state
+  (listing) and transaction state (order) on separate state
+  machines, which was the architectural separation OQ#1 was about.
 - **Refund lifecycle is first-class state on `payments`.** New
   `payments.refund_status` column (`pending → processing → succeeded |
   failed`, with `failed → processing` retry path). Refund-completion

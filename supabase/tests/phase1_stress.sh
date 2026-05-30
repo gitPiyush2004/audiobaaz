@@ -249,6 +249,24 @@ BEGIN
       ${CONCURRENCY} - 1, v_cancel_ev;
   END IF;
 
+  -- Loser-cascade events on offer_events: exactly zero in this
+  -- harness (test fixtures use direct buy-now, no offer rows).
+  -- If a regression later adds offers to the fixture, the count
+  -- should equal the number of pre-existing offers on the
+  -- listing — never larger. This catches duplicate cascade
+  -- generation under replay where ownership stays correct but
+  -- the event stream is polluted.
+  DECLARE
+    v_cascade_ev INTEGER;
+  BEGIN
+    SELECT COUNT(*) INTO v_cascade_ev FROM offer_events
+      WHERE event_name = 'system_listing_sold'
+        AND metadata->>'listing_id' = v_listing_id::TEXT;
+    IF v_cascade_ev != 0 THEN
+      RAISE EXCEPTION 'STRESS FAIL: expected 0 system_listing_sold events (no offers in fixture), got %', v_cascade_ev;
+    END IF;
+  END;
+
   -- The winner has exactly one order_events row total: the
   -- payment_captured. Anything else is a duplicate cascade onto
   -- the winner (replay leaked through to the winner's own row).
