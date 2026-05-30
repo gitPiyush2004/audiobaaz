@@ -206,6 +206,7 @@ These are final. Do not suggest alternatives.
 | Person 3 | - | Admin panel | MERGED to dev — core panel complete (listings review, disputes, users, payouts queue + history). Orders monitor remains a stub. Vercel build lint failures resolved in commit e0d84e4. See docs/context/admin-panel.md |
 | Person 4 | AI coding tool | Payments + shipping | BLOCKED — architecture locked; session-zero audit complete (`docs/reviews/payments-session-zero.md` is the authoritative artifact, Schema Contract §4 is the primary review surface). Implementation deferred pending Open Question #1 (lifecycle) and Phase 1 schema work. `feature/payments-shipping` branch parked at f47ab10 with 9 Razorpay/Shiprocket files awaiting Phase 2. See docs/context/payments-shipping.md |
 | Project | — | Deployment + domain + auth infrastructure | LIVE — production at audiobaaz.com, dev at dev.audiobaaz.com, both on Vercel with Cloudflare DNS + Email Routing. Magic-link + Google OAuth wired through Supabase. See docs/DEPLOYMENT.md |
+| Design | AI coding tool | UI redesign exploration | IN PROGRESS — white editorial redesign on `feature/ui-redesign` (NOT merged to dev). Helvetica Neue, Instrument Serif, full-bleed layout, animated vinyl logo, waveform hero panel, newspaper listing grid. See docs/context/ui-redesign.md |
 
 > Update this table when features change status.
 
