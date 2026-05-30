@@ -70,6 +70,13 @@ jobs:
           # Confirm we can talk to the service container
           PGPASSWORD=postgres psql -h localhost -U postgres -d audiobaaz_phase1 -c 'SELECT 1;'
 
+      - name: Bootstrap Supabase compatibility (CI only)
+        # Production runs on Supabase, which already has service_role
+        # and auth.uid(). The bootstrap script provisions both on the
+        # vanilla postgres:15 service container so application
+        # migrations apply cleanly. Never run against real Supabase.
+        run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/ci/bootstrap_supabase_compat.sql
+
       - name: Apply base schema
         run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/schema.sql
 

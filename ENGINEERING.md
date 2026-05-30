@@ -199,6 +199,10 @@ These are final. Do not suggest alternatives.
 
 ## Current Build Status
 
+> **Launch focus:** see `docs/V1-LAUNCH.md` for the bounded checklist
+> from "where the codebase is today" to "shippable V1 marketplace."
+> Anything not on that list is V2 by definition until V1 ships.
+
 | Person | Tool | Feature | Status |
 |--------|------|---------|--------|
 | Person 1 | AI coding tool | Seller flow + dashboard | COMPLETE — onboarding, nav profile menu, rejected listings tab, resubmit flow, Google OAuth on login page (commit 15ff3f1). Magic-link OTP retained as fallback. See docs/context/seller-flow.md |

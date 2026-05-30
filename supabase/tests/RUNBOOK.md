@@ -37,11 +37,17 @@ export DATABASE_URL=postgres://postgres:postgres@localhost:5432/audiobaaz_phase1
 
 ### 3. Apply schema + migrations
 
+The bootstrap script provisions Supabase-compatible primitives (the `service_role` role and the `auth.uid()` function) on a vanilla Postgres. **Apply it first**, before `schema.sql`. On a real Supabase project, skip the bootstrap step — Supabase provides those primitives natively.
+
 ```bash
 cd /path/to/audiobaaz
 git checkout feature/payments-shipping
 git pull origin feature/payments-shipping
 
+# Vanilla Postgres only — skip on Supabase:
+psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/ci/bootstrap_supabase_compat.sql
+
+# All environments:
 psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/schema.sql
 psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/migrations/002_phase1_marketplace_core.sql
 psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/migrations/003_phase1_refund_lifecycle.sql

@@ -38,6 +38,39 @@ edge that fires from a verified Razorpay capture.
 [ ] Blocked
 ```
 
+### Phase 1 schema FROZEN as of 2026-05-30
+
+> **No new migrations, triggers, RPCs, state machines, or test
+> scenarios on this branch until a verification run actually fails
+> and points at a real bug.**
+
+The Phase 1 surface is complete:
+
+- atomic RPC (`finalize_winning_payment`)
+- lifetime invariant column + UNIQUE constraint
+- refund lifecycle (state machine + two RPCs)
+- audit tables (`offer_events`, `order_events`, `webhook_events`)
+- invariant-guard triggers (`sold_offer_id` immutable, `listings.status`
+  terminal-at-`sold`)
+- `checkout_locks` table + acquire/release RPCs
+- five acceptance scenarios + multi-connection stress harness
+- CI workflow + runbook + Supabase compatibility bootstrap
+
+This is enough architecture for a V1 marketplace core. Every
+additional migration written without an executed test run is
+optimisation of an unexercised system. The freeze is in place so
+the team focuses on **running the gate**, not extending it.
+
+Exception: a verification failure that points at a real bug
+(missing column, wrong constraint shape, broken RPC logic) is the
+one trigger to amend a migration. All other "while we're here"
+changes wait until after Phase 1 PR merges to `dev`.
+
+After Phase 1 verification passes and merges, the **next focus is
+Phase 2 application work** — wiring the existing RPCs into the
+Razorpay routes per the audit's §5.9 disposition. Not more
+migrations.
+
 Status reality (audit-verified):
 - No payment or shipping code on `dev`. `src/app/api/` has no
   `payments/` or `shipping/` directories.

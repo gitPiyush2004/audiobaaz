@@ -19,6 +19,13 @@
 -- four-scenario acceptance tests in supabase/tests/phase1_scenarios.sql
 -- prove this migration's correctness before refunds and locks land.
 --
+-- This migration assumes Supabase primitives are already present:
+--   - the `service_role` role (used in GRANT EXECUTE)
+--   - the `auth.uid()` function (used in RLS policies)
+-- On a real Supabase project these exist by default. For local /
+-- CI Postgres, apply `supabase/ci/bootstrap_supabase_compat.sql`
+-- before this migration. CI workflow does this automatically.
+--
 -- Architecture references:
 --   docs/context/payments-shipping.md
 --     "Order state machine — locked V1 contract (OQ#1 resolved)"
@@ -27,52 +34,6 @@
 --     "Refunded-winner rule (immutability of sold_offer_id)"
 --   docs/reviews/payments-session-zero.md §4.7 (RPC contract)
 -- ============================================================
-
-
--- ============================================================
--- 0 — PORTABILITY SHIMS for non-Supabase Postgres
--- ============================================================
---
--- Supabase provisions the `service_role` role and the `auth` schema
--- (with `auth.uid()`) on every project. A vanilla Postgres
--- (Docker postgres:15, fresh `apt install`, CI service container)
--- has neither. These shims make the migrations apply cleanly on
--- both, so verification can run anywhere with `psql`.
---
--- On a real Supabase project these statements are idempotent
--- no-ops — the role/schema/function already exist.
-
--- service_role: create if missing.
-DO $$
-BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'service_role') THEN
-    CREATE ROLE service_role NOLOGIN;
-  END IF;
-END
-$$;
-
--- auth schema + auth.uid(): create stub if missing.
--- The stub returns NULL, which is the correct behaviour for any
--- non-authenticated session (e.g. tests run as the postgres
--- superuser). Real Supabase auth.uid() reads the JWT from the
--- request context; tests don't have one.
---
--- CRITICAL: this MUST be `IF NOT EXISTS` semantics, not
--- CREATE OR REPLACE. On a real Supabase project, auth.uid()
--- is the production implementation and we must not clobber it.
-CREATE SCHEMA IF NOT EXISTS auth;
-
-DO $$
-BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_proc p
-    JOIN pg_namespace n ON n.oid = p.pronamespace
-    WHERE n.nspname = 'auth' AND p.proname = 'uid'
-  ) THEN
-    EXECUTE 'CREATE FUNCTION auth.uid() RETURNS UUID LANGUAGE sql STABLE AS ''SELECT NULL::UUID;'' ';
-  END IF;
-END
-$$;
 
 
 -- ============================================================
