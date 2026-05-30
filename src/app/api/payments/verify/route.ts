@@ -108,10 +108,33 @@ export async function POST(req: NextRequest) {
 
   // ── Conflict → race-loser refund ─────────────────────────────
   // The RPC marked this order 'cancelled' and recorded the audit
-  // event. Now we initiate the refund. For real Razorpay this is
-  // a network call; for the dev provider it returns instantly. The
-  // PaymentProvider abstracts the difference.
+  // event. The gateway DID capture the money (the buyer's signature
+  // verified above), but the marketplace winner is someone else.
+  // initiate_refund requires payments.status='captured' before it
+  // will let us request a refund — so we explicitly mark the
+  // payment captured here. This is the cleanest split:
+  //   - finalize_winning_payment owns marketplace-state transitions
+  //     (orders, listings, offers, audit) and NOT money-state for
+  //     conflict captures (because there's no marketplace state
+  //     where a captured-but-lost payment lives).
+  //   - The verify route owns the money-state transition for the
+  //     loser (created → captured) so that initiate_refund's
+  //     precondition is satisfied.
   if (result?.result === 'conflict') {
+    // Mark the losing payment as captured so initiate_refund accepts it.
+    // The signature was verified above; the gateway captured; the only
+    // marketplace concern is that this buyer didn't win.
+    await admin
+      .from('payments')
+      .update({
+        status:              'captured',
+        razorpay_payment_id: body.razorpay_payment_id,
+        razorpay_signature:  body.razorpay_signature,
+        method:              body.method ?? 'card',
+        updated_at:          new Date().toISOString(),
+      })
+      .eq('id', payment.id);
+
     await admin.rpc('initiate_refund', {
       p_payment_id: payment.id,
       p_reason:     'race_loss',

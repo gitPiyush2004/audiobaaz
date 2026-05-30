@@ -199,6 +199,23 @@ async function handlePaymentCaptured(
   if (result?.result === 'conflict') {
     // Race loser. /api/payments/verify may have already initiated the
     // refund; initiate_refund is idempotent on payment_id.
+    //
+    // Same precondition as the verify route: initiate_refund requires
+    // payments.status='captured'. The webhook arrived with a captured
+    // payment from the gateway, but finalize_winning_payment leaves
+    // the loser's payment row at 'created' (because its conflict
+    // branch returns before the captured-update step). Mark it
+    // captured here so initiate_refund accepts it.
+    await admin
+      .from('payments')
+      .update({
+        status:              'captured',
+        razorpay_payment_id: entity.id,
+        method:              entity.method ?? 'unknown',
+        updated_at:          new Date().toISOString(),
+      })
+      .eq('id', payment.id);
+
     await admin.rpc('initiate_refund', {
       p_payment_id: payment.id,
       p_reason:     'race_loss',

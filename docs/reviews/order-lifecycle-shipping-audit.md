@@ -4,9 +4,12 @@
 > Base: `dev` at `7b294e9`
 > Author: this audit was performed before opening the PR for review.
 >
-> **Status: NOT READY TO MERGE.** Three runtime bugs in migration 007
-> RPCs surfaced during this review. See "Critical bugs" below. Fix
-> commit will follow this document.
+> **Status: BUGS FIXED, DB-LAYER SMOKE PASSED.** Five runtime bugs
+> in migration 007 RPCs and route handlers surfaced during this
+> review. All five are fixed and re-validated against a real local
+> Postgres 16 instance. The branch is ready for Vercel preview
+> deploy and runbook execution. See "Critical bugs" below for the
+> full list and "Recommendation" at the bottom for current state.
 
 ---
 
@@ -40,6 +43,12 @@ deletion.
 ---
 
 ## Critical bugs (must fix before merge)
+
+> **Bugs 1–4 fixed in commit `5fe26e2`. Bug 5 fixed in the same
+> commit as this audit-doc update. All five surfaced through the
+> audit + the lifecycle smoke test (`supabase/tests/lifecycle_smoke.sql`
+> and `refund_lifecycle_smoke.sql`) which were run against a real
+> local Postgres 16 instance with all migrations applied.**
 
 ### Bug 1 — Migration 007 RPCs use a column that does not exist on `order_events`
 
@@ -129,14 +138,51 @@ the schema was first applied; existing dev tooling
 `'inspection'` directly. Aligning the new RPC with the same
 convention is the smallest change.
 
-### Bug 5 — Verify route's race-loser refund passes wrong amount on conflict
+### Bug 5 — `initiate_refund` rejects `payments.status='created'`, but the conflict path leaves losing payments at `'created'`
 
-`src/app/api/payments/verify/route.ts` calls `provider.refund({
-amount: payment.amount })`. `payments.amount` is the row I created
-from `/api/payments/create` — that's the full payment amount. For a
-race-loser the buyer was just charged the full amount and gets the
-full amount back, so this is actually correct. Not a bug, but worth
-confirming.
+**Discovered:** during a real-Postgres exercise of the conflict +
+refund path against a local Postgres 16 with all migrations applied
+(`supabase/tests/refund_lifecycle_smoke.sql`).
+
+**The shape of the bug:**
+
+`finalize_winning_payment` returns `result='conflict'` when the
+listing has already been won by another order. Its conflict branch
+updates `orders.status='cancelled'` and emits the audit event, but
+**does NOT update the losing payment's status**. The losing payment
+row stays at `payments.status='created'`.
+
+`initiate_refund` (migration 003) explicitly rejects refunds for
+non-captured payments:
+
+```sql
+IF v_payment.status != 'captured' THEN
+  RAISE EXCEPTION 'cannot refund payment in status %: %', v_payment.status, p_payment_id
+END IF;
+```
+
+So the verify route's conflict branch (and the webhook handler's
+conflict branch) crashes at runtime with
+`cannot refund payment in status created` the moment a real race
+loser arrives.
+
+This was caught by the smoke test, not by code review or audit.
+
+**Fix:** route handlers explicitly mark the losing payment as
+`captured` before calling `initiate_refund`. The signature is
+already verified at the route boundary, so this is honest about
+what happened (the gateway captured the money, the marketplace
+just isn't claiming the listing for this buyer). The fix lives in
+`/api/payments/verify/route.ts` and `/api/payments/webhook/route.ts`
+on the conflict branch.
+
+The alternative — amending `finalize_winning_payment`'s conflict
+branch to also UPDATE the payment to `captured` — would need a
+migration 008 and would shift the responsibility for "did the
+gateway actually capture this?" into the RPC. The route-level fix
+is closer to the truth: only the route knows whether the gateway
+captured (signature verified for verify; webhook event arrived for
+webhook), so the route is the right place to write that fact.
 
 ---
 
@@ -410,8 +456,37 @@ For clarity — items the user might expect to land here that did not:
 
 ## Recommendation
 
-**Do not merge until the fix commit lands and scenarios A–H are
-verified.** The bugs are mechanical and fast to fix — likely under
-30 minutes — but they would surface as user-visible 500s on the
-first real shipment booking. Catching them in audit is worth more
-than catching them in production logs.
+**Migration 007 + the route-level fixes have been validated against
+a real local Postgres 16 instance with all migrations applied
+(001 → 007).** The five bugs the audit caught are fixed and re-run
+clean:
+
+- Migration 007 RPCs apply without errors.
+- `record_shipment_created` correctly transitions an `escrow_held`
+  order to `seller_confirmed` and emits the right audit row.
+- `record_shipment_status_change` walks `picked_up → in_transit →
+  out_for_delivery → delivered` and the `delivered` step lands the
+  order at `inspection` (the existing `set_inspection_window`
+  trigger does the rewrite, and the audit row writes
+  `to_status='inspection'` to match).
+- Race-loser path: Buyer A wins, Buyer B gets `conflict`,
+  application-layer captures the losing payment, `initiate_refund`
+  + `record_refund_outcome` walk through `pending → succeeded`
+  cleanly. Replays return noop. `payments.status='refunded'` and
+  `refund_status='succeeded'` at the end.
+- Idempotency holds: same shipment status arriving twice returns
+  `replay=true`; same refund outcome twice returns noop.
+- Adversarial: invalid lifecycle transitions and non-seller create
+  attempts both correctly raise.
+
+Smoke tests live at:
+- `supabase/tests/lifecycle_smoke.sql`
+- `supabase/tests/refund_lifecycle_smoke.sql`
+
+These are not full CI integration tests (no scenarios A–H against a
+deployed app), but they prove the database-layer path holds. The
+remaining validation is Vercel preview deploy + manual scenario run
+per `docs/reviews/lifecycle-validation-runbook.md`.
+
+The branch is now in better shape than it was before this audit
+loop. Ready for preview deploy and runbook execution.
