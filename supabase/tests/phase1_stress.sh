@@ -158,15 +158,15 @@ echo "$SETUP_SQL" | psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q -f -
 
 # --- 2. Stress run ---
 # pgbench script picks a random fixture row and calls the RPC.
-# :client_id ranges over 1..CONCURRENCY when -j/-c are set; we
-# bind it into the query so each client targets a distinct
-# payment_id.
+# pgbench's :client_id starts at 0 (range 0..N-1 for -c N); the
+# fixture indexes start at 1 (range 1..N). We bind :i = client_id
+# + 1 so each client targets a distinct payment_id.
 
 PGBENCH_SCRIPT=$(mktemp -t phase1_stress.XXXXXX.sql)
 trap "rm -f $PGBENCH_SCRIPT" EXIT
 
 cat > "$PGBENCH_SCRIPT" <<EOF
-\set i :client_id
+\set i :client_id + 1
 SELECT finalize_winning_payment(
   (SELECT payment_id FROM stress_fixtures WHERE label = '${LABEL}' AND idx = :i),
   'rzp_pay_stress_' || :i,
