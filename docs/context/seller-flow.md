@@ -1,8 +1,8 @@
 # Seller Flow — Context File
 **Owner:** Person 1
 **Tool:** AI coding tool
-**Branch:** feature/seller-flow
-**Last updated:** 2026-05-29
+**Branch:** feature/seller-flow (merged); seller dashboard order detail + shipment flow on `feature/order-lifecycle-shipping`
+**Last updated:** 2026-05-30
 
 ---
 
@@ -206,7 +206,7 @@ Remaining items (V1.5 / nice-to-have, not blocking launch):
 2. Populate the `products` table — product search degrades gracefully, but needs data to be useful
 3. Profile photo upload — onboarding currently uses initials avatar; Supabase Storage `avatars` bucket needed
 4. Nav order count queries all-time offers + orders; could filter to active-only in future
-5. Mock checkout (`POST /api/checkout/mock`) is a temporary bypass — replace with real Razorpay flow when Person 4's payments are ready
+5. Real Razorpay flow now wired via the PaymentProvider abstraction (`feature/order-lifecycle-shipping`). The historical `/api/checkout/mock` route is removed; CheckoutForm goes through `/api/payments/create` and selects RazorpayPaymentProvider or DevPaymentProvider via `PAYMENT_PROVIDER` env. Seller dashboard now has `/dashboard/orders/[orderId]` with a "Create shipment" action that calls `/api/shipping/create` (MockShippingProvider until Shiprocket credentials land).
 
 ---
 
