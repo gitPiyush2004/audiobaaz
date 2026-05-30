@@ -100,20 +100,47 @@ or Shiprocket access.
 
 ---
 
-## NEXT ENGINEERING TASK — Admin operations
+## NEXT ENGINEERING TASK — Lifecycle validation, not implementation
 
-The remaining V1 chunk on the active branch:
+The active branch is large enough. The next failure mode is runtime
+bugs and lifecycle edge cases, not missing features. Adding more
+code on top of an unverified slice creates more risk than value.
 
-| Surface | Task |
-|---------|------|
-| Admin disputes | Wire dispute resolution to `initiate_refund` for buyer-favourable verdicts (`full_refund` / `partial_refund`). Existing `record_refund_outcome` finishes the lifecycle when the gateway-side refund completes. |
-| Admin payouts | UPI reference text input at trigger time. Route writes `payout_reference`, `payout_at`, `payout_status='paid'`. Telegram the seller. |
-| Admin orders monitor | Replace the stub at `src/app/admin/orders/page.tsx` with a real list + filter view that surfaces stuck refunds, stuck shipments, and orders past inspection without payout. |
-| Manual escrow release | Admin button on a `delivered` order past its inspection window → flips order to `completed` + `payout_status='pending'`. (The 48h auto-release can come later; the admin path unblocks immediate payouts.) |
+The pre-merge audit at `docs/reviews/order-lifecycle-shipping-audit.md`
+already caught four schema-contract bugs that the build did not
+catch (column name, NOT NULL, CHECK constraint, trigger interaction).
+That's exactly the kind of failure that surfaces only at runtime —
+so the next step is exercising the runtime.
 
-After admin operations land, the active branch is ready for review +
-merge into `dev`. Real-credential swaps follow as separate, surgical
-branches.
+The validation runbook at
+`docs/reviews/lifecycle-validation-runbook.md` specifies eight
+scenarios with exact DB-state assertions for every transition.
+Execute them on `dev.audiobaaz.com` with `PAYMENT_PROVIDER=dev`,
+capture results in `docs/reviews/lifecycle-validation-results.md`,
+and merge only after the report is clean.
+
+Scenarios summary (full detail in the runbook):
+
+| # | Scenario |
+|---|----------|
+| **A** | Single-buyer happy path: listing → checkout → escrow_held → shipment_created → picked_up → in_transit → out_for_delivery → delivered → inspection |
+| **B** | Buyer abandons checkout — no phantom sale, no leaked lock |
+| **C** | Two buyers race for the same listing — exactly one winner, refund initiated for loser |
+| **D** | Webhook replay — `/api/dev/payments/webhook-replay` posted twice → second returns `{replay: true}` |
+| **E** | Payment failure — `event=payment.failed` lands order at `payment_failed`, recoverable |
+| **F** | Adversarial: non-seller tries to create a shipment for someone else's order — 403 |
+| **G** | Adversarial: seller creates shipment twice — 409 SHIPMENT_EXISTS |
+| **H** | Adversarial: out-of-order shipment advance — INVALID_TRANSITION |
+
+Scenario C is the most important runtime test in the platform.
+
+### Admin operations — deferred
+
+Originally listed here as the next implementation task. Now
+deferred until after lifecycle validation completes and merges. The
+reasoning: admin operations build on top of lifecycle states that
+this branch produces. Validating those states first means the admin
+work can trust the substrate when it lands.
 
 ---
 
@@ -139,72 +166,86 @@ is "after launch, not before." Launch first; optimise after data.
 
 ## Order of work — launch-critical sequence
 
-### Step 1 — Close PR #4
+### Step 1 — Stop all new feature development
 
-PR #4 (`feature/checkout-razorpay-wire → dev`) is superseded. Its
-code lives on `feature/order-lifecycle-shipping` as commit `5ae8cd7`
-(cherry-pick of `413bc77`). Close without merging.
+The active branch contains a vertical slice covering payments,
+shipping, escrow lifecycle, timeline, and seller shipment flow
+(~3500 LoC, 32 files, 1 migration). The next failure mode is
+runtime bugs and lifecycle edge cases, not missing features. New
+code should not land until the lifecycle is verified end-to-end on
+`dev.audiobaaz.com`.
 
-### Step 2 — Delete merged-ancestor branches
+Stop list (do not begin until validation produces a clean report):
 
-Remote branches with zero commits ahead of `dev`:
+- AI features
+- Reputation systems
+- Merchant gamification
+- Recommendation systems
+- Payout automation
+- Advanced disputes
+- Real `ShiprocketProvider`
+- Real Razorpay credential setup
+- Admin operations (deferred to AFTER validation merges)
 
-- `feature/payment-routes` (merged via PR #3)
-- `feature/payments-shipping` (merged via PR #2)
-- `feature/buyer-flow` (earlier merge)
+### Step 2 — Deploy to `dev.audiobaaz.com`
 
-Safe to delete from origin. Local copies can be cleaned up at the
-engineer's convenience.
+Set on Vercel `dev`:
+- `PAYMENT_PROVIDER=dev`
+- `PAYMENT_DEV_SECRET=<any non-empty string>` (optional)
+- `ENABLE_DEV_PAYMENT_SIMULATION=true` (only needed for webhook-replay scenarios)
 
-### Step 3 — Build admin operations
-
-On `feature/order-lifecycle-shipping` (do not branch). See "NEXT
-ENGINEERING TASK" above.
-
-### Step 4 — Open one PR
-
-`feature/order-lifecycle-shipping → dev`. Single PR; no splitting.
-The vertical slice is tightly coupled and an intermediate split
-would not represent a usable marketplace state.
-
-### Step 5 — Validate the lifecycle on dev.audiobaaz.com
-
-After merge, run the matrix below against `dev.audiobaaz.com` with
-`PAYMENT_PROVIDER=dev` set in Vercel:
-
-| # | Scenario | Expected DB outcome |
-|---|----------|---------------------|
-| **A** | Single buyer, single listing, complete checkout | `listings.status='sold'`, `listings.sold_order_id` set; `orders.status='escrow_held'` then walks through `seller_confirmed → shipped → delivered`; `payments.status='captured'`; one `order_events` row per transition |
-| **B** | Buyer abandons checkout | `orders.status='payment_pending'`; `checkout_locks` row exists, expires after TTL; listing remains `approved` (Decision 6) |
-| **C** | Two buyers race for same listing | Exactly one winner reaches `escrow_held`; loser's `payments.refund_status='processing'`; loser's `orders.status='cancelled'`; zero ownership corruption |
-| **D** | Webhook replay via `/api/dev/payments/webhook-replay` | First call processes; second returns `{replay: true}`; `webhook_events` shows exactly one row with `status='processed'` |
-| **E** | Payment failure path — synthesise a `payment.failed` event | `orders.status='payment_failed'` (recoverable); listing untouched; buyer can re-enter and retry |
-
-Scenario C is the most important runtime test in the platform.
-
-### Step 6 — Real Razorpay (when credentials arrive)
-
-Set on Vercel:
+Leave unset:
 - `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET`
-- Unset (or leave blank) `PAYMENT_PROVIDER`
+- `SHIPROCKET_EMAIL`, `SHIPPING_PROVIDER`
 
-Razorpay dashboard:
-- Webhook URL → `https://dev.audiobaaz.com/api/payments/webhook` (then production)
-- Events: `payment.captured`, `payment.failed`, `refund.processed`, `refund.failed`
+**Confirm `PAYMENT_PROVIDER=dev` is NOT in production env vars.**
 
-Re-run scenarios A–E against real test-mode transactions. Same
-DB / audit assertions; only the active provider changes.
+Apply migration 007 to the Supabase project backing `dev`.
 
-### Step 7 — Real Shiprocket (when credentials arrive)
+### Step 3 — Run lifecycle scenarios A–H
 
-Build `ShiprocketProvider` as the concrete implementation behind the
-existing `ShippingProvider` interface. No changes to seller shipment
-flow, order timeline, buyer tracking page, or notifications.
+The runbook is `docs/reviews/lifecycle-validation-runbook.md`. It
+specifies eight scenarios (single-buyer happy path, abandoned
+checkout, two-buyer race, webhook replay, payment failure, three
+adversarial cases) with exact DB-state assertions for every
+transition.
+
+Capture results in
+`docs/reviews/lifecycle-validation-results.md` per the template in
+the runbook.
+
+### Step 4 — Fix only what validation finds
+
+If validation surfaces a defect, fix it on the same branch
+(`feature/order-lifecycle-shipping`). Do not branch a sibling. Do
+not extend scope.
+
+### Step 5 — Open the PR
+
+`feature/order-lifecycle-shipping → dev`. Single PR. Reference both
+the audit doc and the validation results in the description.
+
+### Step 6 — Branch cleanup after merge
+
+After the PR merges:
+- Close PR #4 (`feature/checkout-razorpay-wire`) without merging — the active branch supersedes it (verified: `git diff` shows the active branch is a strict superset).
+- Delete merged-only remote branches: `feature/payment-routes`, `feature/payments-shipping`, `feature/buyer-flow`, `feature/checkout-razorpay-wire`.
+- Repository state after cleanup: `main`, `dev`, plus any genuinely active feature branch.
+
+### Step 7 — Minimal admin operations
+
+On a fresh branch off `dev`. Last V1 feature before closed beta.
+Scope: dispute → refund button, manual escrow release, payouts UPI
+reference flow, orders/payments/shipments/refunds monitor pages.
+Nothing more.
 
 ### Step 8 — Closed beta
 
-5–10 real listings + 5–10 real buyers. Watch the audit tables. Fix
-anything that surfaces. Then open V1 launch.
+5–10 real listings + 5–10 real buyers running the full lifecycle
+on the dev provider. Watch the audit tables. Fix anything that
+surfaces. Then real-credential swaps:
+- `PAYMENT_PROVIDER` unset → Razorpay (when credentials land).
+- `MockShippingProvider` → `ShiprocketProvider` (when credentials land).
 
 ---
 

@@ -263,6 +263,15 @@ lifecycle, order timeline, admin operations).
 `next build` GREEN on `feature/order-lifecycle-shipping`. All 22 API
 routes compile. TypeScript + lint clean.
 
+### Pre-merge gates
+
+- Audit: `docs/reviews/order-lifecycle-shipping-audit.md`
+- Validation runbook: `docs/reviews/lifecycle-validation-runbook.md`
+- Validation results: `docs/reviews/lifecycle-validation-results.md` (to be filled in)
+
+No new code on the branch until the runbook scenarios A–H produce
+a clean results report.
+
 ---
 
 ## BRANCH STRATEGY (remaining V1)

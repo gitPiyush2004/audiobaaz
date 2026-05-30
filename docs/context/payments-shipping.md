@@ -139,6 +139,16 @@ schema changes, new env vars, every route added or changed,
 lifecycle scenarios A–H, risk assessment, and the pre-merge
 checklist. Read it before opening the PR; the lifecycle scenarios
 must be exercised against `dev.audiobaaz.com` before merge.
+
+### Lifecycle validation runbook
+
+The execution checklist for scenarios A–H lives at
+`docs/reviews/lifecycle-validation-runbook.md` — exact DB-state
+assertions per transition, including pre-deploy checks, test data
+setup, scenario steps, stop conditions, and post-validation
+actions. Validation produces a results report at
+`docs/reviews/lifecycle-validation-results.md`, which is the gate
+for opening the PR.
 - refund lifecycle (state machine + two RPCs)
 - audit tables (`offer_events`, `order_events`, `webhook_events`)
 - invariant-guard triggers (`sold_offer_id` immutable, `listings.status`
