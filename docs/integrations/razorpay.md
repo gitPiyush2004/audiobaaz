@@ -1,5 +1,23 @@
 # Razorpay Integration — Audiobaaz
 
+> **How we use Razorpay in V1**
+>
+> Audiobaaz wraps Razorpay behind a `PaymentProvider` abstraction at
+> `src/lib/payments/provider.ts`. Two implementations:
+>
+> - `RazorpayPaymentProvider` (`src/lib/payments/razorpay.ts`) — production. Wraps the Razorpay Node SDK + HMAC helpers.
+> - `DevPaymentProvider` (`src/lib/payments/dev.ts`) — synthetic provider for validating the marketplace lifecycle without Razorpay credentials. Selected via `PAYMENT_PROVIDER=dev` (gated to `NODE_ENV !== 'production'` by the factory).
+>
+> Routes (`/api/payments/{create,verify,webhook}`) call the provider
+> through `getPaymentProvider()` — they never import the Razorpay SDK
+> directly. When Razorpay credentials arrive, set `PAYMENT_PROVIDER`
+> back to default and configure `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`,
+> `RAZORPAY_WEBHOOK_SECRET` in Vercel. No application-code changes.
+>
+> The reference material below is the upstream Razorpay API documentation,
+> kept here so engineers building or maintaining `RazorpayPaymentProvider`
+> can look up endpoint shapes without leaving the repo.
+
 ---
 title: Razorpay API Documentation
 heading: API Reference Guide

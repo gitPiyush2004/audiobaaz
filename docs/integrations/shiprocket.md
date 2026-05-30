@@ -1,5 +1,26 @@
 # Shiprocket Integration — Audiobaaz
 
+> **How we use Shiprocket in V1**
+>
+> Audiobaaz wraps the courier integration behind a `ShippingProvider`
+> abstraction at `src/lib/shipping/provider.ts`. Two implementations
+> in V1:
+>
+> - `MockShippingProvider` (`src/lib/shipping/mock.ts`) — current default. Returns synthetic AWBs (`TEST-XXXX-NNN`), persists tracking history in the `mock_shipments` table, and validates lifecycle transitions (`created → picked_up → in_transit → out_for_delivery → delivered`). Lets us build and validate the entire seller shipment flow + buyer tracking + admin tooling without Shiprocket credentials.
+> - `ShiprocketProvider` — **not yet built.** Slot exists in the factory at `src/lib/shipping/factory.ts`; it throws on selection. Drops in once `SHIPROCKET_EMAIL` + `SHIPROCKET_PASSWORD` are configured. No caller-code changes when it lands.
+>
+> Routes (`/api/shipping/{create,track}`, `/api/dev/shipping/advance`)
+> call the provider through `getShippingProvider()` and the canonical
+> shipment record lives in the `shipments` table (provider-agnostic).
+> Real Shiprocket data and mock data both write through the same
+> route + RPC + table layer.
+>
+> The reference material below is the upstream Shiprocket API
+> documentation, kept here so engineers building `ShiprocketProvider`
+> can look up endpoint shapes without leaving the repo.
+
+---
+
 ## Purpose
 
 Shiprocket handles:

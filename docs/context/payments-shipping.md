@@ -25,7 +25,7 @@ edge that fires from a verified payment capture.
 
 ```
 [ ] Not started
-[x] PARTIALLY MERGED + active vertical slice in flight
+[x] PARTIALLY MERGED + active vertical slice in flight + DB-layer smoke validated
     - PR #2 (commit 230d9ae): Phase 1 schema substrate on dev.
       Migrations 002–006: atomic finalize_winning_payment RPC,
       lifetime invariant on listings.sold_order_id, audit tables,
@@ -33,18 +33,28 @@ edge that fires from a verified payment capture.
     - PR #3 (commit 7b294e9): Phase 2 Razorpay routes on dev.
       /api/payments/{create,verify,webhook} as thin wrappers
       around the locked RPCs.
-    - feature/order-lifecycle-shipping: PaymentProvider +
-      ShippingProvider abstractions, DevPaymentProvider +
-      MockShippingProvider, migration 007 (shipments +
-      shipment_events + mock_shipments + RPCs), seller shipment
-      flow, OrderTimeline + ShipmentTracking UI, dev simulation
-      routes. End-to-end lifecycle exercised today without
-      Razorpay or Shiprocket credentials.
+    - feature/order-lifecycle-shipping (tip d2f9bc6):
+      PaymentProvider + ShippingProvider abstractions,
+      DevPaymentProvider + MockShippingProvider, migration 007
+      (shipments + shipment_events + mock_shipments + RPCs),
+      seller shipment flow, OrderTimeline + ShipmentTracking UI,
+      dev simulation routes. End-to-end lifecycle exercised today
+      without Razorpay or Shiprocket credentials.
+    - DB-layer smoke validation: migrations 001 → 007 apply
+      cleanly on a fresh real Postgres 16; record_shipment_created
+      + record_shipment_status_change RPCs walk the full lifecycle
+      (escrow_held → seller_confirmed → shipped → inspection)
+      with audit rows matching reality at every step;
+      finalize_winning_payment + initiate_refund + record_refund_outcome
+      walk the race-loser path (winner + cancelled loser + pending
+      refund + succeeded refund) idempotently. Smoke tests at
+      supabase/tests/lifecycle_smoke.sql and refund_lifecycle_smoke.sql.
     - PR #4 (feature/checkout-razorpay-wire): SUPERSEDED.
       Code lives on the active branch as commit 5ae8cd7. Close
       without merging.
-[ ] Complete (pending: admin operations + lifecycle validation
-    on dev.audiobaaz.com)
+[ ] Complete (pending: lifecycle scenarios A–H against a deployed
+    environment per docs/reviews/lifecycle-validation-runbook.md;
+    admin operations on the active branch after that)
 [ ] Blocked
 ```
 

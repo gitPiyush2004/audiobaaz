@@ -4,7 +4,7 @@
 > environments, how email is routed, and how authentication redirects
 > are configured. Update this file whenever any of those change.
 
-**Last updated:** 2026-05-30
+**Last updated:** 2026-05-30 (post-vertical-slice on `feature/order-lifecycle-shipping`)
 
 ---
 
@@ -72,12 +72,23 @@ and avoids Supabase auth-callback fan-out across two hostnames.
   aliases to the `dev.audiobaaz.com` domain.
 - **Build command:** `next build` (default).
 - **Environment variables (set in Vercel project settings):**
+
+  Production environment (`audiobaaz.com`):
   - `NEXT_PUBLIC_SUPABASE_URL`
   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
   - `SUPABASE_SERVICE_ROLE_KEY`
   - `TELEGRAM_BOT_TOKEN` (currently empty — wire when bot is ready)
-  - `RAZORPAY_*`, `SHIPROCKET_*` — not yet populated; payment-shipping
-    feature is blocked behind Phase 1 schema work.
+  - `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET` — populate when Razorpay credentials arrive.
+  - `SHIPROCKET_EMAIL`, `SHIPROCKET_PASSWORD`, `SHIPROCKET_PICKUP_LOCATION`, `SHIPROCKET_WEBHOOK_TOKEN` — populate when Shiprocket credentials arrive.
+  - **Must NOT have:** `PAYMENT_PROVIDER=dev`, `ENABLE_DEV_PAYMENT_SIMULATION`, `SHIPPING_PROVIDER=mock`. The factory has a runtime guard, but defense in depth.
+
+  Preview / `dev` environment (`dev.audiobaaz.com`, preview URLs):
+  - All of the above, except:
+  - `PAYMENT_PROVIDER=dev` until Razorpay credentials are ready. Selects `DevPaymentProvider`; the factory only honours this when `NODE_ENV !== 'production'`.
+  - `PAYMENT_DEV_SECRET=<any non-empty string>` (optional; defaults to a hardcoded constant if unset). Used by `DevPaymentProvider` to sign synthetic payments and webhooks.
+  - `ENABLE_DEV_PAYMENT_SIMULATION=true` to enable `/api/dev/payments/webhook-replay`. Required for Scenarios D + E in the lifecycle runbook.
+  - `SHIPPING_PROVIDER` left unset, OR `SHIPPING_PROVIDER=mock`. The factory falls back to `MockShippingProvider` whenever `SHIPROCKET_EMAIL` is not set.
+
 - **Commit-author validation:** Vercel enforces that commit authors
   resolve to a GitHub-recognised email. See "Lessons Learned" below.
 
@@ -299,6 +310,61 @@ git push origin dev
 Avoid clicking "Redeploy" on a previous deployment row — that rebuilds
 the *original* commit, not the latest branch tip.
 
+### Deploying `feature/order-lifecycle-shipping` for lifecycle validation
+
+The active V1 transaction-engine branch contains migration 007
+(shipments substrate) plus the Razorpay/shipping provider abstractions.
+Lifecycle scenarios A–H must be exercised on the deployed environment
+before merging to `dev`. See
+`docs/reviews/lifecycle-validation-runbook.md` for the full scenario
+list.
+
+Sequence:
+
+1. **Apply migration 007** to the `dev` Supabase project. Easiest path:
+   Supabase dashboard → SQL Editor → paste
+   `supabase/migrations/007_shipping_substrate.sql` → Run. After:
+   `select tablename from pg_tables where tablename in
+   ('shipments', 'shipment_events', 'mock_shipments');` returns three
+   rows; `select proname from pg_proc where proname in
+   ('record_shipment_created', 'record_shipment_status_change');`
+   returns two rows.
+
+2. **Set Vercel env vars** on the Preview environment (or on `dev` if
+   you're testing on `dev.audiobaaz.com`):
+   - `PAYMENT_PROVIDER=dev`
+   - `PAYMENT_DEV_SECRET=<any non-empty string>` (optional)
+   - `ENABLE_DEV_PAYMENT_SIMULATION=true`
+   - Leave `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET` unset.
+   - Leave `SHIPROCKET_EMAIL` unset (factory falls back to mock).
+
+3. **Trigger the deploy.** Vercel auto-deploys preview branches on
+   push. The branch is already pushed; the most recent deploy will
+   appear on the Vercel dashboard at a URL like
+   `audiobaaz-git-feature-order-lifecycle-shipping-<team>.vercel.app`.
+
+4. **Run scenarios A–H** per
+   `docs/reviews/lifecycle-validation-runbook.md`. Capture results in
+   `docs/reviews/lifecycle-validation-results.md`. Bug list as
+   `BUG-001`, `BUG-002`, etc.
+
+5. **Fix only what validation finds.** No new features, no
+   abstractions, no refactors.
+
+6. **Open the PR** `feature/order-lifecycle-shipping → dev` once the
+   results report is clean. Reference the audit
+   (`docs/reviews/order-lifecycle-shipping-audit.md`) and the results
+   doc.
+
+7. **After merge:** close PR #4
+   (`feature/checkout-razorpay-wire`) without merging. Delete merged-only
+   remote branches per `docs/BRANCHING.md`.
+
+8. **Real-credential swaps:** when Razorpay credentials arrive, set
+   the Razorpay env vars and unset `PAYMENT_PROVIDER`. When Shiprocket
+   credentials arrive, build `ShiprocketProvider` (slot already exists
+   in the factory). No caller code changes for either.
+
 ### Rotating Supabase service role key
 
 1. Generate a new service role key in Supabase project settings.
@@ -313,44 +379,51 @@ the *original* commit, not the latest branch tip.
 
 ## Next Session Starts Here
 
-Documentation is now caught up. The next on-the-keyboard work is
-auth verification and admin/merchant testing on the live domains.
+The transaction-engine vertical slice on
+`feature/order-lifecycle-shipping` is built and database-validated
+against a real local Postgres. The next on-the-keyboard work is
+**deploying that branch and running lifecycle scenarios A–H on a
+real environment** (preview deploy or `dev.audiobaaz.com`).
 
-### High priority
+### Highest priority — lifecycle validation
 
-1. **Implement Google OAuth button on login page.** *Already shipped
-   in commit `15ff3f1` — verify it renders and triggers the OAuth flow
-   correctly on both `dev.audiobaaz.com` and `audiobaaz.com`.*
-2. **Keep magic-link login as fallback.** Confirm the magic-link path
-   still works alongside the Google button.
-3. **Verify Google OAuth flow on `dev.audiobaaz.com`** end-to-end:
-   click Sign in with Google → Google consent screen → redirect back
-   to `/auth/callback` → onboarding (for first-time users) →
-   destination route.
-4. **Test auth callback flow on `dev.audiobaaz.com` and
-   `audiobaaz.com`.** Both magic-link and Google flows. Confirm
-   redirect URLs in Supabase still match what each origin sends.
-5. **Verify role-based onboarding flow after OAuth login.** First
-   Google sign-in must:
-   - create the `public.users` row via the `handle_new_auth_user`
-     trigger;
-   - redirect to `/onboarding` because `full_name` is unset;
-   - send the user to their original destination after onboarding
-     submit.
-6. **Continue admin and merchant authentication testing.** Confirm an
-   admin user lands on `/admin` and is gated correctly; confirm a
-   non-admin user is redirected away from `/admin/*`. Merchant
-   onboarding is V2 (operations-dashboard subdomain) — not in this
-   pass.
+1. Apply migration 007 to the `dev` Supabase project (instructions in
+   "Deploying `feature/order-lifecycle-shipping`" above).
+2. Set the dev env vars (`PAYMENT_PROVIDER=dev`,
+   `ENABLE_DEV_PAYMENT_SIMULATION=true`).
+3. Run scenarios A–H per
+   `docs/reviews/lifecycle-validation-runbook.md`.
+4. Capture results in `docs/reviews/lifecycle-validation-results.md`.
+5. Fix only what validation finds. Merge to `dev` when clean.
 
-### Lower priority (after the above)
+### Auth follow-ups (lower priority — track separately)
+
+The auth surface is in good shape on `dev`. Outstanding verifications:
+
+- **Verify Google OAuth flow on `dev.audiobaaz.com`** end-to-end: Sign
+  in with Google → consent screen → redirect to `/auth/callback` →
+  onboarding (first-time users) → destination. Magic-link path
+  remains as fallback.
+- **Test auth callback flow on both `dev.audiobaaz.com` and
+  `audiobaaz.com`.**
+- **Verify role-based onboarding flow after OAuth login.** First
+  Google sign-in must:
+  - create the `public.users` row via the `handle_new_auth_user`
+    trigger;
+  - redirect to `/onboarding` because `full_name` is unset;
+  - send the user to their original destination after onboarding.
+- **Continue admin and merchant authentication testing.** Confirm an
+  admin user lands on `/admin` and is gated correctly; non-admin
+  redirected away from `/admin/*`. Merchant onboarding is V2
+  (operations-dashboard subdomain).
+
+### Wiring follow-ups
 
 - Wire `TELEGRAM_BOT_TOKEN` in Vercel so order/dispute notifications
   flow on `dev.audiobaaz.com`.
 - Decide whether the production Site URL flips from
-  `https://dev.audiobaaz.com` to `https://audiobaaz.com` now that
-  production is live, or whether to wait until external traffic
-  starts hitting the apex.
+  `https://dev.audiobaaz.com` to `https://audiobaaz.com` once
+  external traffic starts hitting the apex.
 - Plan the `app.audiobaaz.com` subdomain for the operations dashboard
   (admin sign-in, merchant signup, dashboards). Not built; record
   the DNS + Vercel project decisions here when it lands.
@@ -361,8 +434,11 @@ auth verification and admin/merchant testing on the live domains.
 
 - Project rules and money/database invariants — `ENGINEERING.md`
 - Branching, reviewer ownership, PR protocol — `docs/BRANCHING.md`
+- V1 launch checklist — `docs/V1-LAUNCH.md`
 - Buyer flow status — `docs/context/buyer-flow.md`
 - Seller flow status — `docs/context/seller-flow.md`
 - Admin panel status — `docs/context/admin-panel.md`
-- Payments + shipping (blocked) — `docs/context/payments-shipping.md`
-- Payments architecture audit — `docs/reviews/payments-session-zero.md`
+- Payments + shipping (active vertical slice) — `docs/context/payments-shipping.md`
+- Payments architecture audit — `docs/reviews/payments-session-zero.md` (immutable)
+- Vertical-slice pre-merge audit — `docs/reviews/order-lifecycle-shipping-audit.md`
+- Lifecycle validation runbook — `docs/reviews/lifecycle-validation-runbook.md`

@@ -208,7 +208,7 @@ These are final. Do not suggest alternatives.
 | Person 1 | AI coding tool | Seller flow + dashboard | COMPLETE — onboarding, nav profile menu, rejected listings tab, resubmit flow, Google OAuth on login page (commit 15ff3f1). Magic-link OTP retained as fallback. See docs/context/seller-flow.md |
 | Person 2 | Kiro | Buyer flow + listing page | MERGED to dev — buyer journey on real Supabase: browse, listing detail, checkout (now Razorpay or DevPaymentProvider depending on env), orders list (`/orders/purchases`), order detail with full audit timeline + shipment tracking, inspection window, dispute creation. Active vertical-slice work continues on `feature/order-lifecycle-shipping`. See docs/context/buyer-flow.md |
 | Person 3 | - | Admin panel | MERGED to dev — core panel complete (listings review, disputes, users, payouts queue + history). Orders monitor remains a stub. Vercel build lint failures resolved in commit e0d84e4. See docs/context/admin-panel.md |
-| Person 4 | AI coding tool | Payments + shipping | PARTIALLY MERGED — Phase 1 schema substrate merged via PR #2 (commit 230d9ae), Phase 2 Razorpay routes merged via PR #3 (commit 7b294e9). Active branch `feature/order-lifecycle-shipping` carries: `PaymentProvider` abstraction (RazorpayPaymentProvider + DevPaymentProvider), `ShippingProvider` abstraction (MockShippingProvider; ShiprocketProvider deferred), shipping migration 007 (shipments + shipment_events + mock_shipments + RPCs), seller shipment flow, OrderTimeline + ShipmentTracking components, dev simulation routes. PR #4 (`feature/checkout-razorpay-wire`) is superseded by this branch and should be closed. See docs/context/payments-shipping.md and docs/V1-LAUNCH.md |
+| Person 4 | AI coding tool | Payments + shipping | PARTIALLY MERGED — Phase 1 schema substrate merged via PR #2 (commit 230d9ae), Phase 2 Razorpay routes merged via PR #3 (commit 7b294e9). Active branch `feature/order-lifecycle-shipping` carries: `PaymentProvider` abstraction (RazorpayPaymentProvider + DevPaymentProvider), `ShippingProvider` abstraction (MockShippingProvider; ShiprocketProvider deferred), shipping migration 007 (shipments + shipment_events + mock_shipments + RPCs), seller shipment flow, OrderTimeline + ShipmentTracking components, dev simulation routes. **Migration 007 + race-loser refund path validated against real local Postgres 16 (smoke tests in `supabase/tests/`).** Lifecycle scenarios A–H pending against `dev.audiobaaz.com`. PR #4 (`feature/checkout-razorpay-wire`) is superseded by this branch and should be closed. See docs/context/payments-shipping.md and docs/V1-LAUNCH.md. |
 | Project | — | Deployment + domain + auth infrastructure | LIVE — production at audiobaaz.com, dev at dev.audiobaaz.com, both on Vercel with Cloudflare DNS + Email Routing. Magic-link + Google OAuth wired through Supabase. See docs/DEPLOYMENT.md |
 
 > Update this table when features change status.
@@ -229,7 +229,7 @@ lifecycle, order timeline, admin operations).
 |--------|-------|-------|
 | `main` | release | Production. Auto-deploys to audiobaaz.com. |
 | `dev` | integration | Auto-deploys to dev.audiobaaz.com. Tip: `7b294e9` (PR #3 merge). |
-| `feature/order-lifecycle-shipping` | **ACTIVE** | All future V1 transaction work lands here. Tip: `c8dcd41`. Branched off `dev`; cherry-picked the CheckoutForm wiring from PR #4. |
+| `feature/order-lifecycle-shipping` | **ACTIVE** | All remaining V1 transaction-engine work lands here. Tip: `d2f9bc6`. Branched off `dev`; cherry-picked the CheckoutForm wiring from PR #4. **Migration 007 + RPC paths validated against real local Postgres 16; smoke tests at `supabase/tests/{lifecycle_smoke,refund_lifecycle_smoke}.sql`.** |
 | `feature/checkout-razorpay-wire` | **SUPERSEDED** | PR #4 OPEN. Code (CheckoutForm wiring + mock removal) lives in `feature/order-lifecycle-shipping` as commit `5ae8cd7` (cherry-pick of `413bc77`). Recommendation: **close PR #4 without merging; delete branch after the active branch lands.** |
 | `feature/payment-routes` | **MERGED** | Merged via PR #3. Zero commits ahead of `dev`. Safe to delete. |
 | `feature/payments-shipping` | **MERGED** | Merged via PR #2. Zero commits ahead of `dev`. Safe to delete. |
@@ -252,6 +252,7 @@ lifecycle, order timeline, admin operations).
 | Shipping routes | ✅ on `feature/order-lifecycle-shipping` | `/api/shipping/{create,track}`, `/api/dev/shipping/advance` |
 | Seller shipment flow UI | ✅ on `feature/order-lifecycle-shipping` | `/dashboard/orders/[orderId]` with `CreateShipmentButton` + `AdvanceShipmentButton` |
 | Order timeline UI | ✅ on `feature/order-lifecycle-shipping` | `OrderTimeline` + `ShipmentTracking` components on buyer + seller detail pages |
+| DB-layer smoke tests | ✅ on `feature/order-lifecycle-shipping` | `supabase/tests/lifecycle_smoke.sql` + `refund_lifecycle_smoke.sql`. Migration 007 RPCs + race-loser refund path validated against real local Postgres 16. |
 | Real Razorpay validation | ❌ blocked on credentials | Not on critical path — `DevPaymentProvider` covers the gap |
 | Real Shiprocket validation | ❌ blocked on credentials | Not on critical path — `MockShippingProvider` covers the gap |
 | `ShiprocketProvider` impl | ❌ deferred until credentials land | Slot exists in factory; throws on selection |
@@ -265,12 +266,14 @@ routes compile. TypeScript + lint clean.
 
 ### Pre-merge gates
 
-- Audit: `docs/reviews/order-lifecycle-shipping-audit.md`
-- Validation runbook: `docs/reviews/lifecycle-validation-runbook.md`
-- Validation results: `docs/reviews/lifecycle-validation-results.md` (to be filled in)
+- Audit: `docs/reviews/order-lifecycle-shipping-audit.md` — ✅ five bugs surfaced, all fixed (4 by audit, 1 by smoke).
+- Validation runbook: `docs/reviews/lifecycle-validation-runbook.md` — ✅ written.
+- DB-layer smoke: `supabase/tests/{lifecycle_smoke,refund_lifecycle_smoke}.sql` — ✅ passing on real local Postgres 16.
+- Validation results: `docs/reviews/lifecycle-validation-results.md` — ❌ still to be filled in by running the runbook against `dev.audiobaaz.com` (or a preview deploy) with `PAYMENT_PROVIDER=dev`.
 
-No new code on the branch until the runbook scenarios A–H produce
-a clean results report.
+The runbook results doc is the gate for merging
+`feature/order-lifecycle-shipping → dev`. No new code on the branch
+until the runbook scenarios A–H produce a clean results report.
 
 ---
 

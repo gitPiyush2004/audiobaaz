@@ -4,7 +4,7 @@
 > V1 marketplace. Anything not on this list is explicitly **out of
 > scope for V1** — defer until launch is complete.
 
-**Last updated:** 2026-05-30 (post-vertical-slice on `feature/order-lifecycle-shipping`)
+**Last updated:** 2026-05-30 (post DB-layer smoke validation; tip `d2f9bc6`)
 
 ---
 
@@ -51,8 +51,10 @@ Single source of truth for all remaining V1 transaction-engine work.
 | Shipping routes | `src/app/api/shipping/{create,track}/route.ts`, `src/app/api/dev/shipping/advance/route.ts` |
 | Seller shipment flow UI | `src/app/(main)/dashboard/orders/[orderId]/{page,CreateShipmentButton,AdvanceShipmentButton}.tsx` |
 | Order timeline + tracking components | `src/components/orders/{OrderTimeline,ShipmentTracking}.tsx` |
+| DB-layer smoke tests | `supabase/tests/lifecycle_smoke.sql` + `refund_lifecycle_smoke.sql`. Migrations 001 → 007 apply cleanly; both RPCs exercise the full happy + race-loser path against real Postgres 16. |
 
-`next build` GREEN. 22 API routes including all five new ones.
+`next build` GREEN. `tsc --noEmit` clean. 22 API routes including all
+five new ones.
 
 ### Not yet built
 
