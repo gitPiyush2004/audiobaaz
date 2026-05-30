@@ -116,11 +116,50 @@ export function CheckoutForm({
       return;
     }
 
-    const { razorpay_order_id, razorpay_key_id, amount, currency, order_id } = createJson.data;
+    const { razorpay_order_id, razorpay_key_id, amount, currency, order_id, synthetic } = createJson.data;
 
-    // ── Step 2: ensure Razorpay's checkout.js loaded.
+    // ── Synthetic (dev) path ─────────────────────────────────────
+    // When the active PaymentProvider is the dev provider,
+    // /api/payments/create returns synthetic:true and a null key.
+    // Bypass the Razorpay modal entirely and submit a synthesised
+    // payment to /api/dev/payments/simulate, which signs a payload
+    // the verify route accepts. Same lifecycle, no external network.
+    if (synthetic) {
+      try {
+        const simRes = await fetch('/api/dev/payments/simulate', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ razorpay_order_id }),
+        });
+        const simJson = await simRes.json();
+        if (simJson.error) {
+          setError(simJson.error.message);
+          setLoading(false);
+          return;
+        }
+        await runVerify({
+          razorpay_order_id:   simJson.data.razorpay_order_id,
+          razorpay_payment_id: simJson.data.razorpay_payment_id,
+          razorpay_signature:  simJson.data.razorpay_signature,
+          method:              'dev',
+        });
+      } catch {
+        setError('Dev simulation failed. Check the server logs.');
+        setLoading(false);
+      }
+      return;
+    }
+
+    // ── Razorpay path ────────────────────────────────────────────
+    // Step 2: ensure Razorpay's checkout.js loaded.
     if (typeof window === 'undefined' || !window.Razorpay) {
       setError('Payment gateway is still loading. Please try again in a moment.');
+      setLoading(false);
+      return;
+    }
+
+    if (!razorpay_key_id) {
+      setError('Payment gateway is not configured. Please try again later.');
       setLoading(false);
       return;
     }
@@ -151,54 +190,61 @@ export function CheckoutForm({
         },
       },
       async handler(response) {
-        // ── Step 4: verify the signature server-side and run the
-        // atomic finalize_winning_payment cascade.
-        try {
-          const verifyRes = await fetch('/api/payments/verify', {
-            method:  'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              razorpay_order_id:   response.razorpay_order_id,
-              razorpay_payment_id: response.razorpay_payment_id,
-              razorpay_signature:  response.razorpay_signature,
-              method:              'card', // Razorpay reports method via webhook; default for client path
-            }),
-          });
-          const verifyJson = await verifyRes.json();
-
-          if (verifyJson.error) {
-            setError(verifyJson.error.message);
-            setLoading(false);
-            return;
-          }
-
-          // Three possible RPC outcomes:
-          //   - winner   → buyer owns the listing; go to order detail
-          //   - conflict → another buyer captured first; refund initiated
-          //   - noop     → idempotent replay (webhook already processed)
-          if (verifyJson.data?.result === 'conflict') {
-            setError(
-              'Another buyer completed payment for this listing first. ' +
-              'Your refund is on the way (typically 5–10 business days).',
-            );
-            setLoading(false);
-            return;
-          }
-
-          // 'winner' or 'noop' both end with the buyer's order in escrow_held;
-          // route to the order detail page.
-          router.push(`/orders/purchase/${order_id}`);
-        } catch {
-          setError(
-            'Payment captured but verification failed. Our team has been notified ' +
-            'and will reach out within 24 hours.',
-          );
-          setLoading(false);
-        }
+        await runVerify({
+          razorpay_order_id:   response.razorpay_order_id,
+          razorpay_payment_id: response.razorpay_payment_id,
+          razorpay_signature:  response.razorpay_signature,
+          method:              'card', // Razorpay reports method via webhook; default for client path
+        });
       },
     });
 
     rzp.open();
+
+    async function runVerify(payload: {
+      razorpay_order_id:   string;
+      razorpay_payment_id: string;
+      razorpay_signature:  string;
+      method:              string;
+    }) {
+      try {
+        const verifyRes = await fetch('/api/payments/verify', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        const verifyJson = await verifyRes.json();
+
+        if (verifyJson.error) {
+          setError(verifyJson.error.message);
+          setLoading(false);
+          return;
+        }
+
+        // Three possible RPC outcomes:
+        //   - winner   → buyer owns the listing; go to order detail
+        //   - conflict → another buyer captured first; refund initiated
+        //   - noop     → idempotent replay (webhook already processed)
+        if (verifyJson.data?.result === 'conflict') {
+          setError(
+            'Another buyer completed payment for this listing first. ' +
+            'Your refund is on the way (typically 5–10 business days).',
+          );
+          setLoading(false);
+          return;
+        }
+
+        // 'winner' or 'noop' both end with the buyer's order in escrow_held;
+        // route to the order detail page.
+        router.push(`/orders/purchase/${order_id}`);
+      } catch {
+        setError(
+          'Payment captured but verification failed. Our team has been notified ' +
+          'and will reach out within 24 hours.',
+        );
+        setLoading(false);
+      }
+    }
   }
 
   return (

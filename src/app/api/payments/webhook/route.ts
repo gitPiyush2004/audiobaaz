@@ -1,15 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { verifyWebhookSignature } from '@/lib/razorpay/helpers';
+import { getPaymentProvider } from '@/lib/payments/factory';
 
 /**
  * POST /api/payments/webhook
  *
- * Razorpay server-to-server webhook ingress. Idempotent and
- * replay-safe via the webhook_events table.
+ * Server-to-server webhook ingress. Idempotent and replay-safe via the
+ * webhook_events table. Same route handles real Razorpay webhooks and
+ * dev-only synthetic webhooks (POSTed by /api/dev/payments/webhook-replay).
  *
  * Per docs/V1-LAUNCH.md Step 2:
- *   1. Verify webhook signature
+ *   1. Verify webhook signature via the active PaymentProvider
  *   2. Upsert webhook_events (by provider_event_id) — idempotency boundary
  *   3. Dispatch by event.type → call appropriate RPC
  *   4. Mark webhook_events.status='processed'
@@ -35,24 +36,23 @@ function fail(message: string, status = 400) {
   return NextResponse.json({ data: null, error: { message } }, { status });
 }
 
-// Razorpay event payloads (subset used here).
 interface RazorpayPaymentEntity {
-  id:                string;
-  order_id:          string;
-  status:            string;
-  amount:            number;
-  currency:          string;
-  method:            string;
-  error_code?:       string;
+  id:                 string;
+  order_id:           string;
+  status:             string;
+  amount:             number;
+  currency:           string;
+  method:             string;
+  error_code?:        string;
   error_description?: string;
 }
 
 interface RazorpayRefundEntity {
-  id:                string;
-  payment_id:        string;
-  amount:            number;
-  status:            string;
-  error_code?:       string;
+  id:                 string;
+  payment_id:         string;
+  amount:             number;
+  status:             string;
+  error_code?:        string;
   error_description?: string;
 }
 
@@ -62,19 +62,16 @@ interface RazorpayWebhookPayload {
     payment?: { entity: RazorpayPaymentEntity };
     refund?:  { entity: RazorpayRefundEntity };
   };
-  // Razorpay's actual top-level event id varies by setup; payments use
-  // payment.entity.id, refunds use refund.entity.id. For idempotency
-  // we derive provider_event_id from the entity id + event name so a
-  // captured-then-replayed event upserts to the same key.
 }
 
 export async function POST(req: NextRequest) {
-  // Razorpay webhook signature is HMAC-SHA256 of the RAW request body.
-  // We must read the body as text BEFORE parsing JSON.
+  // Webhook signature is HMAC-SHA256 over the RAW request body.
+  // Read as text BEFORE parsing JSON.
   const rawBody = await req.text();
   const signature = req.headers.get('x-razorpay-signature') ?? '';
 
-  if (!verifyWebhookSignature(rawBody, signature)) {
+  const provider = getPaymentProvider();
+  if (!provider.verifyWebhookSignature({ rawBody, signature })) {
     return fail('Invalid webhook signature', 401);
   }
 
@@ -90,7 +87,7 @@ export async function POST(req: NextRequest) {
   // Derive a stable provider_event_id for idempotency. Razorpay does
   // not always provide a top-level event id, so we synthesize one
   // from the entity + event name. Same event arriving twice produces
-  // the same key → UNIQUE constraint upsert behaviour.
+  // the same key.
   const entityId =
     payload.payload?.payment?.entity?.id ??
     payload.payload?.refund?.entity?.id ??
@@ -106,7 +103,6 @@ export async function POST(req: NextRequest) {
     .maybeSingle();
 
   if (existing?.status === 'processed') {
-    // Already processed; replay is a no-op.
     return ok({ replay: true });
   }
 
@@ -151,8 +147,7 @@ export async function POST(req: NextRequest) {
 
       default:
         // Unhandled event — recorded in webhook_events for forensic
-        // replay; we just don't act on it. Phase 2 follow-up: handle
-        // payment.authorized, refund.created, dispute.created, etc.
+        // replay; we don't act on it.
         break;
     }
 
@@ -168,7 +163,6 @@ export async function POST(req: NextRequest) {
       .from('webhook_events')
       .update({ status: 'failed', error_message: message, processed_at: new Date().toISOString() })
       .eq('id', webhookEventId);
-    // Razorpay retries on 5xx, so signal failure clearly.
     return fail(message, 500);
   }
 }
@@ -179,7 +173,6 @@ async function handlePaymentCaptured(
   admin: ReturnType<typeof createAdminClient>,
   entity: RazorpayPaymentEntity,
 ) {
-  // Find our payment row by Razorpay order_id.
   const { data: payment } = await admin
     .from('payments')
     .select('id')
@@ -196,16 +189,16 @@ async function handlePaymentCaptured(
   const { data: result, error: rpcErr } = await admin.rpc('finalize_winning_payment', {
     p_payment_id:          payment.id,
     p_razorpay_payment_id: entity.id,
-    p_razorpay_signature:  '',  // webhook ingress; signature already verified above
+    p_razorpay_signature:  '', // webhook ingress; signature verified at the route boundary
     p_method:              entity.method ?? 'unknown',
-    p_actor_id:            null,  // webhook actor
+    p_actor_id:            null,
   });
 
   if (rpcErr) throw rpcErr;
 
   if (result?.result === 'conflict') {
-    // Race loser — initiate the refund. The synchronous /api/payments/verify
-    // path may have already done this; initiate_refund is idempotent.
+    // Race loser. /api/payments/verify may have already initiated the
+    // refund; initiate_refund is idempotent on payment_id.
     await admin.rpc('initiate_refund', {
       p_payment_id: payment.id,
       p_reason:     'race_loss',
@@ -218,10 +211,9 @@ async function handlePaymentFailed(
   admin: ReturnType<typeof createAdminClient>,
   entity: RazorpayPaymentEntity,
 ) {
-  // Mark our payment as failed; leave the order in payment_pending so
+  // Mark the payment failed; leave the order in payment_pending so
   // the buyer can retry. Per Decision 6, the listing is unaffected —
-  // it stays 'approved' for other buyers. The reserve_listing flow
-  // is dropped under the locked V1 contract.
+  // it stays 'approved' for other buyers.
   await admin
     .from('payments')
     .update({
@@ -230,7 +222,6 @@ async function handlePaymentFailed(
     })
     .eq('razorpay_order_id', entity.order_id);
 
-  // Find the order and flip it to payment_failed (recoverable, not terminal).
   const { data: payment } = await admin
     .from('payments')
     .select('order_id')

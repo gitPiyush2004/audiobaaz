@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { getRazorpay } from '@/lib/razorpay/client';
+import { getPaymentProvider } from '@/lib/payments/factory';
 
 /**
  * POST /api/payments/create
@@ -10,7 +10,7 @@ import { getRazorpay } from '@/lib/razorpay/client';
  *
  * Per docs/V1-LAUNCH.md Step 2:
  *   1. Acquire checkout_locks (soft lock; not a correctness primitive)
- *   2. Create Razorpay order
+ *   2. Create gateway-side order via the active PaymentProvider
  *   3. Insert orders row at status='payment_pending'
  *   4. Insert payments row at status='created'
  *   5. Return modal params for the client
@@ -22,6 +22,9 @@ import { getRazorpay } from '@/lib/razorpay/client';
  *
  * No direct listing/order/offer mutations beyond the inserts above.
  * The eventual capture writes flow exclusively through finalize_winning_payment().
+ *
+ * The active provider is determined by getPaymentProvider() — Razorpay
+ * by default, DevPaymentProvider when PAYMENT_PROVIDER=dev (non-prod only).
  */
 
 function ok<T>(data: T) {
@@ -103,13 +106,14 @@ export async function POST(req: NextRequest) {
   const seller_payout = paid_price - platform_fee;
   const total_amount = paid_price + SHIPPING_FEE_PAISE;
 
-  // ── Create Razorpay order ────────────────────────────────────
-  let razorpayOrder;
+  // ── Create gateway order via the active provider ─────────────
+  const provider = getPaymentProvider();
+  let providerOrder;
   try {
-    razorpayOrder = await getRazorpay().orders.create({
-      amount:   total_amount,        // paise — Razorpay also takes paise
+    providerOrder = await provider.createOrder({
+      amount:   total_amount,
       currency: 'INR',
-      // Use a short receipt that fits Razorpay's 40-char limit:
+      // Short receipt that fits Razorpay's 40-char limit:
       // "ab_<first8oflisting>_<timestampLast8>"
       receipt:  `ab_${body.listing_id.slice(0, 8)}_${Date.now().toString().slice(-8)}`,
       notes: {
@@ -123,11 +127,11 @@ export async function POST(req: NextRequest) {
       p_listing_id: body.listing_id,
       p_buyer_id:   user.id,
     });
-    const message = e instanceof Error ? e.message : 'Razorpay order creation failed';
-    return err(message, 'RAZORPAY_ERROR', 502);
+    const message = e instanceof Error ? e.message : 'Provider order creation failed';
+    return err(message, 'PROVIDER_ERROR', 502);
   }
 
-  // ── Insert orders + payments rows (atomic via the order, not the RPC) ───
+  // ── Insert orders + payments rows ────────────────────────────
   // Note: this is NOT the winner cascade. We're creating a payment_pending
   // order; ownership flips at capture, not now.
   const { data: order, error: orderErr } = await admin
@@ -163,7 +167,7 @@ export async function POST(req: NextRequest) {
 
   const { error: paymentErr } = await admin.from('payments').insert({
     order_id:          order.id,
-    razorpay_order_id: razorpayOrder.id,
+    razorpay_order_id: providerOrder.providerOrderId,
     amount:            total_amount,
     currency:          'INR',
     status:            'created',
@@ -173,12 +177,19 @@ export async function POST(req: NextRequest) {
     return err(paymentErr.message, 'DB_ERROR', 500);
   }
 
-  // ── Return modal params ───────────────────────────────────────
+  // ── Return modal params (provider-shaped) ────────────────────
+  const modal = provider.buildClientModalParams(providerOrder);
   return ok({
-    razorpay_order_id: razorpayOrder.id,
-    razorpay_key_id:   process.env.RAZORPAY_KEY_ID,
-    amount:            total_amount,
-    currency:          'INR',
+    razorpay_order_id: modal.providerOrderId,
+    razorpay_key_id:   modal.publicKey,
+    amount:            modal.amount,
+    currency:          modal.currency,
     order_id:          order.id,
+    /**
+     * `synthetic: true` tells CheckoutForm to render the dev-only
+     * "Simulate payment" affordance instead of opening the Razorpay
+     * modal. The real Razorpay flow leaves this false.
+     */
+    synthetic:         modal.synthetic,
   });
 }
