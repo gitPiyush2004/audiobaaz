@@ -335,24 +335,47 @@ second order may exist with any winning-lineage status.
 
 ### OQ#4 mechanism — locked
 
-`listings.sold_offer_id UUID UNIQUE NULL REFERENCES offers(id)`. Set
-once inside the atomic RPC at the moment of `escrow_held`. **Never
-unset and never updated.** The unique constraint enforces lifetime
-exclusivity.
+**Updated 2026-05-30 by migration 006:** ownership anchor moved from
+`sold_offer_id` to `sold_order_id` after PR #2 CI surfaced that
+`sold_offer_id` does not constrain direct buy-now captures (offer_id
+is NULL for those, and PostgreSQL UNIQUE allows multiple NULLs).
 
-The audit's earlier alternative — a unique partial index keyed on
-`offers.status = 'paid'` — was rejected because it does not cover the
-post-refund case on its own; it would need a paired order-side
-constraint covering the entire winning-lineage status set. The
-ownership-on-the-listing model is also semantically cleaner: the
-thing being protected is not payment state but **ownership history**,
-and ownership belongs on the listing.
+**Current contract:**
 
-The invariant maps almost one-to-one onto the column:
+```
+listings.sold_order_id UUID UNIQUE NULL REFERENCES orders(id)
+                       ← primary ownership anchor (set on every
+                         winning capture, regardless of whether
+                         the order was offer-backed)
 
-> "A listing can have at most one winning offer." → `sold_offer_id` is
-> either `NULL` (listing still available) or a single UUID (listing
-> sold to that offer's buyer, for all time).
+listings.sold_offer_id UUID UNIQUE NULL REFERENCES offers(id)
+                       ← informational metadata; populated only
+                         when the order was offer-backed. Retained
+                         for forensic queries ("which negotiation
+                         became this sale?"); not the invariant
+                         anchor.
+```
+
+Set once inside the atomic RPC at the moment of `escrow_held`.
+**Both columns are immutable post-set** (migration 005 +
+migration 006 each enforce immutability via BEFORE-UPDATE triggers).
+
+The invariant maps directly onto the order-side anchor:
+
+> "A listing can have at most one winning order." → `sold_order_id`
+> is either `NULL` (listing still available) or a single UUID
+> (listing sold to that order, for all time).
+
+The original anchor (`sold_offer_id`) was an artifact of the earlier
+offer-centric design. The marketplace is order-centric in V1; the
+RPC takes a `payment_id`, derives the order, and writes
+`sold_order_id` deterministically. Whether an offer was involved
+is recorded as a label, not as the constraint.
+
+The audit's earlier alternative (unique partial index keyed on
+`offers.status = 'paid'`) was rejected because it does not cover
+direct buy-now (no `paid` offer exists for those captures).
+`listings.sold_order_id` covers both flows natively.
 
 ### Refunded-winner rule (immutability of `sold_offer_id`)
 

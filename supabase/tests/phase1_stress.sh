@@ -217,16 +217,17 @@ BEGIN
     RAISE EXCEPTION 'STRESS FAIL: listing.sold_at should be set';
   END IF;
 
-  -- Ownership invariant: only ONE distinct sold_offer_id ever
-  -- exists for this listing across all of orders + listings. If
-  -- two different UUIDs ever appeared in listings.sold_offer_id
-  -- under contention, this would catch it. (For direct buy-now
-  -- the value is NULL; we count NULLs as one bucket.)
-  SELECT COUNT(DISTINCT COALESCE(sold_offer_id::TEXT, 'NULL'))
+  -- Ownership invariant: only ONE distinct sold_order_id ever
+  -- exists for this listing. sold_order_id is the canonical
+  -- ownership anchor (set on every winning capture, regardless
+  -- of whether an offer was involved). If two different UUIDs
+  -- ever appeared in listings.sold_order_id under contention,
+  -- this would catch it.
+  SELECT COUNT(DISTINCT COALESCE(sold_order_id::TEXT, 'NULL'))
     INTO v_distinct_sold
     FROM listings WHERE id = v_listing_id;
   IF v_distinct_sold != 1 THEN
-    RAISE EXCEPTION 'STRESS FAIL: distinct sold_offer_id count should be 1, got %', v_distinct_sold;
+    RAISE EXCEPTION 'STRESS FAIL: distinct sold_order_id count should be 1, got %', v_distinct_sold;
   END IF;
 
   -- Audit trail — exactly one payment_captured. A replay bug or

@@ -80,12 +80,13 @@ jobs:
       - name: Apply base schema
         run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/schema.sql
 
-      - name: Apply Phase 1 migrations (002..005)
+      - name: Apply Phase 1 migrations (002..006)
         run: |
           psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/migrations/002_phase1_marketplace_core.sql
           psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/migrations/003_phase1_refund_lifecycle.sql
           psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/migrations/004_phase1_checkout_locks.sql
           psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/migrations/005_phase1_invariant_guards.sql
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/migrations/006_phase1_sold_order_id.sql
 
       # ----------------------------------------------------------------
       # Acceptance scenarios — all five must pass. Scenario B is the
@@ -119,10 +120,17 @@ jobs:
           psql "$DATABASE_URL" -v ON_ERROR_STOP=1 <<'SQL'
           SELECT 'finalize_winning_payment exists' AS check
             FROM pg_proc WHERE proname = 'finalize_winning_payment';
+          SELECT 'sold_order_id is unique' AS check
+            FROM pg_constraint
+            WHERE conname LIKE '%sold_order_id%' AND contype = 'u';
           SELECT 'sold_offer_id is unique' AS check
             FROM pg_constraint
             WHERE conname LIKE '%sold_offer_id%' AND contype = 'u';
           SELECT 'invariant guard triggers attached' AS check, tgname
             FROM pg_trigger
-            WHERE tgname IN ('listings_sold_offer_id_immutable', 'listings_status_no_regression');
+            WHERE tgname IN (
+              'listings_sold_offer_id_immutable',
+              'listings_sold_order_id_immutable',
+              'listings_status_no_regression'
+            );
           SQL

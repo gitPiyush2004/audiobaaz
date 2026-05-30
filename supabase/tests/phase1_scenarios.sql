@@ -183,9 +183,17 @@ BEGIN
   IF listing.status != 'sold' THEN
     RAISE EXCEPTION 'Scenario A: listing.status should be sold, got %', listing.status;
   END IF;
+  -- Ownership is anchored on sold_order_id (always set by the RPC).
+  -- sold_offer_id is informational and stays NULL for direct buy-now.
+  IF listing.sold_order_id IS NULL THEN
+    RAISE EXCEPTION 'Scenario A: sold_order_id should be set after winning capture';
+  END IF;
+  IF listing.sold_order_id != (ids->>'order_a')::UUID THEN
+    RAISE EXCEPTION 'Scenario A: sold_order_id should equal order_a (% vs %)',
+      listing.sold_order_id, (ids->>'order_a')::UUID;
+  END IF;
   IF listing.sold_offer_id IS NOT NULL THEN
-    -- direct buy-now: offer_id is NULL, sold_offer_id remains NULL
-    RAISE EXCEPTION 'Scenario A: direct buy-now → sold_offer_id should remain NULL';
+    RAISE EXCEPTION 'Scenario A: direct buy-now → sold_offer_id should remain NULL (informational)';
   END IF;
 
   -- Order-side: exactly one in winning lineage, exactly one cancelled
@@ -295,6 +303,9 @@ BEGIN
   IF lst.sold_offer_id IS NOT NULL THEN
     RAISE EXCEPTION 'Scenario B: listing.sold_offer_id should be NULL (rolled back)';
   END IF;
+  IF lst.sold_order_id IS NOT NULL THEN
+    RAISE EXCEPTION 'Scenario B: listing.sold_order_id should be NULL (rolled back)';
+  END IF;
 
   SELECT COUNT(*) INTO events FROM order_events WHERE order_id = (ids->>'order_a')::UUID;
   IF events != 0 THEN
@@ -388,8 +399,9 @@ BEGIN
   UPDATE orders SET status = 'disputed' WHERE id = (ids->>'order_a')::UUID;
   UPDATE orders SET status = 'refunded' WHERE id = (ids->>'order_a')::UUID;
 
-  -- Listing state must be unchanged: still sold, sold_offer_id
-  -- still points at the same UUID.
+  -- Listing state must be unchanged: still sold, both ownership
+  -- columns (sold_order_id and sold_offer_id) still point at the same
+  -- UUIDs.
   SELECT * INTO post_listing FROM listings WHERE id = (ids->>'listing')::UUID;
   post_sold_offer_id := post_listing.sold_offer_id;
 
@@ -399,6 +411,12 @@ BEGIN
   IF post_sold_offer_id IS DISTINCT FROM pre_sold_offer_id THEN
     RAISE EXCEPTION 'Scenario C: sold_offer_id changed after refund (immutability violation): % → %',
       pre_sold_offer_id, post_sold_offer_id;
+  END IF;
+  -- Primary ownership anchor: sold_order_id must equal order_a's id and
+  -- must not change under any post-capture transition.
+  IF post_listing.sold_order_id != (ids->>'order_a')::UUID THEN
+    RAISE EXCEPTION 'Scenario C: sold_order_id should equal order_a after capture, got %',
+      post_listing.sold_order_id;
   END IF;
 
   -- A new capture attempt for the second order must conflict.
@@ -669,6 +687,7 @@ BEGIN
 
   IF pre_listing.status      != post_listing.status      THEN RAISE EXCEPTION 'Scenario E1: listing.status changed across replay'; END IF;
   IF pre_listing.sold_offer_id IS DISTINCT FROM post_listing.sold_offer_id THEN RAISE EXCEPTION 'Scenario E1: sold_offer_id changed across replay'; END IF;
+  IF pre_listing.sold_order_id IS DISTINCT FROM post_listing.sold_order_id THEN RAISE EXCEPTION 'Scenario E1: sold_order_id changed across replay'; END IF;
   IF pre_listing.sold_at     != post_listing.sold_at     THEN RAISE EXCEPTION 'Scenario E1: sold_at changed across replay'; END IF;
 
   IF pre_order.status         != post_order.status         THEN RAISE EXCEPTION 'Scenario E1: order.status changed across replay'; END IF;
