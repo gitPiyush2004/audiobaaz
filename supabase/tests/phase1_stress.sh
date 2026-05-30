@@ -181,17 +181,21 @@ echo "=== Assertions ==="
 ASSERTIONS_SQL=$(cat <<EOF
 DO \$assert\$
 DECLARE
-  v_listing_id  UUID;
-  v_winners     INTEGER;
-  v_cancelled   INTEGER;
-  v_listing_st  TEXT;
-  v_listing_sa  TIMESTAMPTZ;
-  v_capture_ev  INTEGER;
-  v_cancel_ev   INTEGER;
+  v_listing_id     UUID;
+  v_winners        INTEGER;
+  v_cancelled      INTEGER;
+  v_listing_st     TEXT;
+  v_listing_sa     TIMESTAMPTZ;
+  v_capture_ev     INTEGER;
+  v_cancel_ev      INTEGER;
+  v_distinct_sold  INTEGER;
+  v_winner_events  INTEGER;
+  v_winner_order   UUID;
 BEGIN
   SELECT listing_id INTO v_listing_id
     FROM stress_fixtures WHERE label = '${LABEL}' LIMIT 1;
 
+  -- Marketplace state
   SELECT COUNT(*) INTO v_winners
     FROM orders WHERE listing_id = v_listing_id AND status = 'escrow_held';
   IF v_winners != 1 THEN
@@ -213,6 +217,20 @@ BEGIN
     RAISE EXCEPTION 'STRESS FAIL: listing.sold_at should be set';
   END IF;
 
+  -- Ownership invariant: only ONE distinct sold_offer_id ever
+  -- exists for this listing across all of orders + listings. If
+  -- two different UUIDs ever appeared in listings.sold_offer_id
+  -- under contention, this would catch it. (For direct buy-now
+  -- the value is NULL; we count NULLs as one bucket.)
+  SELECT COUNT(DISTINCT COALESCE(sold_offer_id::TEXT, 'NULL'))
+    INTO v_distinct_sold
+    FROM listings WHERE id = v_listing_id;
+  IF v_distinct_sold != 1 THEN
+    RAISE EXCEPTION 'STRESS FAIL: distinct sold_offer_id count should be 1, got %', v_distinct_sold;
+  END IF;
+
+  -- Audit trail — exactly one payment_captured. A replay bug or
+  -- a duplicate-cascade bug would show up here as > 1.
   SELECT COUNT(*) INTO v_capture_ev FROM order_events
     WHERE event_name = 'payment_captured'
       AND order_id IN (SELECT id FROM orders WHERE listing_id = v_listing_id);
@@ -220,6 +238,9 @@ BEGIN
     RAISE EXCEPTION 'STRESS FAIL: expected 1 payment_captured event, got %', v_capture_ev;
   END IF;
 
+  -- Audit trail — exactly N-1 order_cancelled events. Catches
+  -- the case where the cascade fires twice (once per loser per
+  -- replay) but ownership state happens to look correct.
   SELECT COUNT(*) INTO v_cancel_ev FROM order_events
     WHERE event_name = 'order_cancelled'
       AND order_id IN (SELECT id FROM orders WHERE listing_id = v_listing_id);
@@ -228,7 +249,19 @@ BEGIN
       ${CONCURRENCY} - 1, v_cancel_ev;
   END IF;
 
-  RAISE NOTICE 'STRESS PASS: 1 winner, % losers, full audit trail', ${CONCURRENCY} - 1;
+  -- The winner has exactly one order_events row total: the
+  -- payment_captured. Anything else is a duplicate cascade onto
+  -- the winner (replay leaked through to the winner's own row).
+  SELECT id INTO v_winner_order
+    FROM orders WHERE listing_id = v_listing_id AND status = 'escrow_held';
+  SELECT COUNT(*) INTO v_winner_events FROM order_events
+    WHERE order_id = v_winner_order;
+  IF v_winner_events != 1 THEN
+    RAISE EXCEPTION 'STRESS FAIL: winner should have exactly 1 order_event, got %', v_winner_events;
+  END IF;
+
+  RAISE NOTICE 'STRESS PASS: 1 winner, % losers, % capture event, % cancel events, audit trail clean',
+    ${CONCURRENCY} - 1, v_capture_ev, v_cancel_ev;
 END;
 \$assert\$;
 EOF

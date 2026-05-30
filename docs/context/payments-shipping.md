@@ -841,8 +841,33 @@ Person 1 produces a single PR covering:
 - `payments.refund_status`, `refund_id`, `refund_reason`,
   `refund_initiated_at`, `refund_completed_at`, `refund_failure_reason`
   columns. New refund-lifecycle enum.
+- Invariant guard triggers (migration 005): `sold_offer_id`
+  immutability + `listings.status` no-regression. Catches any
+  rogue write to listings ownership regardless of which client
+  issued it. The invariant is only as strong as the weakest
+  update path.
 - RLS policies on the audit tables.
 - Drop `reserve_listing` trigger.
+
+### Phase 2 application-side cleanup (must precede Razorpay route revisions)
+
+A grep audit on `feature/payments-shipping` (recorded 2026-05-30)
+found four code paths that bypass `finalize_winning_payment` and
+would now trigger the migration 005 invariant guards. None of these
+paths exist on `dev`, but they exist on the parked branch and must
+be replaced before the Razorpay routes go live:
+
+| File | Issue | Phase 2 fix |
+|------|-------|-------------|
+| `src/app/api/payments/webhook/route.ts:88` | `UPDATE listings SET status='sold'` without `sold_offer_id` | Replace with `rpc('finalize_winning_payment', ...)` |
+| `src/app/api/payments/webhook/route.ts:138` | On `payment.failed`: `UPDATE listings SET status='approved', reserved_at=NULL` (the resurrection path) | Remove entirely. Decision 6 dropped the reservation flow; failed payments leave the listing alone |
+| `src/app/api/payments/verify/route.ts:99` | Same as webhook line 88 | Replace with the RPC |
+| `src/app/api/checkout/mock/route.ts:97` | Mock checkout writes `status='sold'` without `sold_offer_id` | Delete the route; `CheckoutForm` points at `/api/payments/create` |
+
+Phase 2 cannot ship until these four paths are removed or replaced.
+Migration 005 is the safety net — it ensures any code that tries to
+write the old way fails loudly with a `check_violation` rather than
+silently corrupting ownership.
 
 ### Phase 1 acceptance criteria — five scenarios + stress harness
 
