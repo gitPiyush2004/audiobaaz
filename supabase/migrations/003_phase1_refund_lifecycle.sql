@@ -167,26 +167,30 @@ BEGIN
          updated_at          = v_now
    WHERE id = p_payment_id;
 
-  -- Order-side audit row: the refund verdict is recorded against
-  -- the order, not the payment, so support tooling can find it
-  -- via the standard order timeline.
+  -- Order-side audit row: the refund-initiation event is recorded
+  -- against the order so support tooling can find it via the
+  -- standard order timeline. orders.status itself does NOT
+  -- transition here (verdict transitions live on dispute resolution
+  -- or order cancellation, written elsewhere). from_status and
+  -- to_status mirror the order's current status to express
+  -- "this event occurred while the order was in <status>"; the
+  -- refund-state movement lives in metadata.
   INSERT INTO order_events (
     order_id, event_name, actor_type, actor_id,
     from_status, to_status, metadata
   )
   SELECT
     v_payment.order_id,
-    -- The marketplace verdict transition (e.g. disputed→refunded)
-    -- has its own event written by whoever drives that transition;
-    -- here we record only the refund-process initiation.
     'refunded',
     CASE WHEN p_actor_id IS NULL THEN 'webhook' ELSE 'admin' END,
     p_actor_id,
-    o.status, o.status,                  -- no order-status change here
+    o.status, o.status,
     jsonb_build_object(
-      'payment_id', v_payment.id,
-      'refund_reason', p_reason,
-      'refund_status', 'pending'
+      'phase',               'initiated',
+      'refund_reason',       p_reason,
+      'refund_status_from',  NULL,
+      'refund_status_to',    'pending',
+      'payment_id',          v_payment.id
     )
   FROM orders o WHERE o.id = v_payment.order_id;
 
@@ -298,16 +302,20 @@ BEGIN
   )
   SELECT
     v_payment.order_id,
-    CASE WHEN p_new_status = 'succeeded' THEN 'refunded' ELSE 'refunded' END,
+    'refunded',
     CASE WHEN p_actor_id IS NULL THEN 'webhook' ELSE 'admin' END,
     p_actor_id,
+    -- Audit-row from/to mirror the order's status; the refund-state
+    -- movement is in metadata. orders.status is unaffected by
+    -- gateway-side refund processing.
     o.status, o.status,
     jsonb_build_object(
-      'payment_id', v_payment.id,
-      'refund_status_from', v_payment.refund_status,
-      'refund_status_to',   p_new_status,
-      'refund_id',          p_refund_id,
-      'failure_reason',     p_failure_reason
+      'phase',               'outcome',
+      'refund_status_from',  v_payment.refund_status,
+      'refund_status_to',    p_new_status,
+      'refund_id',           p_refund_id,
+      'failure_reason',      p_failure_reason,
+      'payment_id',          v_payment.id
     )
   FROM orders o WHERE o.id = v_payment.order_id;
 

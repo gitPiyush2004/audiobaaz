@@ -30,6 +30,52 @@
 
 
 -- ============================================================
+-- 0 — PORTABILITY SHIMS for non-Supabase Postgres
+-- ============================================================
+--
+-- Supabase provisions the `service_role` role and the `auth` schema
+-- (with `auth.uid()`) on every project. A vanilla Postgres
+-- (Docker postgres:15, fresh `apt install`, CI service container)
+-- has neither. These shims make the migrations apply cleanly on
+-- both, so verification can run anywhere with `psql`.
+--
+-- On a real Supabase project these statements are idempotent
+-- no-ops — the role/schema/function already exist.
+
+-- service_role: create if missing.
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'service_role') THEN
+    CREATE ROLE service_role NOLOGIN;
+  END IF;
+END
+$$;
+
+-- auth schema + auth.uid(): create stub if missing.
+-- The stub returns NULL, which is the correct behaviour for any
+-- non-authenticated session (e.g. tests run as the postgres
+-- superuser). Real Supabase auth.uid() reads the JWT from the
+-- request context; tests don't have one.
+--
+-- CRITICAL: this MUST be `IF NOT EXISTS` semantics, not
+-- CREATE OR REPLACE. On a real Supabase project, auth.uid()
+-- is the production implementation and we must not clobber it.
+CREATE SCHEMA IF NOT EXISTS auth;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_proc p
+    JOIN pg_namespace n ON n.oid = p.pronamespace
+    WHERE n.nspname = 'auth' AND p.proname = 'uid'
+  ) THEN
+    EXECUTE 'CREATE FUNCTION auth.uid() RETURNS UUID LANGUAGE sql STABLE AS ''SELECT NULL::UUID;'' ';
+  END IF;
+END
+$$;
+
+
+-- ============================================================
 -- 1 — ENUM AMENDMENTS
 -- ============================================================
 --

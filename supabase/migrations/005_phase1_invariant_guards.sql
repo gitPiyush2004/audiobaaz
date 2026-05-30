@@ -52,20 +52,17 @@
 CREATE OR REPLACE FUNCTION enforce_sold_offer_id_immutable()
 RETURNS TRIGGER AS $$
 BEGIN
-  IF OLD.sold_offer_id IS NOT NULL AND
-     (NEW.sold_offer_id IS DISTINCT FROM OLD.sold_offer_id OR NEW.sold_offer_id = OLD.sold_offer_id)
-  THEN
-    -- Allow the RPC's idempotent UPDATE (where every column is the
-    -- same as before — e.g. `SET sold_offer_id = sold_offer_id` from
-    -- a defensive UPSERT) by checking that the value didn't change
-    -- AND the trigger is firing on a row whose value is unchanged.
-    -- TG_OP-aware test: in BEFORE UPDATE, identical OLD and NEW
-    -- values would be passed as a real UPDATE only if some other
-    -- column changed. We re-allow that case.
-    IF NEW.sold_offer_id = OLD.sold_offer_id THEN
-      RETURN NEW;
-    END IF;
+  -- Only fires when sold_offer_id appears in the SET clause of an
+  -- UPDATE (because of the BEFORE UPDATE OF sold_offer_id trigger
+  -- definition below). Three legitimate cases to allow:
+  --   NULL → NULL    (caller wrote sold_offer_id = sold_offer_id)
+  --   NULL → uuid    (the RPC's one-time set)
+  --   uuid → same uuid  (no-op self-write)
+  -- Everything else (uuid → NULL, uuid_a → uuid_b) is rejected.
 
+  IF OLD.sold_offer_id IS NOT NULL
+     AND NEW.sold_offer_id IS DISTINCT FROM OLD.sold_offer_id
+  THEN
     RAISE EXCEPTION 'listings.sold_offer_id is immutable once set; cannot change % → %',
       OLD.sold_offer_id, NEW.sold_offer_id
       USING ERRCODE = 'check_violation',
@@ -128,14 +125,23 @@ CREATE TRIGGER listings_sold_offer_id_immutable
 CREATE OR REPLACE FUNCTION enforce_listing_status_no_regression()
 RETURNS TRIGGER AS $$
 BEGIN
+  -- The legacy 'completed' value in the listing-status enum is
+  -- preserved for migration safety but is unreachable for new
+  -- writes from any state. Settlement (orders.status='completed')
+  -- and payout (orders.payout_status) live on the order, not on
+  -- the listing.
+  IF NEW.status = 'completed' AND OLD.status <> 'completed' THEN
+    RAISE EXCEPTION 'listings.status cannot transition to completed; settlement state lives on orders, not listings'
+      USING ERRCODE = 'check_violation',
+            HINT = 'Use orders.status=completed to mark settlement, and orders.payout_status to track payout. See docs/context/payments-shipping.md "Listing-status terminal at sold".';
+  END IF;
+
   -- Pre-winning states: free movement among themselves and into 'sold'.
   IF OLD.status IN ('draft', 'pending', 'approved', 'reserved', 'rejected', 'delisted', 'archived') THEN
     RETURN NEW;
   END IF;
 
   -- Winning state: 'sold' is terminal.
-  -- The only allowed UPDATE is a no-op (where some other column
-  -- changed but status stayed 'sold').
   IF OLD.status = 'sold' AND NEW.status = 'sold' THEN
     RETURN NEW;
   END IF;
