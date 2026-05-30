@@ -28,7 +28,7 @@ interface OrderEventRow {
   event_name:  string;
   from_status: string | null;
   to_status:   string | null;
-  occurred_at: string;
+  created_at:  string;
 }
 
 interface ShipmentEventRow {
@@ -52,9 +52,9 @@ export async function OrderTimeline({ orderId, showShipmentEvents = true }: Prop
 
   const { data: orderEvents } = await admin
     .from('order_events')
-    .select('event_name, from_status, to_status, occurred_at')
+    .select('event_name, from_status, to_status, created_at')
     .eq('order_id', orderId)
-    .order('occurred_at', { ascending: true })
+    .order('created_at', { ascending: true })
     .returns<OrderEventRow[]>();
 
   let shipmentEvents: ShipmentEventRow[] | null = [];
@@ -79,7 +79,7 @@ export async function OrderTimeline({ orderId, showShipmentEvents = true }: Prop
   const merged: TimelineEntry[] = [
     ...(orderEvents ?? []).map((e): TimelineEntry => ({
       kind:       'order',
-      occurredAt: e.occurred_at,
+      occurredAt: e.created_at,
       title:      orderEventTitle(e.event_name, e.from_status, e.to_status),
       detail:     statusTransition(e.from_status, e.to_status),
     })),
@@ -150,18 +150,16 @@ function orderEventTitle(
     case 'order_created':       return 'Order placed';
     case 'payment_captured':    return 'Payment captured';
     case 'payment_failed':      return 'Payment failed';
+    case 'order_cancelled':     return 'Order cancelled';
     case 'shipment_created':    return 'Seller booked shipment';
-    case 'shipment_picked_up':  return 'Courier picked up the package';
-    case 'shipment_delivered':  return 'Package delivered';
-    case 'inspection_window_started': return 'Inspection window started';
-    case 'inspection_window_ended':   return 'Inspection window ended';
-    case 'order_completed':     return 'Order completed';
-    case 'dispute_raised':      return 'Dispute raised';
-    case 'dispute_resolved':    return 'Dispute resolved';
-    case 'refund_initiated':    return 'Refund initiated';
-    case 'refund_succeeded':    return 'Refund succeeded';
-    case 'refund_failed':       return 'Refund failed';
-    case 'cancelled':           return 'Order cancelled';
+    case 'shipped':             return 'Shipped';
+    case 'delivered':           return 'Delivered';
+    case 'inspection_started':  return 'Inspection window started';
+    case 'completed':           return 'Order completed';
+    case 'disputed':            return 'Dispute raised';
+    case 'refunded':            return 'Refunded';
+    case 'partially_refunded':  return 'Partially refunded';
+    case 'admin_recovery_override': return 'Admin recovery override';
     default:
       if (to) return `Status: ${to}`;
       if (from) return `Was: ${from}`;

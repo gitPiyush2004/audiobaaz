@@ -241,9 +241,9 @@ BEGIN
      WHERE id = p_order_id;
 
     INSERT INTO order_events (
-      order_id, event_name, from_status, to_status, actor_id, occurred_at
+      order_id, event_name, actor_type, actor_id, from_status, to_status
     ) VALUES (
-      p_order_id, 'shipment_created', 'escrow_held', 'seller_confirmed', p_actor_id, NOW()
+      p_order_id, 'shipment_created', 'seller', p_actor_id, 'escrow_held', 'seller_confirmed'
     );
   ELSE
     -- Order was already seller_confirmed (rare retry path); just
@@ -312,7 +312,6 @@ DECLARE
   v_shipment    RECORD;
   v_order       RECORD;
   v_now         TIMESTAMPTZ := NOW();
-  v_inspection_expires TIMESTAMPTZ;
 BEGIN
   SELECT *
     INTO v_shipment
@@ -370,22 +369,31 @@ BEGIN
            shipped_at = v_now,
            updated_at = v_now
      WHERE id = v_order.id;
-    INSERT INTO order_events (order_id, event_name, from_status, to_status, actor_id, occurred_at)
-      VALUES (v_order.id, 'shipment_picked_up', 'seller_confirmed', 'shipped', p_actor_id, v_now);
+    INSERT INTO order_events (order_id, event_name, actor_type, actor_id, from_status, to_status)
+      VALUES (v_order.id, 'shipped', 'seller', p_actor_id, 'seller_confirmed', 'shipped');
   END IF;
 
   IF p_to_status = 'delivered' AND v_order.status IN ('shipped', 'seller_confirmed') THEN
-    -- 48h inspection window. Buyer can dispute up to v_inspection_expires;
-    -- after that, escrow_release tooling can mark the order completed.
-    v_inspection_expires := v_now + INTERVAL '48 hours';
+    -- Locked V1 contract: shipped → delivered → inspection. The
+    -- existing schema-level trigger `orders_inspection_window` rewrites
+    -- any UPDATE that lands on status='delivered' so the row ends up at
+    -- status='inspection' with delivered_at + inspection_expires_at
+    -- set. To keep the audit log honest we write 'inspection' directly
+    -- as the to_status (matching the post-trigger row state) and emit
+    -- the 'inspection_started' event. delivered_at + inspection_expires_at
+    -- will be set by the trigger to the same NOW() values, so no
+    -- divergence between audit and row state.
+    --
+    -- Setting delivered_at + inspection_expires_at explicitly is
+    -- redundant under the trigger but documented here so future
+    -- maintainers see the intended transition without having to read
+    -- schema.sql.
     UPDATE orders
-       SET status = 'delivered',
-           delivered_at = v_now,
-           inspection_expires_at = v_inspection_expires,
+       SET status = 'delivered', -- trigger rewrites to 'inspection'
            updated_at = v_now
      WHERE id = v_order.id;
-    INSERT INTO order_events (order_id, event_name, from_status, to_status, actor_id, occurred_at)
-      VALUES (v_order.id, 'shipment_delivered', v_order.status, 'delivered', p_actor_id, v_now);
+    INSERT INTO order_events (order_id, event_name, actor_type, actor_id, from_status, to_status)
+      VALUES (v_order.id, 'inspection_started', 'system', p_actor_id, v_order.status, 'inspection');
   END IF;
 
   RETURN jsonb_build_object(

@@ -130,6 +130,15 @@ Remaining V1 work on the active branch:
 After admin operations land, the active branch is ready to PR into
 `dev`, then run lifecycle scenarios A–E on `dev.audiobaaz.com` with
 `PAYMENT_PROVIDER=dev`.
+
+### Pre-merge audit
+
+A pre-merge technical audit lives at
+`docs/reviews/order-lifecycle-shipping-audit.md`. It enumerates
+schema changes, new env vars, every route added or changed,
+lifecycle scenarios A–H, risk assessment, and the pre-merge
+checklist. Read it before opening the PR; the lifecycle scenarios
+must be exercised against `dev.audiobaaz.com` before merge.
 - refund lifecycle (state machine + two RPCs)
 - audit tables (`offer_events`, `order_events`, `webhook_events`)
 - invariant-guard triggers (`sold_offer_id` immutable, `listings.status`
