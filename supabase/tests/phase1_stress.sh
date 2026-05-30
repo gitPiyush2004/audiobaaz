@@ -107,7 +107,14 @@ orders_inserted AS (
     'payment_pending'
   FROM inserted_listing l
   CROSS JOIN buyers b
-  RETURNING id, ROW_NUMBER() OVER () AS idx
+  RETURNING id
+),
+-- Number the orders in a separate CTE. Postgres forbids window
+-- functions in INSERT ... RETURNING; we project an idx in a
+-- follow-up step.
+orders_numbered AS (
+  SELECT id, ROW_NUMBER() OVER (ORDER BY id) AS idx
+    FROM orders_inserted
 ),
 payments_inserted AS (
   INSERT INTO payments (id, order_id, razorpay_order_id, amount, status)
@@ -117,14 +124,21 @@ payments_inserted AS (
     'rzp_stress_${LABEL}_' || o.idx,
     1015000,
     'created'
-  FROM orders_inserted o
-  RETURNING id, ROW_NUMBER() OVER () AS idx
+  FROM orders_numbered o
+  RETURNING id, order_id
+),
+-- Final join: stress_fixtures wants (idx, payment_id, order_id,
+-- listing_id) keyed by the same idx the orders were assigned.
+-- We re-derive idx from orders_numbered (which is the canonical
+-- numbering source) and join back through order_id.
+payments_numbered AS (
+  SELECT p.id AS payment_id, p.order_id, on2.idx
+    FROM payments_inserted p
+    JOIN orders_numbered on2 ON on2.id = p.order_id
 )
--- Stage IDs in a fixture table that pgbench can read by index
 INSERT INTO stress_fixtures (label, idx, payment_id, order_id, listing_id)
-SELECT '${LABEL}', p.idx, p.id, o.id, (SELECT id FROM inserted_listing)
-FROM payments_inserted p
-JOIN orders_inserted o ON o.idx = p.idx;
+SELECT '${LABEL}', pn.idx, pn.payment_id, pn.order_id, (SELECT id FROM inserted_listing)
+FROM payments_numbered pn;
 EOF
 )
 
