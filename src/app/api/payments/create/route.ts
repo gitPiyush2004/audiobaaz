@@ -17,7 +17,7 @@ import { getRazorpay } from '@/lib/razorpay/client';
  *
  * Listing.status stays 'approved' until capture (Decision 6 of the locked
  * V1 contract). The lock just narrows the simultaneous-checkout window;
- * the lifetime invariant on listings.sold_offer_id is what guarantees
+ * the lifetime invariant on listings.sold_order_id is what guarantees
  * exclusivity.
  *
  * No direct listing/order/offer mutations beyond the inserts above.
@@ -71,13 +71,13 @@ export async function POST(req: NextRequest) {
   // ── Fetch listing ────────────────────────────────────────────
   const { data: listing } = await admin
     .from('listings')
-    .select('id, seller_id, product_name, asking_price, status, sold_offer_id')
+    .select('id, seller_id, product_name, asking_price, status, sold_order_id')
     .eq('id', body.listing_id)
     .single();
 
   if (!listing) return err('Listing not found', 'NOT_FOUND', 404);
   if (listing.seller_id === user.id) return err('Cannot buy your own listing', 'OWN_LISTING');
-  if (listing.status !== 'approved' || listing.sold_offer_id !== null) {
+  if (listing.status !== 'approved' || listing.sold_order_id !== null) {
     return err('Listing is not available', 'NOT_AVAILABLE');
   }
 
