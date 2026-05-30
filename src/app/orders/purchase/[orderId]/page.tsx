@@ -5,6 +5,8 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { formatPrice, formatDate } from '@/lib/utils/formatting';
 import { DisputeForm } from './DisputeForm';
 import { AdvanceOrderButton } from './AdvanceOrderButton';
+import { OrderTimeline } from '@/components/orders/OrderTimeline';
+import { ShipmentTracking } from '@/components/orders/ShipmentTracking';
 
 interface Props {
   params: { orderId: string };
@@ -148,6 +150,16 @@ export default async function OrderDetailPage({ params }: Props) {
 
       {/* Dispute action */}
       {canDispute && <div className="mb-6"><DisputeForm orderId={order.id} /></div>}
+
+      {/* Shipment tracking (only when a shipment has been created) */}
+      <div className="mb-6">
+        <ShipmentTracking orderId={order.id} />
+      </div>
+
+      {/* Full audit timeline */}
+      <div className="mb-6">
+        <OrderTimeline orderId={order.id} />
+      </div>
 
       {/* Price breakdown */}
       <div className="mb-6 rounded-xl border border-border bg-surface p-5 text-sm space-y-2">

@@ -60,7 +60,8 @@ export class DevPaymentProvider implements PaymentProvider {
     return safeCompareHex(expected, input.signature);
   }
 
-  async refund(input: RefundInput): Promise<RefundResult> {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async refund(_input: RefundInput): Promise<RefundResult> {
     // Dev refunds succeed instantly. The marketplace cascade
     // (initiate_refund + record_refund_outcome) still runs through
     // the real RPCs — we just skip the gateway round-trip.

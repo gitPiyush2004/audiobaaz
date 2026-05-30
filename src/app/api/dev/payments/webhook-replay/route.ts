@@ -38,9 +38,6 @@ import { DevPaymentProvider } from '@/lib/payments/dev';
  *   - Authenticated only.
  */
 
-function ok<T>(data: T) {
-  return NextResponse.json({ data, error: null });
-}
 function err(message: string, code: string, status = 400) {
   return NextResponse.json({ data: null, error: { message, code } }, { status });
 }
