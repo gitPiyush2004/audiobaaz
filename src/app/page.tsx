@@ -1,75 +1,42 @@
 export const dynamic = 'force-dynamic';
 
 import Link from "next/link";
-import Image from "next/image";
 import { getBrowseListings } from "@/lib/listings/browse";
 import { ListingCard } from "@/components/listing/ListingCard";
 import { Ticker } from "@/components/layout/Ticker";
-import { formatPrice } from "@/lib/utils/formatting";
-
-const GRADE_STYLE: Record<string, { background: string; color: string }> = {
-  S: { background: '#DBEAFE', color: '#1D4ED8' },
-  A: { background: '#DCFCE7', color: '#15803D' },
-  B: { background: '#FEF9C3', color: '#A16207' },
-  C: { background: '#FEF3C7', color: '#92400E' },
-  D: { background: '#FEE2E2', color: '#B91C1C' },
-};
+import { HeroWaveform } from "@/components/layout/HeroWaveform";
 
 export default async function HomePage() {
   const listings  = await getBrowseListings({ sort: "newest", limit: 10 });
-  const featured  = listings[0] ?? null;
-  const gridItems = listings.slice(featured ? 1 : 0, 6);
+  const gridItems = listings.slice(0, 5);
 
   return (
     <>
       {/* ── Hero ─────────────────────────────────────────── */}
-      <section style={{ borderBottom: '1px solid #E8E8E4', padding: '80px 0 72px' }}>
-      <div style={{
-        padding: '0 40px',
-        display: 'grid',
-        gridTemplateColumns: '1fr 380px',
-        gap: '60px',
-        alignItems: 'center',
-      }}>
+      <section style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', borderBottom: '1px solid #E8E8E4', minHeight: '480px' }}>
 
         {/* Left */}
-        <div>
-          {/* Eyebrow */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '28px' }}>
+        <div style={{ padding: '48px 40px 56px', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '24px', borderRight: '1px solid #E8E8E4' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
             <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#22c55e', flexShrink: 0, display: 'inline-block' }} />
-            <span style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '0.18em', textTransform: 'uppercase', color: '#999' }}>
+            <span style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '0.16em', textTransform: 'uppercase', color: '#999' }}>
               Managed · Verified · Trusted
             </span>
           </div>
 
-          {/* Headline — serif italic flourish */}
-          <h1 style={{
-            fontSize: 'clamp(52px, 5.5vw, 80px)',
-            fontWeight: 900,
-            letterSpacing: '-0.04em',
-            lineHeight: 0.92,
-            color: '#0a0a0a',
-            marginBottom: '28px',
-            fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif',
-          }}>
+          <h1 style={{ fontSize: 'clamp(44px, 5vw, 72px)', fontWeight: 900, letterSpacing: '-0.04em', lineHeight: 0.92, color: '#0a0a0a', fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif' }}>
             The market for<br />
-            <em style={{
-              fontFamily: 'var(--font-serif), "Instrument Serif", Georgia, serif',
-              fontStyle: 'italic',
-              fontWeight: 400,
-              color: '#0a0a0a',
-            }}>
+            <em style={{ fontFamily: 'var(--font-serif), "Instrument Serif", Georgia, serif', fontStyle: 'italic', fontWeight: 400 }}>
               audio obsessives.
             </em>
           </h1>
 
-          <p style={{ fontSize: '15px', color: '#666', lineHeight: 1.7, maxWidth: '460px', marginBottom: '36px', fontWeight: 400 }}>
+          <p style={{ fontSize: '14px', color: '#666', lineHeight: 1.7, maxWidth: '420px', fontWeight: 400 }}>
             India&apos;s managed secondhand marketplace for headphones, speakers, DACs, amps, and more.
             Every listing condition-graded. Every transaction escrow-protected.
           </p>
 
           <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-            {/* Accent 1/2 */}
             <Link href="/browse" style={{ background: '#E8FF4D', color: '#0a0a0a', border: 'none', padding: '13px 28px', fontSize: '12px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', borderRadius: 0, display: 'inline-flex', alignItems: 'center', textDecoration: 'none' }} className="transition-opacity hover:opacity-80">
               Browse Listings
             </Link>
@@ -79,44 +46,8 @@ export default async function HomePage() {
           </div>
         </div>
 
-        {/* Right — featured listing card */}
-        {featured ? (
-          <Link href={`/listing/${featured.slug ?? featured.id}`} style={{ border: '1px solid #E8E8E4', background: '#FFFFFF', display: 'block', textDecoration: 'none' }} className="transition-opacity hover:opacity-90">
-            <div style={{ aspectRatio: '4/3', background: '#F5F5F2', position: 'relative', overflow: 'hidden' }}>
-              {featured.photos[0] ? (
-                <Image src={featured.photos[0]} alt={featured.product_name} fill sizes="380px" className="object-cover" />
-              ) : (
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', fontSize: '11px', color: '#999' }}>
-                  No photo
-                </div>
-              )}
-              <span style={{ position: 'absolute', bottom: '12px', left: '12px', fontSize: '9px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#999' }}>
-                Featured listing
-              </span>
-            </div>
-            <div style={{ padding: '16px', borderTop: '1px solid #E8E8E4' }}>
-              <p style={{ fontSize: '9px', fontWeight: 600, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#999', marginBottom: '3px' }}>
-                {featured.brand}
-              </p>
-              <p style={{ fontSize: '16px', fontWeight: 700, letterSpacing: '-0.02em', color: '#0a0a0a', marginBottom: '10px' }}>
-                {featured.product_name}
-              </p>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontFamily: 'var(--font-mono), monospace', fontSize: '18px', fontWeight: 700, letterSpacing: '-0.02em', color: '#0a0a0a' }}>
-                  {formatPrice(featured.asking_price)}
-                </span>
-                <span style={{ ...GRADE_STYLE[featured.condition_grade], fontSize: '9px', fontWeight: 700, padding: '3px 8px' }}>
-                  {featured.condition_grade} — {featured.condition_grade === 'S' ? 'Sealed' : featured.condition_grade === 'A' ? 'Like new' : featured.condition_grade === 'B' ? 'Excellent' : featured.condition_grade === 'C' ? 'Good' : 'Fair'}
-                </span>
-              </div>
-            </div>
-          </Link>
-        ) : (
-          <div style={{ border: '1px solid #E8E8E4', aspectRatio: '4/3', background: '#F5F5F2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <span style={{ fontSize: '11px', color: '#999' }}>No featured listing yet</span>
-          </div>
-        )}
-      </div>
+        {/* Right — waveform fills the grid cell directly */}
+        <HeroWaveform />
       </section>
 
       {/* ── Ticker ───────────────────────────────────────── */}

@@ -79,6 +79,46 @@
   img, video { max-width: 100%; height: auto; }
 
   a { color: inherit; text-decoration: none; }
+
+/* ── HeroWaveform review cards ───────────────────────────── */
+.abw-review {
+  position: absolute;
+  background: #ffffff;
+  border: 1px solid #E8E8E4;
+  padding: 14px 16px;
+  max-width: 196px;
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 1.4s cubic-bezier(0.4,0,0.2,1),
+              transform 1.4s cubic-bezier(0.4,0,0.2,1);
+  pointer-events: none;
+}
+.abw-review::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: #E8FF4D;
+}
+.abw-review.abw-visible { opacity: 1; transform: translateY(0); }
+.abw-review.abw-fading  {
+  opacity: 0;
+  transform: translateY(-6px);
+  transition: opacity 1.6s cubic-bezier(0.4,0,0.2,1),
+              transform 1.6s cubic-bezier(0.4,0,0.2,1);
+}
+.abw-dot {
+  position: absolute;
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: #E8FF4D;
+  box-shadow: 0 0 6px rgba(232,255,77,0.8);
+  opacity: 0;
+  transition: opacity 1.4s ease;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+}
+.abw-dot.abw-dot-visible { opacity: 1; }
 }
 
 @layer utilities {

@@ -146,7 +146,7 @@ export function Logo({ size = 38, showWordmark = true, wordmarkColor = '#0a0a0a'
       {showWordmark && (
         <span style={{ marginLeft: '10px', lineHeight: 1, whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center' }}>
           <span style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 800, fontSize: '18px', letterSpacing: '0.08em', textTransform: 'uppercase', color: '#0a0a0a' }}>AUDIO</span>
-          <span style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 800, fontSize: '18px', letterSpacing: '0.08em', textTransform: 'uppercase', color: '#0a0a0a', textDecoration: 'underline', textDecorationColor: '#E8FF4D', textDecorationThickness: '3px', textUnderlineOffset: '3px' }}>BAAZ</span>
+          <span style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 800, fontSize: '18px', letterSpacing: '0.08em', textTransform: 'uppercase', color: '#0a0a0a', background: '#E8FF4D', padding: '0 3px' }}>BAAZ</span>
         </span>
       )}
     </Link>
