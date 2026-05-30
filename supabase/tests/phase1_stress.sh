@@ -305,11 +305,25 @@ echo "$ASSERTIONS_SQL" | psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f -
 # --- 4. Cleanup ---
 echo
 echo "Cleaning up fixtures for label $LABEL..."
+# The lifetime invariant triggers (migrations 005 + 006) are
+# intentionally strict in production: sold_order_id and
+# sold_offer_id are immutable post-set, so we cannot NULL them
+# back out via a normal UPDATE. For test cleanup we explicitly
+# disable the triggers in this session, NULL the ownership
+# columns to break the listings↔orders FK cycle, then delete
+# in normal FK order. The triggers re-enable automatically when
+# this session ends; production code paths are unaffected.
 psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q -c "
-  DELETE FROM order_events  WHERE order_id IN (SELECT order_id FROM stress_fixtures WHERE label = '$LABEL');
-  DELETE FROM payments      WHERE id       IN (SELECT payment_id FROM stress_fixtures WHERE label = '$LABEL');
-  DELETE FROM orders        WHERE id       IN (SELECT order_id FROM stress_fixtures WHERE label = '$LABEL');
-  DELETE FROM listings      WHERE id       IN (SELECT DISTINCT listing_id FROM stress_fixtures WHERE label = '$LABEL');
+  SET session_replication_role = 'replica';
+  UPDATE listings
+     SET sold_order_id = NULL, sold_offer_id = NULL
+   WHERE id IN (SELECT DISTINCT listing_id FROM stress_fixtures WHERE label = '$LABEL');
+  SET session_replication_role = 'origin';
+
+  DELETE FROM order_events    WHERE order_id   IN (SELECT order_id   FROM stress_fixtures WHERE label = '$LABEL');
+  DELETE FROM payments        WHERE id         IN (SELECT payment_id FROM stress_fixtures WHERE label = '$LABEL');
+  DELETE FROM orders          WHERE id         IN (SELECT order_id   FROM stress_fixtures WHERE label = '$LABEL');
+  DELETE FROM listings        WHERE id         IN (SELECT DISTINCT listing_id FROM stress_fixtures WHERE label = '$LABEL');
   DELETE FROM stress_fixtures WHERE label = '$LABEL';
 "
 
