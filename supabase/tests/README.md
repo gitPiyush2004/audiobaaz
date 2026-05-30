@@ -4,6 +4,10 @@ Database-layer scenarios that prove `supabase/migrations/002_phase1_marketplace_
 
 These tests do not require a Node runtime, JS test framework, or any application code. They exercise `finalize_winning_payment(...)` directly via plain SQL inside `psql` (or the Supabase SQL editor), plus a multi-connection stress harness using `pgbench`.
 
+> **Just want to run the gate?** Follow `supabase/tests/RUNBOOK.md` — copy-pasteable steps from "fresh VPS" to "PASS" in five minutes.
+>
+> **Looking for the CI workflow?** `.github/workflows/phase1-verification.yml` runs the gate automatically on every PR touching `supabase/migrations/**`, `supabase/schema.sql`, or `supabase/tests/**`.
+
 ## What they prove
 
 Per `docs/context/payments-shipping.md` "Phase 1 acceptance criteria":

@@ -946,10 +946,14 @@ test file proves them.
    locked V1 contract" above.**
 2. ~~Land Phase 1 schema substrate.~~ **In code on
    feature/payments-shipping** (commits c3ed389 / ab49e76 / e72caa4
-   plus the Scenario E + stress harness follow-up).
+   plus the Scenario E + stress harness follow-up + invariant
+   guards + listing-status separation).
    **Not yet verified** — the acceptance scenarios have not been
    run against a live Postgres because this machine has no psql /
    supabase CLI / docker. **Code written ≠ correctness proven.**
+   Verification runbook: `supabase/tests/RUNBOOK.md`. Automated
+   verification on every PR touching marketplace-core SQL:
+   `.github/workflows/phase1-verification.yml`.
 3. Person 1 + Person 4 sign off on the Schema Contract (audit §4)
    as amended by the OQ#1 resolution.
 4. Merge feature/payments-shipping → dev (schema only — Phase 2
