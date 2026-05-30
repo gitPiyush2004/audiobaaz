@@ -25,17 +25,51 @@ edge that fires from a verified Razorpay capture.
 
 ```
 [ ] Not started
-[ ] In progress
-[ ] Complete
-[x] Blocked — architecture locked; OQ#1 (escrow_held / order
-    lifecycle) RESOLVED 2026-05-30 — see "Order state machine —
+[x] In progress — Phase 1 schema substrate written on
+    feature/payments-shipping (commits c3ed389 RPC + invariant +
+    audit tables, ab49e76 refund-lifecycle, e72caa4 checkout_locks);
+    pending verification against a live Postgres (four-scenario
+    test in supabase/tests/phase1_scenarios.sql) and PR back to
+    dev. OQ#1 RESOLVED 2026-05-30 — see "Order state machine —
     locked V1 contract" below; session-zero audit complete
     (docs/reviews/payments-session-zero.md is the authoritative
-    artifact; Schema Contract §4 is the primary review surface);
-    implementation deferred pending Phase 1 schema work (OQ#4
-    invariant, OQ#5 RPC, audit tables, checkout_locks).
-    feature/payments-shipping branch parked at f47ab10.
+    artifact; Schema Contract §4 is the primary review surface).
+[ ] Complete
+[ ] Blocked
 ```
+
+### Phase 1 schema FROZEN as of 2026-05-30
+
+> **No new migrations, triggers, RPCs, state machines, or test
+> scenarios on this branch until a verification run actually fails
+> and points at a real bug.**
+
+The Phase 1 surface is complete:
+
+- atomic RPC (`finalize_winning_payment`)
+- lifetime invariant column + UNIQUE constraint
+- refund lifecycle (state machine + two RPCs)
+- audit tables (`offer_events`, `order_events`, `webhook_events`)
+- invariant-guard triggers (`sold_offer_id` immutable, `listings.status`
+  terminal-at-`sold`)
+- `checkout_locks` table + acquire/release RPCs
+- five acceptance scenarios + multi-connection stress harness
+- CI workflow + runbook + Supabase compatibility bootstrap
+
+This is enough architecture for a V1 marketplace core. Every
+additional migration written without an executed test run is
+optimisation of an unexercised system. The freeze is in place so
+the team focuses on **running the gate**, not extending it.
+
+Exception: a verification failure that points at a real bug
+(missing column, wrong constraint shape, broken RPC logic) is the
+one trigger to amend a migration. All other "while we're here"
+changes wait until after Phase 1 PR merges to `dev`.
+
+After Phase 1 verification passes and merges, the **next focus is
+Phase 2 application work** — wiring the existing RPCs into the
+Razorpay routes per the audit's §5.9 disposition. Not more
+migrations.
 
 Status reality (audit-verified):
 - No payment or shipping code on `dev`. `src/app/api/` has no
@@ -301,24 +335,47 @@ second order may exist with any winning-lineage status.
 
 ### OQ#4 mechanism — locked
 
-`listings.sold_offer_id UUID UNIQUE NULL REFERENCES offers(id)`. Set
-once inside the atomic RPC at the moment of `escrow_held`. **Never
-unset and never updated.** The unique constraint enforces lifetime
-exclusivity.
+**Updated 2026-05-30 by migration 006:** ownership anchor moved from
+`sold_offer_id` to `sold_order_id` after PR #2 CI surfaced that
+`sold_offer_id` does not constrain direct buy-now captures (offer_id
+is NULL for those, and PostgreSQL UNIQUE allows multiple NULLs).
 
-The audit's earlier alternative — a unique partial index keyed on
-`offers.status = 'paid'` — was rejected because it does not cover the
-post-refund case on its own; it would need a paired order-side
-constraint covering the entire winning-lineage status set. The
-ownership-on-the-listing model is also semantically cleaner: the
-thing being protected is not payment state but **ownership history**,
-and ownership belongs on the listing.
+**Current contract:**
 
-The invariant maps almost one-to-one onto the column:
+```
+listings.sold_order_id UUID UNIQUE NULL REFERENCES orders(id)
+                       ← primary ownership anchor (set on every
+                         winning capture, regardless of whether
+                         the order was offer-backed)
 
-> "A listing can have at most one winning offer." → `sold_offer_id` is
-> either `NULL` (listing still available) or a single UUID (listing
-> sold to that offer's buyer, for all time).
+listings.sold_offer_id UUID UNIQUE NULL REFERENCES offers(id)
+                       ← informational metadata; populated only
+                         when the order was offer-backed. Retained
+                         for forensic queries ("which negotiation
+                         became this sale?"); not the invariant
+                         anchor.
+```
+
+Set once inside the atomic RPC at the moment of `escrow_held`.
+**Both columns are immutable post-set** (migration 005 +
+migration 006 each enforce immutability via BEFORE-UPDATE triggers).
+
+The invariant maps directly onto the order-side anchor:
+
+> "A listing can have at most one winning order." → `sold_order_id`
+> is either `NULL` (listing still available) or a single UUID
+> (listing sold to that order, for all time).
+
+The original anchor (`sold_offer_id`) was an artifact of the earlier
+offer-centric design. The marketplace is order-centric in V1; the
+RPC takes a `payment_id`, derives the order, and writes
+`sold_order_id` deterministically. Whether an offer was involved
+is recorded as a label, not as the constraint.
+
+The audit's earlier alternative (unique partial index keyed on
+`offers.status = 'paid'`) was rejected because it does not cover
+direct buy-now (no `paid` offer exists for those captures).
+`listings.sold_order_id` covers both flows natively.
 
 ### Refunded-winner rule (immutability of `sold_offer_id`)
 
@@ -750,6 +807,16 @@ against, not what they can call today.
   dispute or full refund leaves both `listings.status = 'sold'` and
   `listings.sold_offer_id` intact. Relisting requires a new
   `listings` row, never a state regression on the original.
+- **Listing-status terminal at `sold`** (decided 2026-05-30 during
+  invariant-guard review). Once a listing is sold, it stays sold.
+  Settlement (`orders.status = 'completed'`), payout
+  (`orders.payout_status = 'paid'`), and price-history attribution
+  (`record_price_history` trigger on `orders`, not `listings`) all
+  live on the order, not the listing. The legacy `completed` value
+  in the listing-status enum is preserved for migration safety but
+  is no longer reachable from `sold`. This keeps inventory state
+  (listing) and transaction state (order) on separate state
+  machines, which was the architectural separation OQ#1 was about.
 - **Refund lifecycle is first-class state on `payments`.** New
   `payments.refund_status` column (`pending → processing → succeeded |
   failed`, with `failed → processing` retry path). Refund-completion
@@ -840,96 +907,134 @@ Person 1 produces a single PR covering:
 - `payments.refund_status`, `refund_id`, `refund_reason`,
   `refund_initiated_at`, `refund_completed_at`, `refund_failure_reason`
   columns. New refund-lifecycle enum.
+- Invariant guard triggers (migration 005): `sold_offer_id`
+  immutability + `listings.status` no-regression. Catches any
+  rogue write to listings ownership regardless of which client
+  issued it. The invariant is only as strong as the weakest
+  update path.
 - RLS policies on the audit tables.
 - Drop `reserve_listing` trigger.
 
-### Phase 1 acceptance criteria — four scenarios at the database layer
+### Phase 2 application-side cleanup (must precede Razorpay route revisions)
+
+A grep audit on `feature/payments-shipping` (recorded 2026-05-30)
+found four code paths that bypass `finalize_winning_payment` and
+would now trigger the migration 005 invariant guards. None of these
+paths exist on `dev`, but they exist on the parked branch and must
+be replaced before the Razorpay routes go live:
+
+| File | Issue | Phase 2 fix |
+|------|-------|-------------|
+| `src/app/api/payments/webhook/route.ts:88` | `UPDATE listings SET status='sold'` without `sold_offer_id` | Replace with `rpc('finalize_winning_payment', ...)` |
+| `src/app/api/payments/webhook/route.ts:138` | On `payment.failed`: `UPDATE listings SET status='approved', reserved_at=NULL` (the resurrection path) | Remove entirely. Decision 6 dropped the reservation flow; failed payments leave the listing alone |
+| `src/app/api/payments/verify/route.ts:99` | Same as webhook line 88 | Replace with the RPC |
+| `src/app/api/checkout/mock/route.ts:97` | Mock checkout writes `status='sold'` without `sold_offer_id` | Delete the route; `CheckoutForm` points at `/api/payments/create` |
+
+Phase 2 cannot ship until these four paths are removed or replaced.
+Migration 005 is the safety net — it ensures any code that tries to
+write the old way fails loudly with a `check_violation` rather than
+silently corrupting ownership.
+
+### Phase 1 acceptance criteria — five scenarios + stress harness
 
 Before any application code is written against the new schema, the
-Phase 1 PR must demonstrate the following four scenarios pass at the
-database layer (Postgres-level test, not application-level mock).
-These are the failure modes that destroy escrow marketplaces; if the
-schema can survive all four, the marketplace core is largely
-de-risked.
+Phase 1 PR must demonstrate the following at the database layer
+(Postgres-level test, not application-level mock). These are the
+failure modes that destroy escrow marketplaces; if the schema can
+survive all of them, the marketplace core is largely de-risked.
 
-**Scenario A — Concurrent captures, one winner**
-```
-Buyer A captures
-Buyer B captures (concurrent)
-Result: A wins (orders.status = escrow_held; listings.sold_offer_id set)
-        B refunded (orders.status = cancelled or payment_failed;
-                    payment refund initiated)
-        Exactly one row in winning-lineage status for the listing
-```
+**Must pass (acceptance gate, no merge to `dev` without all three):**
 
-**Scenario B — Mid-cascade crash**
-```
-Buyer A captures
-RPC starts the winner cascade
-Process crashes halfway through (after offers update, before
-  listings.sold_offer_id set)
-Result: Either nothing committed (rollback)
-        Or everything committed (atomic completion)
-        Never half-state (e.g. offer = paid but listing still
-        approved, or listing sold but no order row)
-```
+1. **All five SQL scenarios** in `supabase/tests/phase1_scenarios.sql`
+   pass:
+   - **A — Concurrent captures:** two simultaneous captures →
+     exactly one winner, the other refunded.
+   - **B — Mid-cascade crash:** RPC interrupted halfway →
+     everything committed or nothing committed; never half-state.
+     **Gate-of-gates.** If this fails, fix before continuing —
+     atomicity bugs cannot be papered over with retries.
+   - **C — Refunded winner immutability:** dispute resolved in
+     buyer's favour → `listings.status` and `sold_offer_id`
+     unchanged; no second order possible for that listing.
+   - **D — High-concurrency race:** 10 sequential captures at the
+     gateway → exactly 1 marketplace winner, 9 refunded losers, 0
+     ownership corruption.
+   - **E — Webhook replay:** Razorpay retries the same
+     captured-payment webhook → first call wins; subsequent calls
+     return `noop` with byte-for-byte identical state and zero
+     duplicate audit rows. Two sub-tests: E1 (replay alone) and E2
+     (replay interleaved with a second buyer's capture).
+2. **Multi-connection stress** at concurrency = 100 via
+   `supabase/tests/phase1_stress.sh` (pgbench harness):
+   100 parallel pgbench clients each call
+   `finalize_winning_payment()` for a distinct payment on the
+   same listing. Marketplace state must be byte-perfect: exactly
+   1 winner, 99 losers, full audit trail. Single-session SQL
+   tests prove correctness against the invariant + `FOR UPDATE`
+   locks; the stress harness proves they hold under true OS-level
+   parallelism. *If you skip this, you do not actually know
+   whether the system survives concurrent captures — you have a
+   hypothesis.*
+3. **Schema Contract review (audit §4)** signed off by Person 1
+   and Person 4 as amended by the OQ#1 resolution.
 
-**Scenario C — Refunded winner, no inventory return**
-```
-Buyer A captures
-Order progresses to delivered
-Buyer A raises dispute
-Admin resolves in buyer's favour → refunded
-Result: listings.status = sold (unchanged)
-        listings.sold_offer_id still references A's offer (immutable)
-        No second order can be created for this listing
-        New listing requires a new listings.id
-```
+**Auditability assertion (applies to A, D, and E):** all losers
+must be discoverable and recoverable from the database alone. The
+audit trail must answer "which order won, which lost, when, why
+was each refunded, and what is the current refund status of each
+loser" without recourse to Razorpay dashboards or application logs.
 
-**Scenario D — High-concurrency race**
-```
-10 buyers attempt checkout for the same listing simultaneously
-All 10 captures succeed at the gateway (Razorpay-side)
-Result: 1 winner (orders.status = escrow_held)
-        9 losers (refunded, with correct buyer-facing message)
-        0 ownership corruption (exactly one row in winning-lineage
-        status; listings.sold_offer_id set exactly once)
-```
+If all three gates pass, the marketplace core is considered
+de-risked and Phase 2 (Razorpay integration) can proceed.
 
-Auditability assertion (must also pass for Scenario A and Scenario D):
-all 9 losers must be **discoverable and recoverable** from the
-database alone. The audit trail must answer, without recourse to
-Razorpay dashboards or application logs:
+If all three gates pass, the marketplace core is considered
+de-risked and Phase 2 (Razorpay integration) can proceed.
 
-- Which order won? (`listings.sold_offer_id` → winning offer →
-  winning order)
-- Which orders lost, and when? (`order_events` rows recording the
-  cascade transition + timestamp; `offer_events` rows for `* → lost`)
-- Why was each loser refunded? (`payments.refund_reason`)
-- What is the current status of each refund? (`payments.refund_status`
-  — see "Refund lifecycle as first-class state" below)
-
-A race that refunds correctly but leaves no trace is a support
-nightmare; it is treated as a Scenario D failure.
-
-If Person 1's PR demonstrates these four scenarios, the marketplace
-core is considered de-risked and Phase 2 (Razorpay integration) can
-proceed.
+The full per-scenario narrative — exactly what each test sets up,
+runs, and asserts — lives in `supabase/tests/phase1_scenarios.sql`
+and `supabase/tests/README.md`. Treat those files as the source of
+truth for what "passes" means; this section names the gates, the
+test file proves them.
 
 ### Sequencing rules
 
 1. ~~Resolve OQ#1 (lifecycle).~~ **Done — see "Order state machine —
    locked V1 contract" above.**
-2. Person 1 lands the Phase 1 schema PR per the priority and scope
-   above.
-3. Person 4 + Person 1 sign off on the Schema Contract (audit §4) as
-   amended by this resolution.
-4. Wipe synthetic `payments WHERE razorpay_order_id LIKE 'mock_%'`
+2. ~~Land Phase 1 schema substrate.~~ **In code on
+   feature/payments-shipping** (commits c3ed389 / ab49e76 / e72caa4
+   plus the Scenario E + stress harness follow-up + invariant
+   guards + listing-status separation).
+   **Not yet verified** — the acceptance scenarios have not been
+   run against a live Postgres because this machine has no psql /
+   supabase CLI / docker. **Code written ≠ correctness proven.**
+   Verification runbook: `supabase/tests/RUNBOOK.md`. Automated
+   verification on every PR touching marketplace-core SQL:
+   `.github/workflows/phase1-verification.yml`.
+3. Person 1 + Person 4 sign off on the Schema Contract (audit §4)
+   as amended by the OQ#1 resolution.
+4. Merge feature/payments-shipping → dev (schema only — Phase 2
+   application work follows).
+5. Wipe synthetic `payments WHERE razorpay_order_id LIKE 'mock_%'`
    rows before Phase 2 begins.
+6. Phase 2 (Razorpay) revises the parked routes per audit §5.9 to
+   call `finalize_winning_payment(...)`, `initiate_refund(...)`,
+   `record_refund_outcome(...)`, and `acquire_checkout_lock(...)`.
 
-Phase 2 (Razorpay) begins only after Phase 1 lands on `dev`. Audit
-§5.9 dictates how the parked `feature/payments-shipping` files
-migrate; the verify and webhook routes need rework to commit the
-locked V1 transition (capture → `escrow_held` + listing `sold` +
-loser cascade) inside the RPC. Everything before Phase 2 is design
-and verification — no new code in this feature lands on `dev`.
+### What needs verifying before the merge
+
+- **Run the four-scenario acceptance test.** Per
+  `supabase/tests/README.md`. Scenario B is the gate; if it fails,
+  fix before continuing.
+- **Application-side cleanup.** The parked Razorpay routes
+  (`src/app/api/payments/{create,verify,webhook}/route.ts`)
+  reference the dropped `reserve_listing` flow and the old
+  `escrow_held`-on-capture lifecycle. Audit §5.9 already records
+  these as "Revise" — that work happens in Phase 2 once the schema
+  lands. The routes are NOT live on dev (no `payments/` directory
+  exists there), so this is a Phase 2 todo, not a runtime regression.
+- **Multi-connection concurrency check.** The four scenarios prove
+  correctness in a single session against the lifetime invariant +
+  `SELECT ... FOR UPDATE` locks. A pgbench-style multi-connection
+  stress test (e.g. 20 concurrent calls to `finalize_winning_payment`
+  for the same listing) belongs in CI and should land before Phase 2
+  begins.
