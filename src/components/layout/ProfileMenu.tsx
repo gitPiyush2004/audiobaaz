@@ -39,7 +39,7 @@ export function ProfileMenu({ initials, fullName, city, offerCount }: ProfileMen
         onClick={() => setOpen(v => !v)}
         aria-label="Account menu"
         aria-expanded={open}
-        className="flex h-9 w-9 items-center justify-center rounded-full bg-accent font-heading text-sm font-bold text-black ring-offset-bg transition-all hover:ring-2 hover:ring-accent/50 hover:ring-offset-2"
+        style={{ background: '#0a0a0a', color: '#fff', fontWeight: 700, fontSize: '12px', borderRadius: 0, width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
       >
         {initials}
       </button>
@@ -48,7 +48,7 @@ export function ProfileMenu({ initials, fullName, city, offerCount }: ProfileMen
         <div className="absolute right-0 top-full z-50 mt-2 w-56 overflow-hidden rounded-xl border border-border bg-surface shadow-xl">
           {/* identity header */}
           <div className="flex items-center gap-3 border-b border-border px-4 py-3">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent font-heading text-sm font-bold text-black">
+            <div style={{ background: '#0a0a0a', color: '#fff', fontWeight: 700, fontSize: '12px', borderRadius: 0, width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
               {initials}
             </div>
             <div className="min-w-0">

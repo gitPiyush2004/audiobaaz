@@ -37,9 +37,10 @@ const config: Config = {
         "grade-d": "rgb(var(--grade-d-ch) / <alpha-value>)",
       },
       fontFamily: {
-        heading: ["var(--font-head)", "Syne",          "sans-serif"],
-        body:    ["var(--font-body)", "DM Sans",        "sans-serif"],
-        sans:    ["var(--font-body)", "DM Sans",        "sans-serif"],
+        heading: ["Helvetica Neue", "Helvetica", "Arial", "var(--font-body)", "sans-serif"],
+        body:    ["Helvetica Neue", "Helvetica", "Arial", "var(--font-body)", "sans-serif"],
+        sans:    ["Helvetica Neue", "Helvetica", "Arial", "var(--font-body)", "sans-serif"],
+        serif:   ["var(--font-serif)", "Instrument Serif", "Georgia", "serif"],
         mono:    ["var(--font-mono)", "JetBrains Mono", "monospace"],
       },
       borderRadius: {

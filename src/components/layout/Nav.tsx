@@ -1,21 +1,8 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { cn } from "@/lib/utils/cn";
 import { ProfileMenu } from "@/components/layout/ProfileMenu";
-
-const navLinkClass = cn(
-  "text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-);
-
-const btnSecondaryClass = cn(
-  "inline-flex items-center rounded-lg border border-border bg-surface px-4 py-2 text-sm font-medium",
-  "text-foreground transition-colors hover:bg-surface-2"
-);
-
-const btnPrimaryClass = cn(
-  "inline-flex items-center rounded-lg bg-accent px-4 py-2 text-sm font-semibold",
-  "text-black transition-all hover:bg-accent-hover active:scale-[0.98]"
-);
+import { Logo } from "@/components/layout/Logo";
+import { CategoryNav } from "@/components/layout/CategoryNav";
 
 function getInitials(fullName: string): string {
   const parts = fullName.trim().split(/\s+/).filter(Boolean);
@@ -41,36 +28,71 @@ export async function Nav() {
     offerCount = (offers ?? 0) + (orders ?? 0);
   }
 
-  const fullName  = profile?.full_name ?? "";
-  const initials  = fullName ? getInitials(fullName) : "?";
+  const fullName = profile?.full_name ?? "";
+  const initials = fullName ? getInitials(fullName) : "?";
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-border bg-bg">
-      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-        <Link href="/" aria-label="Audiobaaz home">
-          <span className="font-heading text-xl font-bold tracking-tight text-foreground">
-            audio<span className="text-accent">baaz</span>
-          </span>
-        </Link>
+    <header className="sticky top-0 z-50 w-full" style={{ background: '#FFFFFF' }}>
+      {/* Main bar */}
+      <div
+        style={{ height: '60px', borderBottom: '1px solid #E8E8E8' }}
+        className="flex w-full items-center"
+      >
+        <div className="flex w-full items-center justify-between" style={{ padding: '0 40px' }}>
+          <Logo size={38} />
 
-        <nav className="flex items-center gap-4">
-          <Link href="/browse" className={navLinkClass}>Browse</Link>
+          <nav className="flex items-center gap-6">
+            <Link
+              href="/browse"
+              style={{ fontSize: '13px', fontWeight: 300, color: '#888' }}
+              className="transition-colors hover:text-[#0a0a0a]"
+            >
+              Browse
+            </Link>
 
-          {user ? (
-            <ProfileMenu
-              initials={initials}
-              fullName={fullName || "Your account"}
-              city={profile?.city ?? undefined}
-              offerCount={offerCount}
-            />
-          ) : (
-            <>
-              <Link href="/login" className={btnSecondaryClass}>Log in</Link>
-              <Link href="/sell" className={btnPrimaryClass}>Sell With Us</Link>
-            </>
-          )}
-        </nav>
+            {user ? (
+              <ProfileMenu
+                initials={initials}
+                fullName={fullName || "Your account"}
+                city={profile?.city ?? undefined}
+                offerCount={offerCount}
+              />
+            ) : (
+              <>
+                <Link
+                  href="/login"
+                  style={{ fontSize: '13px', fontWeight: 300, color: '#888' }}
+                  className="transition-colors hover:text-[#0a0a0a]"
+                >
+                  Log in
+                </Link>
+                {/* Accent instance 1/2 — navbar sell button */}
+                <Link
+                  href="/sell"
+                  style={{
+                    background: '#E8FF4D',
+                    color: '#0a0a0a',
+                    fontWeight: 700,
+                    fontSize: '11px',
+                    letterSpacing: '0.08em',
+                    textTransform: 'uppercase',
+                    padding: '8px 20px',
+                    borderRadius: 0,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                  }}
+                  className="transition-opacity hover:opacity-80"
+                >
+                  Sell With Us
+                </Link>
+              </>
+            )}
+          </nav>
+        </div>
       </div>
+
+      {/* Category nav strip */}
+      <CategoryNav />
     </header>
   );
 }

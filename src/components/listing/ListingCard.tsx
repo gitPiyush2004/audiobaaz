@@ -1,107 +1,91 @@
 import Image from "next/image";
 import Link from "next/link";
-import { Star } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { formatPrice } from "@/lib/utils/formatting";
-import { ConditionBadge } from "./ConditionBadge";
 import type { ListingCardData } from "@/lib/listings/types";
 
 export interface ListingCardProps {
   listing: ListingCardData;
-  /** Render as priority/eager image — use only for above-the-fold cards. */
   priority?: boolean;
   className?: string;
 }
 
-/**
- * Card used wherever listings appear in a grid: homepage, browse, search,
- * similar listings, watchlist. Entire card is a single link to the detail
- * page. Photo is 4:3, condition badge overlays the top-right, asking price
- * is in mono accent, optional seller rating + city anchors the bottom.
- *
- * Server component. Client interactivity (watchlist save, etc.) should be
- * added as separate client islands rendered alongside the card, not baked in.
- */
+const GRADE_STYLE: Record<string, { background: string; color: string }> = {
+  S: { background: '#DBEAFE', color: '#1D4ED8' },
+  A: { background: '#DCFCE7', color: '#15803D' },
+  B: { background: '#FEF9C3', color: '#A16207' },
+  C: { background: '#FEF3C7', color: '#92400E' },
+  D: { background: '#FEE2E2', color: '#B91C1C' },
+};
+
 export function ListingCard({ listing, priority = false, className }: ListingCardProps) {
-  const href = `/listing/${listing.slug ?? listing.id}`;
+  const href  = `/listing/${listing.slug ?? listing.id}`;
   const cover = listing.photos[0];
-  const sellerName  = listing.seller?.full_name?.trim();
-  const sellerCity  = listing.seller?.city?.trim();
-  const rating      = listing.seller?.rating;
-  const ratingCount = listing.seller?.rating_count;
-  const showRating  = typeof rating === "number" && rating > 0;
+  const grade = GRADE_STYLE[listing.condition_grade] ?? GRADE_STYLE.D;
 
   return (
     <Link
       href={href}
       aria-label={`${listing.brand} ${listing.product_name} — ${formatPrice(listing.asking_price)}`}
-      className={cn(
-        "group flex flex-col overflow-hidden rounded-xl border border-border bg-surface",
-        "transition-all duration-150 hover:-translate-y-0.5 hover:border-border-2 hover:bg-surface-2",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg",
-        className
-      )}
+      className={cn("group block", className)}
+      style={{ borderRight: '1px solid #E8E8E8', borderBottom: '1px solid #E8E8E8' }}
     >
-      {/* Cover photo — 4:3 keeps cards uniform regardless of source aspect. */}
-      <div className="relative aspect-[4/3] w-full overflow-hidden bg-surface-2">
+      {/* Square photo */}
+      <div
+        style={{ aspectRatio: '1/1', background: '#F5F5F5', position: 'relative', overflow: 'hidden' }}
+      >
         {cover ? (
           <Image
             src={cover}
             alt={`${listing.brand} ${listing.product_name}`}
             fill
             priority={priority}
-            sizes="(min-width: 1280px) 25vw, (min-width: 768px) 33vw, (min-width: 640px) 50vw, 100vw"
-            className="object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+            sizes="(min-width: 1280px) 20vw, (min-width: 768px) 25vw, 50vw"
+            className="object-cover transition-transform duration-500 group-hover:scale-[1.03]"
           />
         ) : (
-          <div className="flex h-full w-full items-center justify-center text-xs text-dim-foreground">
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', fontSize: '10px', color: '#999' }}>
             No photo
-          </div>
-        )}
-
-        <div className="absolute right-2 top-2">
-          <ConditionBadge grade={listing.condition_grade} size="sm" />
-        </div>
-
-        {listing.is_negotiable && (
-          <div className="absolute left-2 top-2 rounded-md bg-bg/70 px-2 py-0.5 text-[11px] font-medium text-foreground backdrop-blur-sm">
-            Negotiable
           </div>
         )}
       </div>
 
-      {/* Body */}
-      <div className="flex flex-1 flex-col gap-2 p-4">
-        <div className="min-w-0">
-          <p className="truncate text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            {listing.brand}
-          </p>
-          <h3 className="mt-0.5 truncate text-sm font-semibold text-foreground group-hover:text-accent">
-            {listing.product_name}
-          </h3>
-        </div>
-
-        <p className="font-mono text-base font-semibold text-accent">
-          {formatPrice(listing.asking_price)}
+      {/* Card body */}
+      <div style={{ padding: '12px' }}>
+        {/* Brand */}
+        <p style={{ fontSize: '9px', fontWeight: 600, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#999', marginBottom: '2px' }} className="truncate">
+          {listing.brand}
         </p>
 
-        {(showRating || sellerCity || sellerName) && (
-          <div className="mt-auto flex items-center justify-between gap-2 pt-2 text-xs text-muted-foreground">
-            <span className="truncate">
-              {sellerName ?? "Verified seller"}
-              {sellerCity ? ` · ${sellerCity}` : ""}
-            </span>
-            {showRating && (
-              <span className="flex shrink-0 items-center gap-1 text-foreground">
-                <Star className="h-3 w-3 fill-accent text-accent" aria-hidden />
-                <span className="font-mono">{rating!.toFixed(1)}</span>
-                {typeof ratingCount === "number" && ratingCount > 0 && (
-                  <span className="text-muted-foreground">({ratingCount})</span>
-                )}
-              </span>
-            )}
-          </div>
-        )}
+        {/* Product name */}
+        <h3
+          style={{ fontSize: '13px', fontWeight: 700, letterSpacing: '-0.01em', textTransform: 'uppercase', color: '#0a0a0a', marginBottom: '8px', lineHeight: 1.2 }}
+          className="line-clamp-2"
+        >
+          {listing.product_name}
+        </h3>
+
+        {/* Price + grade */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+          <p
+            style={{ fontFamily: 'var(--font-mono), "JetBrains Mono", monospace', fontSize: '14px', fontWeight: 800, letterSpacing: '-0.02em', color: '#0a0a0a' }}
+          >
+            {formatPrice(listing.asking_price)}
+          </p>
+          <span
+            style={{
+              ...grade,
+              fontSize: '9px',
+              fontWeight: 700,
+              padding: '2px 6px',
+              borderRadius: 0,
+              flexShrink: 0,
+              letterSpacing: '0.04em',
+            }}
+          >
+            {listing.condition_grade}
+          </span>
+        </div>
       </div>
     </Link>
   );

@@ -1,17 +1,20 @@
 import type { Metadata } from "next";
-import { Syne, DM_Sans, JetBrains_Mono } from "next/font/google";
+import { DM_Sans, JetBrains_Mono, Instrument_Serif } from "next/font/google";
 import { Nav } from "@/components/layout/Nav";
+import { Footer } from "@/components/layout/Footer";
 import "./globals.css";
-
-const syne = Syne({
-  subsets: ["latin"],
-  variable: "--font-head",
-  display: "swap",
-});
 
 const dmSans = DM_Sans({
   subsets: ["latin"],
   variable: "--font-body",
+  display: "swap",
+});
+
+const instrumentSerif = Instrument_Serif({
+  subsets: ["latin"],
+  weight: ["400"],
+  style: ["normal", "italic"],
+  variable: "--font-serif",
   display: "swap",
 });
 
@@ -22,21 +25,18 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Audiobaaz — Buy & Sell Secondhand Audio Gear",
+  title: "Audiobaaz — The market for audio obsessives",
   description:
-    "India's managed marketplace for secondhand headphones, speakers, DACs, amps, and more. Every listing verified. Every transaction protected.",
+    "India's managed secondhand marketplace for headphones, speakers, DACs, amps, and more. Every listing condition-graded. Every transaction escrow-protected.",
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${syne.variable} ${dmSans.variable} ${jetbrainsMono.variable}`}>
-      <body className="bg-bg font-sans text-foreground antialiased">
+    <html lang="en" className={`${dmSans.variable} ${instrumentSerif.variable} ${jetbrainsMono.variable}`}>
+      <body style={{ background: '#FFFFFF', color: '#0A0A0A' }} className="antialiased">
         <Nav />
         <main>{children}</main>
+        <Footer />
       </body>
     </html>
   );
