@@ -25,6 +25,25 @@
 
 
 -- ============================================================
+-- Wrap the entire test suite in a single transaction
+-- ============================================================
+--
+-- psql runs in autocommit mode by default; SAVEPOINT statements
+-- are illegal outside a transaction block. We open a transaction
+-- here and ROLLBACK at the end so:
+--   1. Every SAVEPOINT scenario_X is legal.
+--   2. After the suite runs, the database is byte-for-byte clean
+--      (ROLLBACK undoes both the test fixtures and the
+--      phase1_test_setup function definition, since CREATE
+--      FUNCTION inside a transaction is also rolled back).
+--   3. If a scenario raises (psql -v ON_ERROR_STOP=1), psql exits
+--      and Postgres auto-rolls-back the open transaction. The
+--      explicit ROLLBACK at the end is for the clean-pass case.
+
+BEGIN;
+
+
+-- ============================================================
 -- Test fixtures helper
 -- ============================================================
 --
@@ -768,3 +787,10 @@ DROP FUNCTION IF EXISTS phase1_test_setup(TEXT);
 
 \echo
 \echo '=== ALL FIVE SCENARIOS PASSED ==='
+
+-- Close the transaction opened at the top of the file. Rollback
+-- (not commit) so test data and the helper function don't pollute
+-- the database. With every per-scenario block already rolled back
+-- to its savepoint, this final ROLLBACK is the cleanup for the
+-- function definition + any stragglers.
+ROLLBACK;
