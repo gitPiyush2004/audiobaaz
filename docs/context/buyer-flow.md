@@ -2,7 +2,7 @@
 **Owner:** Person 2
 **Tool:** Kiro
 **Branch:** feature/buyer-flow (merged); active vertical-slice work on `feature/order-lifecycle-shipping`
-**Last updated:** 2026-05-30
+**Last updated:** 2026-06-01
 
 ---
 
@@ -36,8 +36,12 @@ single listing page, checkout, order dashboard, watchlist, saved searches.
 [x] /orders/purchase/[orderId] — full order detail page: status timeline, delivery address, price breakdown, dev advance-order button, dispute form during inspection window
 [x] POST /api/disputes — buyer raises dispute; validates inspection window, creates dispute record, marks order disputed
 [x] POST /api/dev/advance-order — dev-only; pushes order to inspection (delivered_at + inspection_expires_at = now+48h)
-[ ] Watchlist, saved searches, disputes, orders dashboard, ratings — defer
-[x] /buy/checkout/[listingId] (mock) + /orders/purchase/[orderId] (post-purchase) — live; real Razorpay swap deferred to Person 4's Phase 2 (see docs/reviews/payments-session-zero.md §8)
+[x] POST /api/orders/[orderId]/complete — buyer confirms receipt during inspection window; order → completed, completed_at set
+[x] ConfirmReceiptButton — confirm dialog + POST /api/orders/[orderId]/complete; shown above dispute form during inspection window
+[x] force-dynamic on admin listings, seller dashboard listings + orders, buyer purchases list — fixes stale router cache
+[x] listings!listing_id FK hint — all orders→listings Supabase joins updated (sold_order_id FK from migration 006 caused ambiguity)
+[ ] Watchlist, saved searches, ratings — defer
+[ ] Real offers persistence — replace mock createOfferDraft / getMyOffers / getOfferDetail with Supabase
 ```
 
 ---
@@ -55,7 +59,8 @@ single listing page, checkout, order dashboard, watchlist, saved searches.
 | `/orders/offers/[id]` | Offer detail | protected | `src/app/orders/offers/[id]/page.tsx` |
 | `/buy/checkout/[listingId]` | Checkout — collects delivery address, calls `/api/payments/create` (provider-aware: Razorpay modal or `/api/dev/payments/simulate`), then `/api/payments/verify` on success | protected | `src/app/buy/checkout/[listingId]/page.tsx` + `CheckoutForm.tsx` |
 | `/orders/purchases` | Buyer purchases list (buy-now orders) | protected | `src/app/orders/purchases/page.tsx` |
-| `/orders/purchase/[orderId]` | Order detail — status timeline, address, dispute form during inspection window, dev advance-order button | protected | `src/app/orders/purchase/[orderId]/page.tsx` |
+| `/orders/purchase/[orderId]` | Order detail — status timeline, address, confirm receipt + dispute form during inspection window, dev advance-order button | protected | `src/app/orders/purchase/[orderId]/page.tsx` |
+| `POST /api/orders/[orderId]/complete` | Buyer confirms receipt → order completed | protected | `src/app/api/orders/[orderId]/complete/route.ts` |
 
 `protected` routes redirect anonymous users to `/login?redirect=<path>` via `src/middleware.ts`.
 
