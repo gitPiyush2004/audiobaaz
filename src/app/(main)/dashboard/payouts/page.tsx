@@ -14,7 +14,7 @@ export default async function PayoutsPage() {
     supabase.from('users').select('upi_id').eq('id', user.id).single(),
     supabase
       .from('orders')
-      .select('id, seller_payout, paid_price, platform_fee, payout_status, completed_at, listings(product_name, brand)')
+      .select('id, seller_payout, paid_price, platform_fee, payout_status, completed_at, listings!listing_id(product_name, brand)')
       .eq('seller_id', user.id)
       .eq('status', 'completed')
       .order('completed_at', { ascending: false }),

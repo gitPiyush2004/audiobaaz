@@ -1,7 +1,7 @@
 # Admin Panel — Context File
 **Owner:** Person 3
-**Branch:** feature/admin-panel
-**Last updated:** 2026-05-29 (session 2)
+**Branch:** feature/admin-panel (merged); remaining V1 admin work (orders monitor, dispute → refund wiring) lands on `feature/order-lifecycle-shipping`
+**Last updated:** 2026-05-30
 
 ---
 
@@ -145,15 +145,43 @@ src/app/api/admin/payouts/[id]/trigger/route.ts       ✓ done
 
 ## Next Session Starts Here
 
-Core admin panel is complete and verified working end-to-end with seller flow (listing submitted → appears in review queue → approve/reject works).
+Core admin panel is complete and merged to `dev`. End-to-end verified
+with seller flow (listing submitted → admin queue → approve/reject).
 
-Remaining work:
-1. Orders monitor — `src/app/admin/orders/page.tsx` — currently a stub
-   Build: list all orders with status filter, search by order ID or buyer name
-2. Wire up real Razorpay Payouts API in `src/app/api/admin/payouts/[id]/trigger/route.ts` (Person 4 dependency)
-3. Add `/admin` link to `Nav.tsx` for users with `role = 'admin'` (coordinate with Person 1)
+Remaining V1 admin work has been **consolidated onto
+`feature/order-lifecycle-shipping`** rather than continued on a
+sibling branch (see `docs/BRANCHING.md` Rule 1: one active branch
+for remaining V1 transaction-engine work). Tasks waiting on that
+branch:
 
-## Known Issues Fixed This Session
+1. **Orders monitor** — `src/app/admin/orders/page.tsx` is currently
+   a stub. Build a list/filter view that surfaces stuck refunds,
+   stuck shipments (in `created`/`picked_up` for >N days), orders
+   past inspection without payout. Read from `orders`, `payments`,
+   `shipments`, `disputes` via `createAdminClient()`.
+2. **Dispute → refund wiring.** When admin resolves a dispute with
+   `full_refund` or `partial_refund`, call `initiate_refund()` (and
+   later `record_refund_outcome()` once the gateway-side refund
+   completes). The current `/api/admin/disputes/[id]/resolve` route
+   adjusts `orders.status` and trust scores but does not yet trigger
+   a real money refund. The PaymentProvider abstraction
+   (`src/lib/payments/`) lets this work cleanly for both real Razorpay
+   and DevPaymentProvider environments.
+3. **Manual escrow release.** Admin button on a `delivered`/`inspection`
+   order past its `inspection_expires_at` window → flips order to
+   `completed` + `payout_status='pending'` (ready for the Payouts
+   queue). The 48h auto-release worker is V2.
+4. **Real Razorpay Payouts API integration** in
+   `src/app/api/admin/payouts/[id]/trigger/route.ts` — V2 slot, not
+   blocking V1 launch.
+5. **Add `/admin` link to `Nav.tsx`** for users with `role = 'admin'`
+   (coordinate with Person 1).
+
+These all benefit from the `OrderTimeline` and `ShipmentTracking`
+components shipped on `feature/order-lifecycle-shipping` — the admin
+order detail page can reuse them directly.
+
+## Known Issues Fixed (historical)
 
 - **RLS bug**: All admin page server components were using `createClient()` (anon key, RLS-bound) instead of `createAdminClient()` (service role). RLS policies only allow users to read their own listings/orders/disputes, so the entire admin panel was returning empty data. Fixed in commit `e0d1cb5` on `feature/admin-panel`, synced to dev.
 - **Vercel build lint failures**: Twelve `@typescript-eslint/no-explicit-any` errors across `src/app/admin/disputes/[id]/page.tsx`, `src/app/admin/payouts/page.tsx`, `src/app/api/admin/disputes/[id]/resolve/route.ts`, and `src/app/api/admin/payouts/[id]/trigger/route.ts` were blocking Vercel deployment of the `dev` branch. Resolved in commit `e0d84e4` by introducing a typed `pickOne<T>(rel)` helper at `src/lib/utils/relations.ts` and replacing the `as any` Supabase nested-relation casts with typed `pickOne<RowType>(...)` calls. The unused `router` import in `src/app/(auth)/onboarding/page.tsx` was also removed in the same commit. Four `<img>` warnings remain (non-blocking) — replacing them with `next/image` is a separate UI pass.

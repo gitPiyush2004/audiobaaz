@@ -1,8 +1,17 @@
 # First Session Guide — What To Do Right Now
 
-This is the step-by-step guide for the very first AI coding tool session.
-This session sets up the foundation that everyone else builds on.
-Do this together as a team or assign one person.
+> **HISTORICAL — kept for the audit trail.** This document records the
+> very first AI coding tool session that bootstrapped the project. The
+> foundation it describes (Next.js scaffolding, Supabase setup, base
+> components, design system) has been live on `dev` since session 1.
+>
+> **For new contributors:** read `README.md` and `docs/TEAM.md` first.
+> The active branch is `feature/order-lifecycle-shipping`; the active
+> work is lifecycle validation per
+> `docs/reviews/lifecycle-validation-runbook.md`.
+
+This was the step-by-step guide for the very first AI coding tool session.
+This session set up the foundation that everyone else builds on.
 
 ---
 

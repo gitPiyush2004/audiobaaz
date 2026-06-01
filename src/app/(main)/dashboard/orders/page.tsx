@@ -1,15 +1,19 @@
+export const dynamic = 'force-dynamic';
+
 import { createClient } from '@/lib/supabase/server';
 import { formatPrice, formatDate } from '@/lib/utils/formatting';
 import { redirect } from 'next/navigation';
+import Link from 'next/link';
 
 export const metadata = { title: 'Orders — Audiobaaz' };
 
 const TIMELINE = [
-  { key: 'escrow_held',   label: 'Payment received' },
-  { key: 'shipped',       label: 'Shipped' },
-  { key: 'delivered',     label: 'Delivered' },
-  { key: 'inspection',    label: 'Buyer inspection' },
-  { key: 'completed',     label: 'Completed' },
+  { key: 'escrow_held',      label: 'Payment received' },
+  { key: 'seller_confirmed', label: 'Shipment booked' },
+  { key: 'shipped',          label: 'Shipped' },
+  { key: 'delivered',        label: 'Delivered' },
+  { key: 'inspection',       label: 'Buyer inspection' },
+  { key: 'completed',        label: 'Completed' },
 ];
 
 function stepIndex(status: string): number {
@@ -34,7 +38,7 @@ export default async function OrdersPage() {
 
   const { data: orders } = await supabase
     .from('orders')
-    .select('id, status, paid_price, seller_payout, created_at, shipped_at, tracking_number, courier_name, listings(product_name, brand)')
+    .select('id, status, paid_price, seller_payout, created_at, shipped_at, tracking_number, courier_name, listings!listing_id(product_name, brand)')
     .eq('seller_id', user.id)
     .order('created_at', { ascending: false });
 
@@ -59,7 +63,11 @@ export default async function OrdersPage() {
               const listing = Array.isArray(order.listings) ? order.listings[0] : order.listings;
               const current = stepIndex(order.status);
               return (
-                <div key={order.id} className="rounded-xl border border-border bg-surface p-5">
+                <Link
+                  key={order.id}
+                  href={`/dashboard/orders/${order.id}`}
+                  className="block rounded-xl border border-border bg-surface p-5 transition-colors hover:border-accent/30"
+                >
                   <div className="flex items-start justify-between gap-4">
                     <div>
                       <p className="font-medium text-foreground">
@@ -108,7 +116,7 @@ export default async function OrdersPage() {
                       {order.courier_name} · {order.tracking_number}
                     </p>
                   )}
-                </div>
+                </Link>
               );
             })}
           </div>
