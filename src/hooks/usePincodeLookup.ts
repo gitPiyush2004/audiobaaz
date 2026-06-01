@@ -19,14 +19,10 @@ export function usePincodeLookup(): UsePincodeLookup {
     if (pincode.length !== 6) return null;
     setLoading(true);
     try {
-      const res  = await fetch(`https://api.postalpincode.in/pincode/${pincode}`);
+      const res  = await fetch(`/api/pincode/${pincode}`);
       const data = await res.json();
-      const office = data?.[0]?.PostOffice?.[0];
-      if (!office) return null;
-      return {
-        city:  office.District ?? office.Division ?? '',
-        state: office.State ?? '',
-      };
+      if (!data.city) return null;
+      return { city: data.city, state: data.state };
     } catch {
       return null;
     } finally {
