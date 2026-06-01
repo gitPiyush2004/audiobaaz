@@ -40,14 +40,16 @@ export async function POST(
   if (updateErr) return err(updateErr.message, 'DB_ERROR', 500);
 
   // Audit trail — best-effort (non-fatal if order_events has cache issues)
-  await admin.from('order_events').insert({
-    order_id:   params.orderId,
-    event_name: 'completed',
-    actor_type: 'buyer',
-    actor_id:   user.id,
-    from_status: 'inspection',
-    to_status:   'completed',
-  }).then(() => {}).catch(() => {});
+  try {
+    await admin.from('order_events').insert({
+      order_id:    params.orderId,
+      event_name:  'completed',
+      actor_type:  'buyer',
+      actor_id:    user.id,
+      from_status: 'inspection',
+      to_status:   'completed',
+    });
+  } catch { /* non-fatal audit write */ }
 
   return ok({ order_id: params.orderId, status: 'completed' });
 }
