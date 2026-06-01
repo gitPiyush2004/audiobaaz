@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { formatPrice, formatDate } from '@/lib/utils/formatting';
 import { DisputeForm } from './DisputeForm';
+import { ConfirmReceiptButton } from './ConfirmReceiptButton';
 import { AdvanceOrderButton } from './AdvanceOrderButton';
 import { OrderTimeline } from '@/components/orders/OrderTimeline';
 import { ShipmentTracking } from '@/components/orders/ShipmentTracking';
@@ -148,8 +149,13 @@ export default async function OrderDetailPage({ params }: Props) {
         </div>
       )}
 
-      {/* Dispute action */}
-      {canDispute && <div className="mb-6"><DisputeForm orderId={order.id} /></div>}
+      {/* Inspection window actions */}
+      {canDispute && (
+        <div className="mb-6 space-y-3">
+          <ConfirmReceiptButton orderId={order.id} />
+          <DisputeForm orderId={order.id} />
+        </div>
+      )}
 
       {/* Shipment tracking (only when a shipment has been created) */}
       <div className="mb-6">

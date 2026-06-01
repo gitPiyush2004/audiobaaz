@@ -49,6 +49,7 @@ export function AdvanceShipmentButton({ awb, currentStatus }: Props) {
         setLoading(false);
         return;
       }
+      setLoading(false);
       router.refresh();
     } catch {
       setError('Network error. Please try again.');
