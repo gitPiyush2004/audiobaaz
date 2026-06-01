@@ -30,7 +30,7 @@ export default async function OffersPage() {
 
   const { data: offers } = await supabase
     .from('offers')
-    .select('id, offered_price, status, created_at, seller_must_respond_by, listings(product_name, brand)')
+    .select('id, offered_price, status, created_at, seller_must_respond_by, listings!listing_id(product_name, brand)')
     .eq('seller_id', user.id)
     .order('created_at', { ascending: false });
 

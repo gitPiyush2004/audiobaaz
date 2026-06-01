@@ -41,7 +41,7 @@ export default async function SellerOrderDetailPage({ params }: Props) {
       tracking_number, courier_name, estimated_delivery,
       escrow_held_at, shipped_at, delivered_at, inspection_expires_at,
       created_at,
-      listings(brand, product_name, condition_grade, photos)
+      listings!listing_id(brand, product_name, condition_grade, photos)
     `)
     .eq('id', params.orderId)
     .eq('seller_id', user.id)

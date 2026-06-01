@@ -54,7 +54,7 @@ export default async function OrderDetailPage({ params }: Props) {
       status, delivery_name, delivery_phone,
       delivery_line1, delivery_line2, delivery_city, delivery_pincode, delivery_state,
       delivered_at, inspection_expires_at, created_at,
-      listings(brand, product_name, condition_grade, photos, slug)
+      listings!listing_id(brand, product_name, condition_grade, photos, slug)
     `)
     .eq('id', params.orderId)
     .eq('buyer_id', user.id)
