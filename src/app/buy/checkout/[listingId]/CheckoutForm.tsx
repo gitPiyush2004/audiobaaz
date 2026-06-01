@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Script from 'next/script';
 import { formatPrice } from '@/lib/utils/formatting';
+import { usePincodeLookup } from '@/hooks/usePincodeLookup';
 
 const inputCls = [
   'w-full rounded-lg border border-border bg-surface px-4 py-3 text-sm text-foreground',
@@ -69,6 +70,7 @@ export function CheckoutForm({
   const [error,   setError]   = useState<string | null>(null);
 
   const router = useRouter();
+  const { lookup, loading: pincodeLoading } = usePincodeLookup();
 
   const platformFee  = Math.floor(askingPrice * 0.10);
   const sellerPayout = askingPrice - platformFee;
@@ -320,12 +322,28 @@ export function CheckoutForm({
 
           <div className="grid grid-cols-3 gap-4">
             <div>
-              <label className={labelCls}>City</label>
+              <label className={labelCls}>
+                City {pincodeLoading && <span className="font-normal text-muted-foreground">(looking up…)</span>}
+              </label>
               <input type="text" required value={city} onChange={e => setCity(e.target.value)} className={inputCls} />
             </div>
             <div>
               <label className={labelCls}>Pincode</label>
-              <input type="text" required maxLength={6} value={pincode} onChange={e => setPincode(e.target.value.replace(/\D/g, '').slice(0, 6))} className={inputCls} />
+              <input
+                type="text" required maxLength={6} value={pincode}
+                onChange={async e => {
+                  const val = e.target.value.replace(/\D/g, '').slice(0, 6);
+                  setPincode(val);
+                  if (val.length === 6) {
+                    const result = await lookup(val);
+                    if (result) {
+                      if (!city)  setCity(result.city);
+                      if (!state) setState(result.state);
+                    }
+                  }
+                }}
+                className={inputCls}
+              />
             </div>
             <div>
               <label className={labelCls}>State</label>
