@@ -1,8 +1,8 @@
 
 # Payments & Shipping — Context File
 **Owner:** Person 4
-**Branch:** feature/payments-shipping (not yet created)
-**Last updated:** 2026-05-29
+**Active branch:** `feature/order-lifecycle-shipping` (Razorpay/shipping abstractions, dev simulator, seller shipment flow, timeline UI)
+**Last updated:** 2026-05-30
 
 ---
 
@@ -10,14 +10,14 @@
 
 Owns all money movement and logistics for the marketplace. Razorpay
 checkout creation, payment capture and verification, escrow accounting,
-Shiprocket shipment creation, AWB generation, courier-event ingestion,
-escrow release on dispute-window expiry, refund processing for race losers
-and disputes, and admin payout controls.
+shipment creation (provider-abstracted), AWB generation, courier-event
+ingestion, escrow release on dispute-window expiry, refund processing
+for race losers and disputes, and admin payout controls.
 
 This feature is the boundary between the marketplace's negotiation domain
 (offers) and the marketplace's logistics + money domain (orders). It does
 NOT own offer state transitions other than the single `accepted → paid`
-edge that fires from a verified Razorpay capture.
+edge that fires from a verified payment capture.
 
 ---
 
@@ -25,29 +25,140 @@ edge that fires from a verified Razorpay capture.
 
 ```
 [ ] Not started
-[x] In progress — Phase 1 schema substrate written on
-    feature/payments-shipping (commits c3ed389 RPC + invariant +
-    audit tables, ab49e76 refund-lifecycle, e72caa4 checkout_locks);
-    pending verification against a live Postgres (four-scenario
-    test in supabase/tests/phase1_scenarios.sql) and PR back to
-    dev. OQ#1 RESOLVED 2026-05-30 — see "Order state machine —
-    locked V1 contract" below; session-zero audit complete
-    (docs/reviews/payments-session-zero.md is the authoritative
-    artifact; Schema Contract §4 is the primary review surface).
-[ ] Complete
+[x] PARTIALLY MERGED + active vertical slice in flight + DB-layer smoke validated
+    - PR #2 (commit 230d9ae): Phase 1 schema substrate on dev.
+      Migrations 002–006: atomic finalize_winning_payment RPC,
+      lifetime invariant on listings.sold_order_id, audit tables,
+      refund lifecycle, checkout locks, invariant guards.
+    - PR #3 (commit 7b294e9): Phase 2 Razorpay routes on dev.
+      /api/payments/{create,verify,webhook} as thin wrappers
+      around the locked RPCs.
+    - feature/order-lifecycle-shipping (tip d2f9bc6):
+      PaymentProvider + ShippingProvider abstractions,
+      DevPaymentProvider + MockShippingProvider, migration 007
+      (shipments + shipment_events + mock_shipments + RPCs),
+      seller shipment flow, OrderTimeline + ShipmentTracking UI,
+      dev simulation routes. End-to-end lifecycle exercised today
+      without Razorpay or Shiprocket credentials.
+    - DB-layer smoke validation: migrations 001 → 007 apply
+      cleanly on a fresh real Postgres 16; record_shipment_created
+      + record_shipment_status_change RPCs walk the full lifecycle
+      (escrow_held → seller_confirmed → shipped → inspection)
+      with audit rows matching reality at every step;
+      finalize_winning_payment + initiate_refund + record_refund_outcome
+      walk the race-loser path (winner + cancelled loser + pending
+      refund + succeeded refund) idempotently. Smoke tests at
+      supabase/tests/lifecycle_smoke.sql and refund_lifecycle_smoke.sql.
+    - PR #4 (feature/checkout-razorpay-wire): SUPERSEDED.
+      Code lives on the active branch as commit 5ae8cd7. Close
+      without merging.
+[ ] Complete (pending: lifecycle scenarios A–H against a deployed
+    environment per docs/reviews/lifecycle-validation-runbook.md;
+    admin operations on the active branch after that)
 [ ] Blocked
 ```
 
-### Phase 1 schema FROZEN as of 2026-05-30
+### Provider abstractions (current state)
 
-> **No new migrations, triggers, RPCs, state machines, or test
-> scenarios on this branch until a verification run actually fails
-> and points at a real bug.**
+The active branch lifts both external integrations behind small
+interfaces so the application stack can be exercised without real
+credentials:
 
-The Phase 1 surface is complete:
+```
+src/lib/payments/
+├── provider.ts    PaymentProvider interface (createOrder,
+│                  verifyPaymentSignature, verifyWebhookSignature,
+│                  refund, buildClientModalParams, simulatePayment?)
+├── razorpay.ts    RazorpayPaymentProvider (production). Wraps the
+│                  Razorpay SDK + HMAC helpers that previously lived
+│                  in src/lib/razorpay/{client,helpers}.ts.
+├── dev.ts         DevPaymentProvider. Returns synthetic ids signed
+│                  with PAYMENT_DEV_SECRET; the existing signature-
+│                  verification helper accepts them. Selected via
+│                  PAYMENT_PROVIDER=dev (gated to non-prod NODE_ENV).
+└── factory.ts     getPaymentProvider() — single source of selection.
+                   Routes never branch on env state.
 
-- atomic RPC (`finalize_winning_payment`)
-- lifetime invariant column + UNIQUE constraint
+src/lib/shipping/
+├── provider.ts    ShippingProvider interface (createShipment,
+│                  getTracking, advanceTracking?)
+├── mock.ts        MockShippingProvider. TEST-XXXX-NNN AWBs persisted
+│                  in mock_shipments. Validates lifecycle transitions
+│                  (created → picked_up → in_transit → out_for_delivery
+│                  → delivered).
+└── factory.ts     getShippingProvider() — returns mock when no
+                   SHIPROCKET_EMAIL is configured. ShiprocketProvider
+                   slot exists; throws on selection until built.
+```
+
+### Phase 1 schema (merged — historical reference)
+
+The Phase 1 surface on `dev`:
+
+- atomic RPC (`finalize_winning_payment`) — migration 002
+- lifetime invariant column + UNIQUE constraint —
+  `listings.sold_order_id` is the canonical anchor (migration 006);
+  `listings.sold_offer_id` retained as informational metadata only
+- refund lifecycle (state machine + `initiate_refund` /
+  `record_refund_outcome` RPCs) — migration 003
+- audit tables (`offer_events`, `order_events`, `webhook_events`) —
+  migration 002
+- invariant-guard triggers — migration 005 + migration 006
+- `checkout_locks` table + acquire/release RPCs — migration 004
+- five acceptance scenarios + multi-connection stress harness at
+  concurrency=100, all green in CI
+
+### Migration 007 — shipping substrate (on `feature/order-lifecycle-shipping`)
+
+- `shipments` — canonical shipment record. One row per shipment
+  booking. Provider-agnostic: real couriers and the mock provider
+  both write here.
+- `shipment_events` — audit trail of shipment state transitions.
+  Mirrors `order_events` in shape.
+- `mock_shipments` — backing store for the MockShippingProvider's
+  synthetic tracking history. Provider-private state.
+- `record_shipment_created(...)` — atomic RPC. Inserts shipment +
+  event + transitions order from `escrow_held → seller_confirmed`.
+  SECURITY DEFINER, service-role only.
+- `record_shipment_status_change(...)` — atomic RPC. Updates
+  shipment status + emits event + cascades to order-side
+  transitions (`picked_up → orders.shipped` with `shipped_at`,
+  `delivered → orders.delivered` with 48h `inspection_expires_at`).
+  Idempotent on same-status replays.
+
+### Next milestone — admin operations + lifecycle validation
+
+Remaining V1 work on the active branch:
+
+| Surface | Task |
+|---------|------|
+| Admin disputes | Wire dispute resolution to `initiate_refund` for buyer-favourable verdicts. |
+| Admin payouts | UPI reference text input. Route writes `payout_reference`, `payout_at`, `payout_status='paid'`. |
+| Admin orders monitor | Replace the stub at `src/app/admin/orders/page.tsx` with a real list/filter view surfacing stuck refunds, stuck shipments, post-inspection orders. |
+| Manual escrow release | Admin button on `delivered` past inspection → flips order to `completed` + `payout_status='pending'`. |
+
+After admin operations land, the active branch is ready to PR into
+`dev`, then run lifecycle scenarios A–E on `dev.audiobaaz.com` with
+`PAYMENT_PROVIDER=dev`.
+
+### Pre-merge audit
+
+A pre-merge technical audit lives at
+`docs/reviews/order-lifecycle-shipping-audit.md`. It enumerates
+schema changes, new env vars, every route added or changed,
+lifecycle scenarios A–H, risk assessment, and the pre-merge
+checklist. Read it before opening the PR; the lifecycle scenarios
+must be exercised against `dev.audiobaaz.com` before merge.
+
+### Lifecycle validation runbook
+
+The execution checklist for scenarios A–H lives at
+`docs/reviews/lifecycle-validation-runbook.md` — exact DB-state
+assertions per transition, including pre-deploy checks, test data
+setup, scenario steps, stop conditions, and post-validation
+actions. Validation produces a results report at
+`docs/reviews/lifecycle-validation-results.md`, which is the gate
+for opening the PR.
 - refund lifecycle (state machine + two RPCs)
 - audit tables (`offer_events`, `order_events`, `webhook_events`)
 - invariant-guard triggers (`sold_offer_id` immutable, `listings.status`

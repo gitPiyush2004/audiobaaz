@@ -35,19 +35,24 @@ disputes.
 | Notifications | Telegram Bot |
 | Styling | Tailwind CSS |
 
-Login is phone + OTP only. No passwords.
+Login is email magic-link + Google OAuth via Supabase Auth. No passwords.
 All prices are stored in **paise** (₹1 = 100 paise). Never use floats for money.
 
 ---
 
 ## The Team
 
-| Person | Tool | What They Build | Branch |
-|--------|------|-----------------|--------|
-| 1 | AI coding tool | Seller flow — listing intake form, seller dashboard | `feature/seller-flow` |
-| 2 | Kiro | Buyer flow — browse, listing page, checkout, orders | `feature/buyer-flow` |
-| 3 | — | Admin panel — review listings, resolve disputes | `feature/admin-panel` |
-| 4 | — | Payments & shipping — Razorpay, Shiprocket, Telegram | `feature/payments-shipping` |
+| Person | Tool | What They Build | Branch (history) |
+|--------|------|-----------------|------------------|
+| 1 | AI coding tool | Seller flow — listing intake, seller dashboard, shipment flow | `feature/seller-flow` (merged); active work on `feature/order-lifecycle-shipping` |
+| 2 | Kiro | Buyer flow — browse, listing page, checkout, orders, timeline | `feature/buyer-flow` (merged); active work on `feature/order-lifecycle-shipping` |
+| 3 | — | Admin panel — review listings, resolve disputes, payouts, orders monitor | merged; orders monitor + dispute→refund wiring pending on `feature/order-lifecycle-shipping` |
+| 4 | AI coding tool | Payments + shipping — Razorpay + Shiprocket integrations behind provider abstractions | `feature/payments-shipping` (merged via PR #2), `feature/payment-routes` (merged via PR #3); active work on `feature/order-lifecycle-shipping` |
+
+> The remaining V1 transaction-engine work (admin operations, real
+> credentials swap, closed beta) is consolidated on a single active
+> branch: **`feature/order-lifecycle-shipping`**. See `docs/BRANCHING.md`
+> for the full branch state and rules.
 
 ---
 
@@ -56,15 +61,20 @@ All prices are stored in **paise** (₹1 = 100 paise). Never use floats for mone
 ```
 main    → stable only. never commit here directly.
   └── dev   → integration. all features merge here first.
-        ├── feature/seller-flow
-        ├── feature/buyer-flow
-        ├── feature/admin-panel
-        └── feature/payments-shipping
+        └── feature/order-lifecycle-shipping   ← ACTIVE
+                                                 (single branch for all
+                                                  remaining V1 work)
 ```
 
-You work on your feature branch. When a chunk is done, you open a Pull
-Request on GitHub from your branch → `dev`. Someone reviews it and merges
-it. Then everyone pulls from `dev` to get each other's work.
+Earlier per-feature branches (`feature/seller-flow`, `feature/buyer-flow`,
+`feature/admin-panel`, `feature/payment-routes`, `feature/payments-shipping`)
+are merged-ancestor branches — zero commits ahead of `dev`. Active V1
+work is now consolidated. See `docs/BRANCHING.md` for the audit and
+deletion plan.
+
+You work on the active branch. When a chunk is done, open a Pull
+Request on GitHub from your branch → `dev`. Someone reviews it and
+merges it. Then everyone pulls from `dev`.
 
 **Never commit directly to `dev` or `main`.**
 
@@ -82,10 +92,15 @@ npm install
 
 # 3. Copy env file and fill in your values
 cp .env.example .env.local
+# For local validation without Razorpay credentials, also set:
+#   PAYMENT_PROVIDER=dev
+# (See docs/DEPLOYMENT.md for the full env-var reference.)
 
-# 4. Create your feature branch
+# 4. Switch to the active branch
 git checkout dev
-git checkout -b feature/your-branch-name
+git pull
+git checkout feature/order-lifecycle-shipping
+git pull
 ```
 
 ---
@@ -93,14 +108,15 @@ git checkout -b feature/your-branch-name
 ## Starting Every Session After That
 
 ```bash
-# 1. Switch to your branch
-git checkout feature/your-branch-name
+# 1. Switch to the active branch
+git checkout feature/order-lifecycle-shipping
 
-# 2. Pull latest from dev
-git pull origin dev
+# 2. Pull latest
+git pull
 
 # 3. Open your AI tool (AI coding tool)
-# 4. Load ENGINEERING.md + your context file (see below)
+# 4. Load ENGINEERING.md + docs/BRANCHING.md + docs/V1-LAUNCH.md +
+#    docs/context/<your-feature>.md
 # 5. Build
 ```
 
@@ -129,12 +145,15 @@ At the start of every session, tell your AI tool:
 #    — mark what's done
 #    — write the "Next Session Starts Here" section
 
-# 2. Update the build status table in ENGINEERING.md
+# 2. Update the build status table in ENGINEERING.md if a feature changed state
 
-# 3. Commit and push
-git add .
-git commit -m "feat(seller): build sell with us landing page"
-git push origin feature/your-branch-name
+# 3. Verify .kiro/ and .vscode/ are NOT staged (they're local editor state)
+git status
+
+# 4. Commit and push
+git add -A   # or stage explicit paths if you have unrelated changes
+git commit -m "feat(scope): one-line summary of what shipped"
+git push
 ```
 
 **Never leave uncommitted work at the end of a session.**
@@ -229,16 +248,28 @@ Key tables:
 
 ```
 ENGINEERING.md              → global rules — read every session
-docs/BRANCHING.md      → git workflow
+README.md              → project overview + how to run locally
+docs/V1-LAUNCH.md      → launch checklist
+docs/BRANCHING.md      → git workflow + branch strategy
+docs/DEPLOYMENT.md     → hosting, domains, env vars, deploy runbooks
 docs/TEAM.md           → this file
 docs/context/          → per-feature context files
-supabase/schema.sql    → full database schema
+docs/integrations/     → Razorpay + Shiprocket reference (we wrap these via Provider abstractions)
+docs/reviews/          → audits + runbooks
+supabase/schema.sql    → base schema
+supabase/migrations/   → 001 → 007 (Phase 1 + shipping substrate)
+supabase/tests/        → SQL acceptance + smoke tests
 src/app/               → all pages
 src/components/        → all UI components
-src/lib/               → Supabase, Razorpay, Shiprocket, Telegram clients
+src/lib/payments/      → PaymentProvider abstraction (RazorpayPaymentProvider + DevPaymentProvider)
+src/lib/shipping/      → ShippingProvider abstraction (MockShippingProvider; ShiprocketProvider deferred)
+src/lib/supabase/      → server / client / admin clients
+src/lib/listings/      → buyer-domain access boundary
+src/lib/offers/        → offer-domain access boundary + state machine
+src/lib/telegram/      → notification helpers
 src/types/             → TypeScript types for everything
-src/hooks/             → custom React hooks
-src/store/             → global state (Zustand)
+src/hooks/             → custom React hooks (when needed)
+src/store/             → global state (Zustand, when needed)
 ```
 
 ---

@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { usePincodeLookup } from '@/hooks/usePincodeLookup';
 
 interface Profile {
   full_name:        string | null;
@@ -31,6 +32,7 @@ export function AccountForm({ profile, email }: { profile: Profile | null; email
   const [success, setSuccess] = useState(false);
   const [error,   setError]   = useState<string | null>(null);
   const router = useRouter();
+  const { lookup, loading: pincodeLoading } = usePincodeLookup();
 
   function set(key: keyof typeof form, value: string) {
     setForm(prev => ({ ...prev, [key]: value }));
@@ -76,14 +78,29 @@ export function AccountForm({ profile, email }: { profile: Profile | null; email
             onChange={e => set('upi_id', e.target.value)} className={inputCls + ' font-mono'} />
         </div>
         <div>
-          <label className="mb-1.5 block text-sm font-medium text-foreground">City</label>
+          <label className="mb-1.5 block text-sm font-medium text-foreground">
+            City {pincodeLoading && <span className="text-xs text-muted-foreground">(looking up…)</span>}
+          </label>
           <input type="text" placeholder="Mumbai" value={form.city}
             onChange={e => set('city', e.target.value)} className={inputCls} />
         </div>
         <div>
           <label className="mb-1.5 block text-sm font-medium text-foreground">Pincode</label>
           <input type="text" placeholder="400001" maxLength={6} value={form.pincode}
-            onChange={e => set('pincode', e.target.value.replace(/\D/g, ''))} className={inputCls + ' font-mono'} />
+            onChange={async e => {
+              const val = e.target.value.replace(/\D/g, '');
+              set('pincode', val);
+              if (val.length === 6) {
+                const result = await lookup(val);
+                if (result) {
+                  setForm(prev => ({
+                    ...prev,
+                    city: prev.city || result.city,
+                  }));
+                }
+              }
+            }}
+            className={inputCls + ' font-mono'} />
         </div>
       </div>
 

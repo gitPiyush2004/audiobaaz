@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
@@ -37,7 +39,7 @@ export default async function PurchasesPage() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: orders } = await (createAdminClient() as any)
     .from('orders')
-    .select('id, paid_price, status, created_at, listings(brand, product_name, condition_grade, photos, slug)')
+    .select('id, paid_price, status, created_at, listings!listing_id(brand, product_name, condition_grade, photos, slug)')
     .eq('buyer_id', user.id)
     .order('created_at', { ascending: false });
 

@@ -4,7 +4,7 @@
 > V1 marketplace. Anything not on this list is explicitly **out of
 > scope for V1** — defer until launch is complete.
 
-**Last updated:** 2026-05-30
+**Last updated:** 2026-05-30 (post DB-layer smoke validation; tip `d2f9bc6`)
 
 ---
 
@@ -18,118 +18,240 @@ Everything that does not directly move that flow forward is not V1.
 
 ---
 
-## Status snapshot
+## CURRENT REPOSITORY STATE — 2026-05-30
 
-| Area | State | Branch |
-|------|-------|--------|
-| Seller flow (list, dashboard, onboarding) | ✅ Complete on dev | merged |
-| Buyer flow (browse, listing detail, mock checkout, orders, disputes) | ✅ Complete on dev (mock-checkout transitional) | merged |
-| Admin panel (listings review, disputes, users, payouts queue) | ✅ Complete on dev | merged |
-| Phase 1 marketplace-core schema | ⏸ Code complete, **awaiting verification + PR** | feature/payments-shipping |
-| Phase 2 — Razorpay route revisions | ❌ Not started; blocked on Phase 1 verification | feature/payments-shipping (after Phase 1 merges) |
-| Shipping integration (Shiprocket creation + tracking) | ❌ Not started; blocked on Phase 2 | feature/payments-shipping |
-| End-to-end transaction smoke test | ❌ Never run | — |
+### Active development branch
+
+`feature/order-lifecycle-shipping` (branched off `dev` at `7b294e9`).
+Single source of truth for all remaining V1 transaction-engine work.
+
+### Open PRs
+
+- **PR #4** (`feature/checkout-razorpay-wire → dev`) — **SUPERSEDED**.
+  The CheckoutForm wiring + `/api/checkout/mock` removal that PR #4
+  contains have been cherry-picked onto the active branch as commit
+  `5ae8cd7`. Recommendation: close PR #4 without merging; delete
+  `feature/checkout-razorpay-wire` after the active branch merges.
+
+### Merged
+
+- PR #2 (commit `230d9ae`) — Phase 1 marketplace-core schema (migrations 002–006, RPCs, audit tables, CI verification, acceptance + stress tests).
+- PR #3 (commit `7b294e9`) — Phase 2 Razorpay routes: `/api/payments/{create,verify,webhook}` as thin wrappers over the locked RPCs.
+
+### Built (on `feature/order-lifecycle-shipping`, not yet on `dev`)
+
+| Capability | Files |
+|------------|-------|
+| `PaymentProvider` abstraction (Razorpay + Dev) | `src/lib/payments/{provider,razorpay,dev,factory}.ts` |
+| Refactored payment routes calling the provider | `src/app/api/payments/{create,verify,webhook}/route.ts` |
+| CheckoutForm with Razorpay + dev-synthetic branches | `src/app/buy/checkout/[listingId]/CheckoutForm.tsx` |
+| Dev payment simulator + webhook replay | `src/app/api/dev/payments/{simulate,webhook-replay}/route.ts` |
+| `ShippingProvider` abstraction (Mock) | `src/lib/shipping/{provider,mock,factory}.ts` |
+| Shipping schema + RPCs | `supabase/migrations/007_shipping_substrate.sql` |
+| Shipping routes | `src/app/api/shipping/{create,track}/route.ts`, `src/app/api/dev/shipping/advance/route.ts` |
+| Seller shipment flow UI | `src/app/(main)/dashboard/orders/[orderId]/{page,CreateShipmentButton,AdvanceShipmentButton}.tsx` |
+| Order timeline + tracking components | `src/components/orders/{OrderTimeline,ShipmentTracking}.tsx` |
+| DB-layer smoke tests | `supabase/tests/lifecycle_smoke.sql` + `refund_lifecycle_smoke.sql`. Migrations 001 → 007 apply cleanly; both RPCs exercise the full happy + race-loser path against real Postgres 16. |
+
+`next build` GREEN. `tsc --noEmit` clean. 22 API routes including all
+five new ones.
+
+### Not yet built
+
+- Admin operations: dispute → refund wiring, payouts UPI reference flow, orders monitor.
+- `ShiprocketProvider` (deferred until credentials land — provider slot exists in the factory and throws on selection).
+- Real Razorpay test-mode validation (deferred until credentials land — `DevPaymentProvider` covers the application-stack validation gap).
 
 ---
 
-## Order of work
+## Ownership model — canonical reminder
 
-### Step 1 — Verify Phase 1 (database)
+The lifetime ownership anchor is **`listings.sold_order_id`** (added in
+migration 006 after PR #2 CI Scenario A surfaced that `sold_offer_id`
+does not constrain direct buy-now captures).
 
-**Status: BLOCKING. Nothing else proceeds until this step is green.**
+- **`sold_order_id`** — UUID UNIQUE NULL. Set once inside
+  `finalize_winning_payment` at the moment of `escrow_held`, immutable
+  thereafter. The lifetime invariant lives here.
+- **`sold_offer_id`** — UUID UNIQUE NULL. Informational metadata.
+  Populated only when the order is offer-backed. Retained for forensic
+  queries ("which negotiation became this sale?") but **NOT the
+  ownership signal**.
 
-1. Open PR `feature/payments-shipping → dev`.
-2. CI runs `.github/workflows/phase1-verification.yml` automatically.
-   - Bootstraps Supabase compatibility on the postgres:15 service container.
-   - Applies `schema.sql` + `002` + `003` + `004` + `005`.
-   - Runs `phase1_scenarios.sql` (Scenarios A/B/C/D/E1/E2).
-   - Runs `phase1_stress.sh` at concurrency=100.
-3. If CI fails → fix the SQL, push the fix, re-run.
-4. If CI passes → merge the PR. The marketplace-core schema lives on `dev`.
+Any documentation, comment, or code path that reads `sold_offer_id` as
+the ownership signal must be corrected. Migration 006 is the canonical
+reference.
 
-Verification runbook for manual / VPS execution: `supabase/tests/RUNBOOK.md`.
+---
 
-### Step 2 — Phase 2 application code (Razorpay routes)
+## End-to-end flow (works today on the active branch, no external credentials)
 
-Begins **only after Step 1 merges**. Bounded scope: replace four
-existing routes with thin wrappers around the verified RPCs.
+With `PAYMENT_PROVIDER=dev` (non-prod), Razorpay-less buyers can still
+walk the entire transaction lifecycle:
 
-| Route | Current state | What it should do |
-|-------|---------------|-------------------|
-| `POST /api/payments/create` | Exists on parked branch; rogue listing writes | Acquire `checkout_locks`, create Razorpay order, insert `payments` row at `status='created'`, return modal params |
-| `POST /api/payments/verify` | Exists; rogue `listings.status='sold'` write | Verify Razorpay client-callback signature, call `finalize_winning_payment(...)`, return success/conflict |
-| `POST /api/payments/webhook` | Exists; rogue `listings.status='approved'` resurrection on `payment.failed` | Verify Razorpay webhook signature, upsert `webhook_events`, call `finalize_winning_payment(...)`, on `conflict` result call `initiate_refund(...)` |
-| `DELETE /api/checkout/mock` | Live on dev as transitional stand-in | Remove the route. Buyer-flow `CheckoutForm` switches to `/api/payments/create` |
+1. Buyer clicks Pay → `/api/payments/create` returns `synthetic: true`.
+2. CheckoutForm POSTs to `/api/dev/payments/simulate` → POSTs to real `/api/payments/verify` → `finalize_winning_payment` runs → `escrow_held`.
+3. Seller opens `/dashboard/orders/<id>` → "Create shipment" → mock provider issues AWB → `record_shipment_created` → `seller_confirmed`.
+4. Seller clicks "Mark picked up" → `/api/dev/shipping/advance` → `record_shipment_status_change` → `orders.status = shipped`.
+5. Continue through `in_transit → out_for_delivery → delivered` → `inspection_expires_at` set.
+6. Buyer's order detail page renders the full timeline + tracking the entire way.
 
-The ONLY listings/orders/offers writes from these routes go through the
-RPCs. No direct `.update()` calls. Migration 005 enforces this with
-trigger-level guards.
+This means the marketplace lifecycle can be exercised, observed,
+debugged, and demoed today — without paying for or waiting on Razorpay
+or Shiprocket access.
 
-### Step 3 — Shipping integration
+---
 
-Begins after Step 2. Bounded scope: two routes.
+## NEXT ENGINEERING TASK — Lifecycle validation, not implementation
 
-| Route | What it does |
-|-------|--------------|
-| `POST /api/shipping/create-shipment` | Seller-initiated. Creates Shiprocket shipment for an `escrow_held` order. Persists `shiprocket_order_id`, `shiprocket_shipment_id`, `tracking_number`, `courier_name`. Telegrams the buyer with tracking. Updates `orders.status` to `seller_confirmed → shipped`. |
-| `GET /api/shipping/track` | Buyer + seller read-side. Param `?order_id=`. Returns the Shiprocket-side AWB and current status. No side effects. |
+The active branch is large enough. The next failure mode is runtime
+bugs and lifecycle edge cases, not missing features. Adding more
+code on top of an unverified slice creates more risk than value.
 
-Shiprocket webhook (`POST /api/shipping/webhook` for inbound courier
-events) is **deferred**. V1 uses pull-side tracking only; courier
-events drive `orders.status` via manual admin advance + the existing
-`set_inspection_window` trigger on `delivered`.
+The pre-merge audit at `docs/reviews/order-lifecycle-shipping-audit.md`
+already caught four schema-contract bugs that the build did not
+catch (column name, NOT NULL, CHECK constraint, trigger interaction).
+That's exactly the kind of failure that surfaces only at runtime —
+so the next step is exercising the runtime.
 
-### Step 4 — Dispute resolution end-to-end
+The validation runbook at
+`docs/reviews/lifecycle-validation-runbook.md` specifies eight
+scenarios with exact DB-state assertions for every transition.
+Execute them on `dev.audiobaaz.com` with `PAYMENT_PROVIDER=dev`,
+capture results in `docs/reviews/lifecycle-validation-results.md`,
+and merge only after the report is clean.
 
-Most of this exists on dev. What's missing:
+Scenarios summary (full detail in the runbook):
 
-- Buyer can already raise a dispute (`POST /api/disputes` exists).
-- Admin can already resolve (`POST /api/admin/disputes/[id]/resolve` exists).
-- **Wire the resolve route to call `initiate_refund(...)`** when the
-  verdict awards a refund (full or partial). Today it just flips
-  `orders.status` and adjusts trust scores. After Step 2, refunds
-  flow through the locked RPC.
+| # | Scenario |
+|---|----------|
+| **A** | Single-buyer happy path: listing → checkout → escrow_held → shipment_created → picked_up → in_transit → out_for_delivery → delivered → inspection |
+| **B** | Buyer abandons checkout — no phantom sale, no leaked lock |
+| **C** | Two buyers race for the same listing — exactly one winner, refund initiated for loser |
+| **D** | Webhook replay — `/api/dev/payments/webhook-replay` posted twice → second returns `{replay: true}` |
+| **E** | Payment failure — `event=payment.failed` lands order at `payment_failed`, recoverable |
+| **F** | Adversarial: non-seller tries to create a shipment for someone else's order — 403 |
+| **G** | Adversarial: seller creates shipment twice — 409 SHIPMENT_EXISTS |
+| **H** | Adversarial: out-of-order shipment advance — INVALID_TRANSITION |
 
-### Step 5 — Payout flow end-to-end
+Scenario C is the most important runtime test in the platform.
 
-Most of this exists on dev. What's missing:
+### Admin operations — deferred
 
-- Admin payouts queue exists (`/admin/payouts`).
-- Trigger payout exists (`POST /api/admin/payouts/[id]/trigger`).
-- **V1 manual UPI is fine.** Admin enters a real UPI reference at
-  trigger time (small UI change), the route writes
-  `payout_reference`, `payout_at`, `payout_status='paid'`. Telegram
-  the seller.
-- Razorpay Payouts API integration is **V2**, not V1.
+Originally listed here as the next implementation task. Now
+deferred until after lifecycle validation completes and merges. The
+reasoning: admin operations build on top of lifecycle states that
+this branch produces. Validating those states first means the admin
+work can trust the substrate when it lands.
 
-### Step 6 — Run one full transaction end-to-end
+---
 
-The acceptance test for V1 launch:
+## DO NOT START YET
 
-```
-1. Seller lists an IEM (real listing, real photos, real price).
-2. Admin approves the listing.
-3. Buyer browses, finds the listing, clicks Buy Now.
-4. Buyer completes Razorpay payment in test mode.
-5. Order reaches escrow_held; listing flips to sold; sold_offer_id set.
-6. Seller creates Shiprocket shipment.
-7. Order moves seller_confirmed → shipped → delivered.
-8. Inspection window opens (48 hours).
-9. Inspection expires (or buyer confirms early).
-10. Order moves to completed.
-11. Admin triggers payout to seller's UPI.
-12. payout_status flips to paid; seller is notified.
-```
+The transaction engine is not yet validated end-to-end with real
+external traffic. Until that is done, the following are premature:
 
-If this flow works end-to-end with a real Razorpay test capture and a
-real Shiprocket test shipment, **V1 is launchable.** Everything else
-is polish.
+- AI features
+- Merchant gamification
+- Reputation systems
+- Recommendation systems
+- Dynamic pricing
+- Seller leaderboards
+- Escrow staking concepts
+- Advanced dispute automation
+- Payout automation (Razorpay Payouts API / Razorpay Route)
+
+If a stakeholder asks for one of these before V1 launches, the answer
+is "after launch, not before." Launch first; optimise after data.
+
+---
+
+## Order of work — launch-critical sequence
+
+### Step 1 — Stop all new feature development
+
+The active branch contains a vertical slice covering payments,
+shipping, escrow lifecycle, timeline, and seller shipment flow
+(~3500 LoC, 32 files, 1 migration). The next failure mode is
+runtime bugs and lifecycle edge cases, not missing features. New
+code should not land until the lifecycle is verified end-to-end on
+`dev.audiobaaz.com`.
+
+Stop list (do not begin until validation produces a clean report):
+
+- AI features
+- Reputation systems
+- Merchant gamification
+- Recommendation systems
+- Payout automation
+- Advanced disputes
+- Real `ShiprocketProvider`
+- Real Razorpay credential setup
+- Admin operations (deferred to AFTER validation merges)
+
+### Step 2 — Deploy to `dev.audiobaaz.com`
+
+Set on Vercel `dev`:
+- `PAYMENT_PROVIDER=dev`
+- `PAYMENT_DEV_SECRET=<any non-empty string>` (optional)
+- `ENABLE_DEV_PAYMENT_SIMULATION=true` (only needed for webhook-replay scenarios)
+
+Leave unset:
+- `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET`
+- `SHIPROCKET_EMAIL`, `SHIPPING_PROVIDER`
+
+**Confirm `PAYMENT_PROVIDER=dev` is NOT in production env vars.**
+
+Apply migration 007 to the Supabase project backing `dev`.
+
+### Step 3 — Run lifecycle scenarios A–H
+
+The runbook is `docs/reviews/lifecycle-validation-runbook.md`. It
+specifies eight scenarios (single-buyer happy path, abandoned
+checkout, two-buyer race, webhook replay, payment failure, three
+adversarial cases) with exact DB-state assertions for every
+transition.
+
+Capture results in
+`docs/reviews/lifecycle-validation-results.md` per the template in
+the runbook.
+
+### Step 4 — Fix only what validation finds
+
+If validation surfaces a defect, fix it on the same branch
+(`feature/order-lifecycle-shipping`). Do not branch a sibling. Do
+not extend scope.
+
+### Step 5 — Open the PR
+
+`feature/order-lifecycle-shipping → dev`. Single PR. Reference both
+the audit doc and the validation results in the description.
+
+### Step 6 — Branch cleanup after merge
+
+After the PR merges:
+- Close PR #4 (`feature/checkout-razorpay-wire`) without merging — the active branch supersedes it (verified: `git diff` shows the active branch is a strict superset).
+- Delete merged-only remote branches: `feature/payment-routes`, `feature/payments-shipping`, `feature/buyer-flow`, `feature/checkout-razorpay-wire`.
+- Repository state after cleanup: `main`, `dev`, plus any genuinely active feature branch.
+
+### Step 7 — Minimal admin operations
+
+On a fresh branch off `dev`. Last V1 feature before closed beta.
+Scope: dispute → refund button, manual escrow release, payouts UPI
+reference flow, orders/payments/shipments/refunds monitor pages.
+Nothing more.
+
+### Step 8 — Closed beta
+
+5–10 real listings + 5–10 real buyers running the full lifecycle
+on the dev provider. Watch the audit tables. Fix anything that
+surfaces. Then real-credential swaps:
+- `PAYMENT_PROVIDER` unset → Razorpay (when credentials land).
+- `MockShippingProvider` → `ShiprocketProvider` (when credentials land).
 
 ---
 
 ## Out of scope for V1 — defer until after launch
-
-These are recorded so they don't sneak back into the priority list.
 
 - Counter-offers (locked product decision: not happening)
 - Auto-accept threshold logic
@@ -137,26 +259,23 @@ These are recorded so they don't sneak back into the priority list.
 - Ratings post-delivery widget
 - Merchant / curator network (V2 distributed verifier scope)
 - Razorpay Route / Payouts API integration
-- Shiprocket inbound webhook
 - Multi-connection stress at production-scale concurrency
 - Refund queue worker (V1 uses synchronous in-handler refund)
 - Real-time order status push to buyer (Telegram covers V1)
 - Analytics dashboards
 - Referral / invite system
-- AI-anything (recommendations, dispute analysis, fraud detection)
+- AI-anything
 - VPS migration off Vercel / Supabase
 - Mobile apps
 - Anything in the V2 scope from ENGINEERING.md
-
-If a stakeholder asks for one of these before V1 launches, the answer
-is "after launch, not before." Launch first, optimise after data.
 
 ---
 
 ## Cross-references
 
+- Branch state — `ENGINEERING.md` §"CURRENT REPOSITORY STATE" + "BRANCH STRATEGY"
 - Architecture (locked) — `docs/context/payments-shipping.md`
-- Audit (authoritative on Phase 2 disposition) — `docs/reviews/payments-session-zero.md`
+- Audit (authoritative on Phase 2 disposition) — `docs/reviews/payments-session-zero.md` (immutable)
 - Verification runbook — `supabase/tests/RUNBOOK.md`
 - CI workflow — `.github/workflows/phase1-verification.yml`
 - Buyer flow status — `docs/context/buyer-flow.md`

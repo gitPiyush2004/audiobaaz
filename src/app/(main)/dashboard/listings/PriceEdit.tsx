@@ -41,13 +41,13 @@ export function PriceEdit({
 
   if (!editing) {
     return (
-      <div className="flex items-center gap-1.5">
-        <span className="font-mono text-sm font-semibold text-foreground">
+      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+        <span style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '14px', fontWeight: 800, letterSpacing: '-0.02em' }}>
           {formatPrice(currentPricePaise)}
         </span>
         <button
           onClick={() => setEditing(true)}
-          className="text-xs text-dim-foreground transition-colors hover:text-muted-foreground"
+          style={{ fontSize: '12px', color: '#999', background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px' }}
           title="Edit price"
         >
           ✎
@@ -57,9 +57,9 @@ export function PriceEdit({
   }
 
   return (
-    <div className="flex flex-col items-end gap-1">
-      <div className="flex items-center gap-1.5">
-        <span className="font-mono text-xs text-muted-foreground">₹</span>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+        <span style={{ fontSize: '12px', color: '#999' }}>₹</span>
         <input
           type="number"
           min={1}
@@ -67,23 +67,23 @@ export function PriceEdit({
           value={value}
           onChange={e => { setValue(e.target.value); setError(null); }}
           onKeyDown={e => { if (e.key === 'Enter') save(); if (e.key === 'Escape') setEditing(false); }}
-          className="w-24 rounded-md border border-accent bg-surface-2 px-2 py-1 font-mono text-sm text-foreground focus:outline-none"
+          style={{ width: '80px', border: '1.5px solid #E8FF4D', padding: '3px 6px', fontFamily: 'var(--font-mono, monospace)', fontSize: '13px', outline: 'none' }}
         />
         <button
           onClick={save}
           disabled={saving}
-          className="rounded-md bg-accent px-2 py-1 text-xs font-semibold text-black disabled:opacity-50"
+          style={{ background: '#E8FF4D', color: '#0a0a0a', border: 'none', padding: '3px 8px', fontSize: '10px', fontWeight: 700, cursor: 'pointer', opacity: saving ? 0.5 : 1 }}
         >
           {saving ? '…' : 'Save'}
         </button>
         <button
           onClick={() => setEditing(false)}
-          className="text-xs text-muted-foreground hover:text-foreground"
+          style={{ fontSize: '12px', color: '#999', background: 'none', border: 'none', cursor: 'pointer' }}
         >
           ✕
         </button>
       </div>
-      {error && <p className="text-xs text-error">{error}</p>}
+      {error && <p style={{ fontSize: '10px', color: '#B91C1C' }}>{error}</p>}
     </div>
   );
 }

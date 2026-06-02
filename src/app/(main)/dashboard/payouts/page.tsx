@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import { formatPrice, formatDate } from '@/lib/utils/formatting';
+import { pickOne } from '@/lib/utils/relations';
 import { redirect } from 'next/navigation';
 import { UpiForm } from './UpiForm';
 
@@ -14,93 +15,102 @@ export default async function PayoutsPage() {
     supabase.from('users').select('upi_id').eq('id', user.id).single(),
     supabase
       .from('orders')
-      .select('id, seller_payout, paid_price, platform_fee, payout_status, completed_at, listings(product_name, brand)')
+      .select('id, seller_payout, paid_price, platform_fee, payout_status, completed_at, listings!listing_id(product_name, brand)')
       .eq('seller_id', user.id)
       .eq('status', 'completed')
       .order('completed_at', { ascending: false }),
   ]);
 
-  const upiId    = profileRes.data?.upi_id ?? null;
-  const orders   = ordersRes.data ?? [];
-  const total    = orders.reduce((s, o) => s + (o.seller_payout ?? 0), 0);
-  const pending  = orders.filter(o => o.payout_status === 'pending').length;
+  const upiId  = profileRes.data?.upi_id ?? null;
+  const orders = ordersRes.data ?? [];
+  const total  = orders.reduce((s, o) => s + (o.seller_payout ?? 0), 0);
+  const pending = orders.filter(o => o.payout_status === 'pending').length;
 
   return (
-    <div>
-      <h1 className="font-heading text-2xl font-bold text-foreground">Payouts</h1>
-      <p className="mt-1 text-sm text-muted-foreground">
-        Payouts are sent to your UPI ID after the 48-hour buyer inspection window closes.
-      </p>
-
-      {/* UPI management */}
-      <div className="mt-8 rounded-xl border border-border bg-surface p-5">
-        <p className="mb-4 text-sm font-semibold text-foreground">UPI ID</p>
-        <UpiForm currentUpi={upiId} />
+    <>
+      {/* ── Page header ── */}
+      <div style={{ padding: '32px 40px 24px', borderBottom: '1px solid #E8E8E4' }}>
+        <div style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#999', marginBottom: '6px' }}>
+          Seller dashboard
+        </div>
+        <h1 style={{ fontSize: '28px', fontWeight: 900, letterSpacing: '-0.04em', lineHeight: 1 }}>
+          My{' '}
+          <em style={{ fontFamily: 'var(--font-serif)', fontStyle: 'italic', fontWeight: 400 }}>payouts</em>
+        </h1>
       </div>
 
-      {/* earnings summary */}
-      <div className="mt-6 grid grid-cols-2 gap-3">
-        <div className="rounded-xl border border-border bg-surface p-4">
-          <p className="text-xs text-muted-foreground">Total earned</p>
-          <p className="mt-2 font-heading text-2xl font-bold text-foreground">
-            {total > 0 ? formatPrice(total) : '—'}
-          </p>
+      {/* ── Quick stats ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', borderBottom: '1px solid #E8E8E4' }}>
+        {[
+          { n: total > 0 ? formatPrice(total) : '₹0', l: 'Total earned' },
+          { n: pending.toString(),                      l: 'Payouts pending' },
+        ].map((s, i, arr) => (
+          <div key={s.l} style={{ padding: '16px 28px', borderRight: i < arr.length - 1 ? '1px solid #E8E8E4' : 'none' }}>
+            <div style={{ fontSize: '22px', fontWeight: 900, letterSpacing: '-0.04em', lineHeight: 1, marginBottom: '3px' }}>{s.n}</div>
+            <div style={{ fontSize: '9px', fontWeight: 600, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#999' }}>{s.l}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* ── UPI ID ── */}
+      <div style={{ borderBottom: '1px solid #E8E8E4' }}>
+        <div style={{ padding: '20px 28px 16px', borderBottom: '1px solid #E8E8E4' }}>
+          <div style={{ fontSize: '9px', fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: '#999', marginBottom: '4px' }}>Payout method</div>
+          <div style={{ fontSize: '13px', fontWeight: 700, letterSpacing: '-0.01em' }}>UPI ID</div>
         </div>
-        <div className="rounded-xl border border-border bg-surface p-4">
-          <p className="text-xs text-muted-foreground">Payouts pending</p>
-          <p className="mt-2 font-heading text-2xl font-bold text-foreground">{pending}</p>
+        <div style={{ padding: '20px 28px' }}>
+          {!upiId && (
+            <div style={{ padding: '12px 16px', background: '#FEF9C3', border: '1px solid #FDE68A', marginBottom: '16px', fontSize: '12px', color: '#A16207' }}>
+              Add your UPI ID to receive payouts. Required before any payout can be released.
+            </div>
+          )}
+          <UpiForm currentUpi={upiId} />
         </div>
       </div>
 
-      {/* per-sale breakdown */}
-      <div className="mt-8">
-        <h2 className="mb-4 font-heading text-base font-semibold text-foreground">Earnings history</h2>
+      {/* ── Earnings history ── */}
+      <div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 28px 16px', borderBottom: '1px solid #E8E8E4' }}>
+          <div style={{ fontSize: '13px', fontWeight: 700, letterSpacing: '-0.01em' }}>Earnings history</div>
+          <span style={{ fontSize: '9px', fontWeight: 700, padding: '2px 8px', background: '#E8E8E4', color: '#666' }}>{orders.length}</span>
+        </div>
 
         {orders.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-border py-10 text-center">
-            <p className="text-sm text-muted-foreground">No completed sales yet.</p>
+          <div style={{ padding: '40px 28px', textAlign: 'center' }}>
+            <div style={{ fontSize: '13px', fontWeight: 700, marginBottom: '4px' }}>No completed sales yet</div>
+            <div style={{ fontSize: '12px', color: '#999', lineHeight: 1.5 }}>Earnings from completed orders will appear here.</div>
           </div>
         ) : (
-          <div className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-surface">
-            {orders.map(o => {
-              const listing = Array.isArray(o.listings) ? o.listings[0] : o.listings;
-              return (
-                <div key={o.id} className="px-4 py-3">
-                  <div className="flex items-center justify-between gap-4">
-                    <div className="min-w-0">
-                      <p className="truncate text-sm text-foreground">
-                        {listing?.brand} {listing?.product_name}
-                      </p>
-                      <p className="mt-0.5 text-xs text-muted-foreground">
-                        {o.completed_at ? formatDate(o.completed_at) : '—'}
-                      </p>
-                    </div>
-                    <div className="shrink-0 text-right">
-                      <p className="font-mono text-sm font-semibold text-foreground">
-                        {formatPrice(o.seller_payout)}
-                      </p>
-                      <p className="mt-0.5 text-xs text-muted-foreground">
-                        of {formatPrice(o.paid_price)} sale
-                      </p>
-                    </div>
+          orders.map((o, i) => {
+            const listing = pickOne<{ brand: string; product_name: string }>(o.listings);
+            return (
+              <div key={o.id} style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '14px 28px', borderBottom: i < orders.length - 1 ? '1px solid #E8E8E4' : 'none' }}
+                className="hover:bg-[#FAFAF8] transition-colors"
+              >
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: '13px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '-0.01em', marginBottom: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {listing?.brand} {listing?.product_name}
                   </div>
-                  <div className="mt-2 flex items-center gap-2">
-                    <span className={[
-                      'text-xs font-medium',
-                      o.payout_status === 'paid' ? 'text-success' : 'text-warning',
-                    ].join(' ')}>
-                      {o.payout_status === 'paid' ? 'Paid out' : 'Payout pending'}
-                    </span>
-                    <span className="text-xs text-dim-foreground">
-                      · Platform fee {formatPrice(o.platform_fee)}
-                    </span>
-                  </div>
+                  <div style={{ fontSize: '10px', color: '#999' }}>{o.completed_at ? formatDate(o.completed_at) : '—'}</div>
                 </div>
-              );
-            })}
-          </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexShrink: 0 }}>
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontSize: '14px', fontWeight: 800, letterSpacing: '-0.02em' }}>{formatPrice(o.seller_payout)}</div>
+                    <div style={{ fontSize: '9px', color: '#999' }}>of {formatPrice(o.paid_price)} sale</div>
+                  </div>
+                  <span style={{
+                    fontSize: '9px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', padding: '2px 8px',
+                    background: o.payout_status === 'paid' ? '#DCFCE7' : '#FEF9C3',
+                    color: o.payout_status === 'paid' ? '#15803D' : '#A16207',
+                  }}>
+                    {o.payout_status === 'paid' ? 'Paid out' : 'Pending'}
+                  </span>
+                </div>
+              </div>
+            );
+          })
         )}
       </div>
-    </div>
+    </>
   );
 }

@@ -4,7 +4,10 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { formatPrice, formatDate } from '@/lib/utils/formatting';
 import { DisputeForm } from './DisputeForm';
+import { ConfirmReceiptButton } from './ConfirmReceiptButton';
 import { AdvanceOrderButton } from './AdvanceOrderButton';
+import { OrderTimeline } from '@/components/orders/OrderTimeline';
+import { ShipmentTracking } from '@/components/orders/ShipmentTracking';
 
 interface Props {
   params: { orderId: string };
@@ -52,7 +55,7 @@ export default async function OrderDetailPage({ params }: Props) {
       status, delivery_name, delivery_phone,
       delivery_line1, delivery_line2, delivery_city, delivery_pincode, delivery_state,
       delivered_at, inspection_expires_at, created_at,
-      listings(brand, product_name, condition_grade, photos, slug)
+      listings!listing_id(brand, product_name, condition_grade, photos, slug)
     `)
     .eq('id', params.orderId)
     .eq('buyer_id', user.id)
@@ -146,8 +149,23 @@ export default async function OrderDetailPage({ params }: Props) {
         </div>
       )}
 
-      {/* Dispute action */}
-      {canDispute && <div className="mb-6"><DisputeForm orderId={order.id} /></div>}
+      {/* Inspection window actions */}
+      {canDispute && (
+        <div className="mb-6 space-y-3">
+          <ConfirmReceiptButton orderId={order.id} />
+          <DisputeForm orderId={order.id} />
+        </div>
+      )}
+
+      {/* Shipment tracking (only when a shipment has been created) */}
+      <div className="mb-6">
+        <ShipmentTracking orderId={order.id} />
+      </div>
+
+      {/* Full audit timeline */}
+      <div className="mb-6">
+        <OrderTimeline orderId={order.id} />
+      </div>
 
       {/* Price breakdown */}
       <div className="mb-6 rounded-xl border border-border bg-surface p-5 text-sm space-y-2">

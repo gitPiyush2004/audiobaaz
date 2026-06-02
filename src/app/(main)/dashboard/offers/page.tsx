@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import { formatPrice, formatDate } from '@/lib/utils/formatting';
+import { pickOne } from '@/lib/utils/relations';
 import { redirect } from 'next/navigation';
 import { OfferActions } from './OfferActions';
 
@@ -14,13 +15,13 @@ function timeRemaining(deadline: string | null): string | null {
   return h > 0 ? `${h}h ${m}m left` : `${m}m left`;
 }
 
-const statusColor: Record<string, string> = {
-  pending:   'text-warning',
-  accepted:  'text-success',
-  declined:  'text-error',
-  expired:   'text-dim-foreground',
-  paid:      'text-info',
-  cancelled: 'text-dim-foreground',
+const OFFER_STATUS: Record<string, { background: string; color: string; label: string }> = {
+  pending:   { background: '#FEF9C3', color: '#A16207', label: 'Pending' },
+  accepted:  { background: '#DCFCE7', color: '#15803D', label: 'Accepted' },
+  declined:  { background: '#FEE2E2', color: '#B91C1C', label: 'Declined' },
+  expired:   { background: '#F3F4F6', color: '#9CA3AF', label: 'Expired' },
+  paid:      { background: '#DBEAFE', color: '#1D4ED8', label: 'Paid' },
+  cancelled: { background: '#F3F4F6', color: '#9CA3AF', label: 'Cancelled' },
 };
 
 export default async function OffersPage() {
@@ -30,85 +31,102 @@ export default async function OffersPage() {
 
   const { data: offers } = await supabase
     .from('offers')
-    .select('id, offered_price, status, created_at, seller_must_respond_by, listings(product_name, brand)')
+    .select('id, offered_price, status, created_at, seller_must_respond_by, listings!listing_id(product_name, brand)')
     .eq('seller_id', user.id)
     .order('created_at', { ascending: false });
 
-  const pending = offers?.filter(o => o.status === 'pending') ?? [];
-  const past    = offers?.filter(o => o.status !== 'pending') ?? [];
+  const pending = (offers ?? []).filter(o => o.status === 'pending');
+  const past    = (offers ?? []).filter(o => o.status !== 'pending');
 
   return (
-    <div>
-      <h1 className="font-heading text-2xl font-bold text-foreground">Offers</h1>
-      <p className="mt-1 text-sm text-muted-foreground">
-        You have 24 hours to respond to each offer. First buyer to pay after acceptance wins.
-      </p>
+    <>
+      {/* ── Page header ── */}
+      <div style={{ padding: '32px 40px 24px', borderBottom: '1px solid #E8E8E4' }}>
+        <div style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#999', marginBottom: '6px' }}>
+          Seller dashboard
+        </div>
+        <h1 style={{ fontSize: '28px', fontWeight: 900, letterSpacing: '-0.04em', lineHeight: 1 }}>
+          My{' '}
+          <em style={{ fontFamily: 'var(--font-serif)', fontStyle: 'italic', fontWeight: 400 }}>offers</em>
+        </h1>
+      </div>
 
-      {/* pending offers */}
-      <div className="mt-8">
-        <h2 className="mb-4 font-heading text-base font-semibold text-foreground">
-          Pending <span className="ml-1 text-muted-foreground">({pending.length})</span>
-        </h2>
+      {/* ── Pending offers ── */}
+      <div style={{ borderBottom: '1px solid #E8E8E4' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 28px 16px', borderBottom: '1px solid #E8E8E4' }}>
+          <div style={{ fontSize: '13px', fontWeight: 700, letterSpacing: '-0.01em' }}>Pending offers</div>
+          <span style={{ fontSize: '9px', fontWeight: 700, padding: '2px 8px', background: pending.length > 0 ? '#0a0a0a' : '#E8E8E4', color: pending.length > 0 ? '#fff' : '#666' }}>
+            {pending.length}
+          </span>
+        </div>
 
         {pending.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-border py-10 text-center">
-            <p className="text-sm text-muted-foreground">No pending offers.</p>
+          <div style={{ padding: '40px 28px', textAlign: 'center' }}>
+            <div style={{ fontSize: '13px', fontWeight: 700, marginBottom: '4px' }}>No pending offers</div>
+            <div style={{ fontSize: '12px', color: '#999', lineHeight: 1.5 }}>
+              When buyers make offers on your listings, they appear here. You have 24 hours to respond.
+            </div>
           </div>
         ) : (
-          <div className="space-y-3">
-            {pending.map(o => {
-              const listing = Array.isArray(o.listings) ? o.listings[0] : o.listings;
-              const remaining = timeRemaining(o.seller_must_respond_by);
-              return (
-                <div key={o.id} className="rounded-xl border border-border bg-surface p-4">
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <p className="font-medium text-foreground">
-                        {listing?.brand} {listing?.product_name}
-                      </p>
-                      <p className="mt-1 font-mono text-lg font-bold text-accent">
-                        {formatPrice(o.offered_price)}
-                      </p>
-                      {remaining && (
-                        <p className="mt-1 text-xs text-warning">{remaining} to respond</p>
-                      )}
-                    </div>
-                    <OfferActions offerId={o.id} />
+          pending.map((o, i) => {
+            const listing   = pickOne<{ brand: string; product_name: string }>(o.listings);
+            const remaining = timeRemaining(o.seller_must_respond_by);
+            return (
+              <div key={o.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', padding: '20px 28px', borderBottom: i < pending.length - 1 ? '1px solid #E8E8E4' : 'none' }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: '13px', fontWeight: 700, letterSpacing: '-0.01em', textTransform: 'uppercase', marginBottom: '4px' }}>
+                    {listing?.brand} {listing?.product_name}
                   </div>
+                  <div style={{ fontSize: '22px', fontWeight: 900, letterSpacing: '-0.04em', lineHeight: 1, marginBottom: '4px' }}>
+                    {formatPrice(o.offered_price)}
+                  </div>
+                  {remaining && (
+                    <div style={{ fontSize: '10px', fontWeight: 600, color: '#A16207' }}>{remaining} to respond</div>
+                  )}
                 </div>
-              );
-            })}
-          </div>
+                <OfferActions offerId={o.id} />
+              </div>
+            );
+          })
         )}
       </div>
 
-      {/* past offers */}
-      {past.length > 0 && (
-        <div className="mt-10">
-          <h2 className="mb-4 font-heading text-base font-semibold text-foreground">Past offers</h2>
-          <div className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-surface">
-            {past.map(o => {
-              const listing = Array.isArray(o.listings) ? o.listings[0] : o.listings;
-              return (
-                <div key={o.id} className="flex items-center justify-between gap-4 px-4 py-3">
-                  <div className="min-w-0">
-                    <p className="truncate text-sm text-foreground">
-                      {listing?.brand} {listing?.product_name}
-                    </p>
-                    <p className="mt-0.5 text-xs text-muted-foreground">{formatDate(o.created_at)}</p>
-                  </div>
-                  <div className="flex shrink-0 items-center gap-4">
-                    <span className="font-mono text-sm text-foreground">{formatPrice(o.offered_price)}</span>
-                    <span className={`text-xs font-medium capitalize ${statusColor[o.status] ?? 'text-muted-foreground'}`}>
-                      {o.status}
-                    </span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+      {/* ── Past offers ── */}
+      <div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 28px 16px', borderBottom: '1px solid #E8E8E4' }}>
+          <div style={{ fontSize: '13px', fontWeight: 700, letterSpacing: '-0.01em' }}>Past offers</div>
+          <span style={{ fontSize: '9px', fontWeight: 700, padding: '2px 8px', background: '#E8E8E4', color: '#666' }}>
+            {past.length}
+          </span>
         </div>
-      )}
-    </div>
+
+        {past.length === 0 ? (
+          <div style={{ padding: '32px 28px', textAlign: 'center' }}>
+            <div style={{ fontSize: '12px', color: '#999' }}>No past offers yet.</div>
+          </div>
+        ) : (
+          past.map((o, i) => {
+            const listing = pickOne<{ brand: string; product_name: string }>(o.listings);
+            const s = OFFER_STATUS[o.status] ?? { background: '#F3F4F6', color: '#374151', label: o.status };
+            return (
+              <div key={o.id} style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '12px 28px', borderBottom: i < past.length - 1 ? '1px solid #E8E8E4' : 'none' }}
+                className="hover:bg-[#FAFAF8] transition-colors"
+              >
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: '13px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '-0.01em', marginBottom: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {listing?.brand} {listing?.product_name}
+                  </div>
+                  <div style={{ fontSize: '10px', color: '#999' }}>{formatDate(o.created_at)}</div>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexShrink: 0 }}>
+                  <span style={{ fontSize: '14px', fontWeight: 800, letterSpacing: '-0.02em' }}>{formatPrice(o.offered_price)}</span>
+                  <span style={{ ...s, fontSize: '9px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', padding: '2px 8px' }}>{s.label}</span>
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+    </>
   );
 }

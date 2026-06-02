@@ -8,10 +8,11 @@ import type {
 import type { ConditionGrade, ProductCategory } from "@/types";
 
 const PRICE_BUCKETS: Record<PriceBucket, { min: number; max: number }> = {
-  under_5k:   { min: 0,         max: 500_000 },
-  "5k_15k":   { min: 500_000,   max: 1_500_000 },
-  "15k_30k":  { min: 1_500_000, max: 3_000_000 },
-  "30k_plus": { min: 3_000_000, max: Number.POSITIVE_INFINITY },
+  under_5k:   { min: 0,          max: 500_000 },
+  "5k_15k":   { min: 500_000,    max: 1_500_000 },
+  "15k_30k":  { min: 1_500_000,  max: 3_000_000 },
+  "30k_75k":  { min: 3_000_000,  max: 7_500_000 },
+  "75k_plus": { min: 7_500_000,  max: Number.POSITIVE_INFINITY },
 };
 
 export async function getBrowseListings(
@@ -114,7 +115,8 @@ export const VALID_PRICE_BUCKETS: PriceBucket[] = [
   "under_5k",
   "5k_15k",
   "15k_30k",
-  "30k_plus",
+  "30k_75k",
+  "75k_plus",
 ];
 
 export const VALID_SORTS: BrowseSort[] = [

@@ -1,8 +1,8 @@
 # Buyer Flow — Context File
 **Owner:** Person 2
 **Tool:** Kiro
-**Branch:** feature/buyer-flow
-**Last updated:** 2026-05-29
+**Branch:** feature/buyer-flow (merged); active vertical-slice work on `feature/order-lifecycle-shipping`
+**Last updated:** 2026-06-01
 
 ---
 
@@ -29,15 +29,19 @@ single listing page, checkout, order dashboard, watchlist, saved searches.
 [x] Buyer-flow files: tsc clean, lint clean, dev smoke-tested
 [ ] Real offers persistence — replace mock createOfferDraft / getMyOffers / getOfferDetail with Supabase
 [ ] Buyer-side offer cancel — RLS policy + API route (coordinate with Person 1 first)
-[ ] Real Pay now flow — checkout / Razorpay (Person 4 dependency)
+[ ] Real Pay now flow — checkout / Razorpay (Person 4 dependency — Phase 2 routes merged via PR #3; PaymentProvider abstraction with DevPaymentProvider on `feature/order-lifecycle-shipping` lets the lifecycle run end-to-end without Razorpay credentials)
 [x] Nav updated (Person 1) — profile avatar dropdown; My Orders counts both offers + orders tables; links to /orders/purchases
-[x] Mock checkout flow (Person 1) — /buy/checkout/[listingId] collects delivery address (pre-filled from profile); POST /api/checkout/mock skips Razorpay, creates order (escrow_held) + mock payment, marks listing sold, Telegrams seller
+[x] Razorpay-or-Dev checkout flow (`feature/order-lifecycle-shipping`) — /buy/checkout/[listingId] collects delivery address (pre-filled from profile); CheckoutForm calls POST /api/payments/create which selects PaymentProvider (Razorpay or Dev based on env), then opens Razorpay modal OR posts to /api/dev/payments/simulate, then POST /api/payments/verify on success → redirects to /orders/purchase/[orderId]. Mock /api/checkout/mock removed.
 [x] /orders/purchases — lists all buy-now orders with status + links to order detail
 [x] /orders/purchase/[orderId] — full order detail page: status timeline, delivery address, price breakdown, dev advance-order button, dispute form during inspection window
 [x] POST /api/disputes — buyer raises dispute; validates inspection window, creates dispute record, marks order disputed
 [x] POST /api/dev/advance-order — dev-only; pushes order to inspection (delivered_at + inspection_expires_at = now+48h)
-[ ] Watchlist, saved searches, disputes, orders dashboard, ratings — defer
-[x] /buy/checkout/[listingId] (mock) + /orders/purchase/[orderId] (post-purchase) — live; real Razorpay swap deferred to Person 4's Phase 2 (see docs/reviews/payments-session-zero.md §8)
+[x] POST /api/orders/[orderId]/complete — buyer confirms receipt during inspection window; order → completed, completed_at set
+[x] ConfirmReceiptButton — confirm dialog + POST /api/orders/[orderId]/complete; shown above dispute form during inspection window
+[x] force-dynamic on admin listings, seller dashboard listings + orders, buyer purchases list — fixes stale router cache
+[x] listings!listing_id FK hint — all orders→listings Supabase joins updated (sold_order_id FK from migration 006 caused ambiguity)
+[ ] Watchlist, saved searches, ratings — defer
+[ ] Real offers persistence — replace mock createOfferDraft / getMyOffers / getOfferDetail with Supabase
 ```
 
 ---
@@ -53,9 +57,10 @@ single listing page, checkout, order dashboard, watchlist, saved searches.
 | `/orders` | Redirect to `/orders/offers` | protected | `src/app/orders/page.tsx` |
 | `/orders/offers` | Buyer offer dashboard (3 sections) | protected | `src/app/orders/offers/page.tsx` |
 | `/orders/offers/[id]` | Offer detail | protected | `src/app/orders/offers/[id]/page.tsx` |
-| `/buy/checkout/[listingId]` | Mock checkout — collects delivery address, calls `/api/checkout/mock` | protected | `src/app/buy/checkout/[listingId]/page.tsx` |
+| `/buy/checkout/[listingId]` | Checkout — collects delivery address, calls `/api/payments/create` (provider-aware: Razorpay modal or `/api/dev/payments/simulate`), then `/api/payments/verify` on success | protected | `src/app/buy/checkout/[listingId]/page.tsx` + `CheckoutForm.tsx` |
 | `/orders/purchases` | Buyer purchases list (buy-now orders) | protected | `src/app/orders/purchases/page.tsx` |
-| `/orders/purchase/[orderId]` | Order detail — status timeline, address, dispute form during inspection window, dev advance-order button | protected | `src/app/orders/purchase/[orderId]/page.tsx` |
+| `/orders/purchase/[orderId]` | Order detail — status timeline, address, confirm receipt + dispute form during inspection window, dev advance-order button | protected | `src/app/orders/purchase/[orderId]/page.tsx` |
+| `POST /api/orders/[orderId]/complete` | Buyer confirms receipt → order completed | protected | `src/app/api/orders/[orderId]/complete/route.ts` |
 
 `protected` routes redirect anonymous users to `/login?redirect=<path>` via `src/middleware.ts`.
 
@@ -431,8 +436,9 @@ component owns rendering.
 | users | SELECT | Seller profile on listing page |
 
 Today the buyer surface is split: discovery (browse, listing detail, homepage
-featured strip) and purchase (mock checkout, orders list, order detail,
-disputes) run on real Supabase. Offers persistence is still mock-backed
+featured strip) and purchase (Razorpay-or-dev checkout, orders list, order
+detail with full audit timeline + shipment tracking, disputes) run on real
+Supabase. Offers persistence is still mock-backed
 (`src/lib/offers/*`). The next persistence slice replaces those mock
 bodies inside `src/lib/offers/*` without touching pages or components.
 

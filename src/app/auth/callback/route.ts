@@ -26,9 +26,9 @@ export async function GET(request: NextRequest) {
   const forwardedProto = request.headers.get('x-forwarded-proto') ?? 'https';
   const origin = forwardedHost
     ? `${forwardedProto}://${forwardedHost}`
-    : url.origin;
+    : (process.env.NEXT_PUBLIC_APP_URL ?? url.origin);
 
-  const next     = searchParams.get('next') ?? '/';
+  const next = searchParams.get('next') ?? '/';
   const supabase = createClient();
 
   // PKCE flow — standard magic link
