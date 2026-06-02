@@ -1,8 +1,8 @@
 
 # Payments & Shipping — Context File
 **Owner:** Person 4
-**Active branch:** `feature/order-lifecycle-shipping` (Razorpay/shipping abstractions, dev simulator, seller shipment flow, timeline UI)
-**Last updated:** 2026-05-30
+**Active branch:** `feature/ui-redesign` (superset of all prior feature branches — ready to merge to `dev`)
+**Last updated:** 2026-06-03
 
 ---
 
@@ -24,8 +24,7 @@ edge that fires from a verified payment capture.
 ## Current Status
 
 ```
-[ ] Not started
-[x] PARTIALLY MERGED + active vertical slice in flight + DB-layer smoke validated
+[x] VALIDATED — all lifecycle scenarios A–H pass. Ready to merge feature/ui-redesign → dev.
     - PR #2 (commit 230d9ae): Phase 1 schema substrate on dev.
       Migrations 002–006: atomic finalize_winning_payment RPC,
       lifetime invariant on listings.sold_order_id, audit tables,
@@ -33,29 +32,19 @@ edge that fires from a verified payment capture.
     - PR #3 (commit 7b294e9): Phase 2 Razorpay routes on dev.
       /api/payments/{create,verify,webhook} as thin wrappers
       around the locked RPCs.
-    - feature/order-lifecycle-shipping (tip d2f9bc6):
+    - feature/order-lifecycle-shipping (absorbed into feature/ui-redesign):
       PaymentProvider + ShippingProvider abstractions,
       DevPaymentProvider + MockShippingProvider, migration 007
       (shipments + shipment_events + mock_shipments + RPCs),
       seller shipment flow, OrderTimeline + ShipmentTracking UI,
-      dev simulation routes. End-to-end lifecycle exercised today
-      without Razorpay or Shiprocket credentials.
-    - DB-layer smoke validation: migrations 001 → 007 apply
-      cleanly on a fresh real Postgres 16; record_shipment_created
-      + record_shipment_status_change RPCs walk the full lifecycle
-      (escrow_held → seller_confirmed → shipped → inspection)
-      with audit rows matching reality at every step;
-      finalize_winning_payment + initiate_refund + record_refund_outcome
-      walk the race-loser path (winner + cancelled loser + pending
-      refund + succeeded refund) idempotently. Smoke tests at
-      supabase/tests/lifecycle_smoke.sql and refund_lifecycle_smoke.sql.
-    - PR #4 (feature/checkout-razorpay-wire): SUPERSEDED.
-      Code lives on the active branch as commit 5ae8cd7. Close
-      without merging.
-[ ] Complete (pending: lifecycle scenarios A–H against a deployed
-    environment per docs/reviews/lifecycle-validation-runbook.md;
-    admin operations on the active branch after that)
-[ ] Blocked
+      dev simulation routes.
+    - DB-layer smoke: migrations 001 → 007 pass on real Postgres 16.
+      Smoke tests at supabase/tests/lifecycle_smoke.sql + refund_lifecycle_smoke.sql.
+    - Lifecycle validation: scenarios A–H executed against ui.audiobaaz.com
+      (2026-06-02). All pass. Results: docs/reviews/lifecycle-validation-results.md.
+    - Branch cleanup (2026-06-03): feature/order-lifecycle-shipping,
+      feature/payment-routes, feature/payments-shipping, feature/checkout-razorpay-wire
+      all deleted — work fully absorbed into feature/ui-redesign.
 ```
 
 ### Provider abstractions (current state)
@@ -108,7 +97,7 @@ The Phase 1 surface on `dev`:
 - five acceptance scenarios + multi-connection stress harness at
   concurrency=100, all green in CI
 
-### Migration 007 — shipping substrate (on `feature/order-lifecycle-shipping`)
+### Migration 007 — shipping substrate (on `feature/ui-redesign`, pending merge to `dev`)
 
 - `shipments` — canonical shipment record. One row per shipment
   booking. Provider-agnostic: real couriers and the mock provider
@@ -126,9 +115,9 @@ The Phase 1 surface on `dev`:
   `delivered → orders.delivered` with 48h `inspection_expires_at`).
   Idempotent on same-status replays.
 
-### Next milestone — admin operations + lifecycle validation
+### Next milestone — merge + post-merge V2 work
 
-Remaining V1 work on the active branch:
+`feature/ui-redesign` is ready to merge to `dev`. After merge:
 
 | Surface | Task |
 |---------|------|
@@ -136,10 +125,8 @@ Remaining V1 work on the active branch:
 | Admin payouts | UPI reference text input. Route writes `payout_reference`, `payout_at`, `payout_status='paid'`. |
 | Admin orders monitor | Replace the stub at `src/app/admin/orders/page.tsx` with a real list/filter view surfacing stuck refunds, stuck shipments, post-inspection orders. |
 | Manual escrow release | Admin button on `delivered` past inspection → flips order to `completed` + `payout_status='pending'`. |
-
-After admin operations land, the active branch is ready to PR into
-`dev`, then run lifecycle scenarios A–E on `dev.audiobaaz.com` with
-`PAYMENT_PROVIDER=dev`.
+| Real Razorpay | Swap `DevPaymentProvider` for `RazorpayPaymentProvider` when credentials land. |
+| Real Shiprocket | Implement `ShiprocketProvider` when credentials land. Slot exists in factory. |
 
 ### Pre-merge audit
 
@@ -679,11 +666,7 @@ implementation plan blocks on a cross-team handoff that wasn't planned.
 
 ## Files This Feature Will Own (planned)
 
-Nothing on this list exists on `dev`. Nine of them exist on the parked
-`feature/payments-shipping` branch (`f47ab10`). The audit at
-`docs/reviews/payments-session-zero.md` §2 Inventory C and §5.9
-Implementation Inventory record the file-by-file disposition that
-Phase 2 will follow. Listed below for shared expectations only.
+All files below exist on `feature/ui-redesign` and will land on `dev` after merge.
 
 ```
 src/lib/razorpay/client.ts                       — singleton instance, throws on missing keys
@@ -969,13 +952,17 @@ against, not what they can call today.
 
 ## Next Session Starts Here
 
-OQ#1 was resolved on 2026-05-30 with the locked V1 contract above.
-The remaining critical Open Questions before Phase 1 can start are
-**OQ#4** (one-paid-offer invariant) and **OQ#5** (atomic RPC). Both
-became safety-critical specifically *because* of Decision 6: the
-listing stays available until capture, so race correctness lives
-entirely in the DB invariant + atomic transaction, not in
-application-layer reservations.
+**Current state (2026-06-03):** All V1 transaction-engine work is on
+`feature/ui-redesign`, lifecycle validated, gate closed. Next action
+is merging `feature/ui-redesign → dev` as a single PR.
+
+Post-merge priorities:
+1. Admin operations (disputes → refund wiring, payout UPI reference, orders monitor)
+2. Real credentials swap (Razorpay → `RazorpayPaymentProvider`, Shiprocket → `ShiprocketProvider`)
+3. Light theme: listing detail, checkout, orders pages
+
+Historical context below (OQ resolutions, Phase 1 architecture decisions) —
+kept for reference; all work is complete and on `feature/ui-redesign`.
 
 ### Phase 1 priority order (recorded 2026-05-30; re-prioritised 2026-05-30)
 

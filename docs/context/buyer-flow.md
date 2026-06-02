@@ -1,8 +1,8 @@
 # Buyer Flow — Context File
 **Owner:** Person 2
 **Tool:** Kiro
-**Branch:** feature/buyer-flow (merged); active vertical-slice work on `feature/order-lifecycle-shipping`
-**Last updated:** 2026-06-01
+**Branch:** feature/buyer-flow (merged); active vertical-slice work on `feature/ui-redesign`
+**Last updated:** 2026-06-03
 
 ---
 

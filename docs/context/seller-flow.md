@@ -1,8 +1,8 @@
 # Seller Flow — Context File
 **Owner:** Person 1
 **Tool:** AI coding tool
-**Branch:** feature/seller-flow (merged); seller dashboard order detail + shipment flow on `feature/order-lifecycle-shipping`
-**Last updated:** 2026-05-30
+**Branch:** feature/seller-flow (merged); seller dashboard order detail + shipment flow on `feature/ui-redesign`
+**Last updated:** 2026-06-03
 
 ---
 
