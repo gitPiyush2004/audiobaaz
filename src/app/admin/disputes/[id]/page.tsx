@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { formatPrice, formatDate } from '@/lib/utils/formatting';
 import { pickOne } from '@/lib/utils/relations';
@@ -82,11 +83,14 @@ export default async function AdminDisputeDetailPage({ params }: { params: { id:
               <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
                 {dispute.evidence_urls.map((url: string, i: number) => (
                   <a key={i} href={url} target="_blank" rel="noopener noreferrer">
-                    <img
-                      src={url}
-                      alt={`Evidence ${i + 1}`}
-                      className="aspect-square w-full rounded-lg object-cover transition-opacity hover:opacity-80"
-                    />
+                    <div className="relative aspect-square w-full overflow-hidden rounded-lg">
+                      <Image
+                        src={url}
+                        alt={`Evidence ${i + 1}`}
+                        fill
+                        className="object-cover transition-opacity hover:opacity-80"
+                      />
+                    </div>
                   </a>
                 ))}
               </div>
@@ -104,9 +108,11 @@ export default async function AdminDisputeDetailPage({ params }: { params: { id:
               <h2 className="mb-3 font-heading text-lg font-semibold text-foreground">Order</h2>
               <div className="flex items-center gap-3">
                 {listing?.photos?.[0] && (
-                  <img
+                  <Image
                     src={listing.photos[0]}
                     alt={listing.product_name}
+                    width={56}
+                    height={56}
                     className="h-14 w-14 shrink-0 rounded-lg object-cover"
                   />
                 )}

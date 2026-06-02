@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import Image from 'next/image';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { formatPrice, formatDate } from '@/lib/utils/formatting';
 
@@ -48,9 +49,11 @@ export default async function AdminListingsPage() {
                   className="flex items-center gap-4 rounded-xl border border-border bg-surface p-4 transition-colors hover:bg-surface-2"
                 >
                   {l.photos?.[0] && (
-                    <img
+                    <Image
                       src={l.photos[0]}
                       alt={l.product_name}
+                      width={64}
+                      height={64}
                       className="h-16 w-16 shrink-0 rounded-lg object-cover"
                     />
                   )}
