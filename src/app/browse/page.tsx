@@ -9,7 +9,6 @@ import {
   getBrowseListings,
   parseBrowseSearchParams,
   VALID_CATEGORIES,
-  VALID_CONDITIONS,
   VALID_PRICE_BUCKETS,
 } from "@/lib/listings/browse";
 import type { BrowseSort, PriceBucket } from "@/lib/listings/types";
@@ -112,11 +111,6 @@ export default async function BrowsePage({ searchParams }: BrowsePageProps) {
 
   const activeSort   = filters.sort ?? "newest";
   const isAllCats    = !filters.categories?.length;
-  const hasAnyFilter =
-    (filters.categories?.length ?? 0) > 0 ||
-    (filters.conditions?.length ?? 0) > 0 ||
-    !!filters.priceBucket ||
-    !!filters.negotiableOnly;
 
   return (
     <>

@@ -169,7 +169,7 @@ export default async function DashboardPage({ searchParams }: Props) {
           <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#15803D', flexShrink: 0 }} />
           <div>
             <span style={{ fontSize: '12px', fontWeight: 700, color: '#15803D' }}>Listing submitted for review</span>
-            <span style={{ fontSize: '12px', color: '#15803D', marginLeft: '8px' }}>We typically review within 2–4 hours. You'll get a Telegram message when it goes live.</span>
+            <span style={{ fontSize: '12px', color: '#15803D', marginLeft: '8px' }}>We typically review within 2–4 hours. You&apos;ll get a Telegram message when it goes live.</span>
           </div>
         </div>
       )}

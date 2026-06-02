@@ -9,7 +9,6 @@ const BAR_R     = 2;
 const MAX_FRAC  = 0.38;
 
 const HOLD    = 5000;
-const IN_DUR  = 1100;
 const OUT_DUR = 1000;
 const GAP     = 1200;
 
@@ -97,6 +96,7 @@ export function HeroWaveform() {
     let current = 0;
 
     function showNext() {
+      if (!bubble) return;
       const r = REVIEWS[current % REVIEWS.length];
       current++;
 

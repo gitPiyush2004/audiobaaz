@@ -250,7 +250,6 @@ function initDraft(initial?: ListingFormInitialData): Draft {
 // ── Design tokens ─────────────────────────────────────────────────────────────
 
 const font    = '"Helvetica Neue", Helvetica, Arial, sans-serif';
-const serif   = '"Instrument Serif", Georgia, serif';
 const B       = '#E8E8E4';   // border
 const OFF     = '#FAFAF8';   // off-white
 const MUTED   = '#999';

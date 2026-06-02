@@ -9,7 +9,7 @@ interface LogoProps {
   wordmarkColor?: string;
 }
 
-export function Logo({ size = 38, showWordmark = true, wordmarkColor = '#0a0a0a' }: LogoProps) {
+export function Logo({ size = 38, showWordmark = true }: LogoProps) {
   const vinylRef = useRef<SVGGElement>(null);
   const glowRefs = useRef<(SVGPolylineElement | null)[]>([null, null, null, null]);
 
@@ -39,8 +39,6 @@ export function Logo({ size = 38, showWordmark = true, wordmarkColor = '#0a0a0a'
       el.style.opacity = '';
     });
   }
-
-  const wordmarkSize = Math.round(size * 0.45);
 
   return (
     <Link
