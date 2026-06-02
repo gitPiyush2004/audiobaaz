@@ -44,12 +44,12 @@ const config: Config = {
         mono:    ["var(--font-mono)", "JetBrains Mono", "monospace"],
       },
       borderRadius: {
-        sm:    "6px",
-        DEFAULT: "6px",
-        md:    "10px",
-        lg:    "14px",
-        xl:    "20px",
-        "2xl": "28px",
+        sm:    "0",
+        DEFAULT: "0",
+        md:    "0",
+        lg:    "0",
+        xl:    "0",
+        "2xl": "0",
         full:  "9999px",
       },
       fontSize: {

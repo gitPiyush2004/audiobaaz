@@ -2,36 +2,48 @@
 
 import { useEffect, useRef } from 'react';
 
-const BAR_COUNT = 56;
+const BAR_COUNT = 54;
 const BAR_W     = 3.5;
-const BAR_GAP   = 4.5;
+const BAR_GAP   = 4.2;
 const BAR_R     = 2;
 const MAX_FRAC  = 0.38;
 
-// dotXFrac mirrors the mockup's dotXs array
-const REVIEWS = [
-  { id: 'rv1', style: { top: '44px',  left: '28px'  },                                    dotXFrac: 0.20, delay: 700,  hold: 5800, cycle: 13000, initials: 'RK', name: 'Rohan K.',     product: 'HD 800 S · Grade A',      text: '"Arrived in mint condition. Exactly as described, maybe better."' },
-  { id: 'rv2', style: { top: '32px',  right: '24px' },                                    dotXFrac: 0.72, delay: 3400, hold: 6200, cycle: 14500, initials: 'AT', name: 'Arjun T.',     product: 'LCD-2 Classic · Grade B', text: '"Escrow made me feel safe buying a ₹68k headphone online."' },
-  { id: 'rv3', style: { bottom: '110px', left: '18px' },                                  dotXFrac: 0.16, delay: 6100, hold: 5400, cycle: 12000, initials: 'SV', name: 'Siddharth V.', product: 'Chord Mojo 2 · Sold',     text: '"Sold my Mojo 2 in 3 days. Payout was faster than expected."' },
-  { id: 'rv4', style: { bottom: '44px', right: '28px' },                                  dotXFrac: 0.80, delay: 1900, hold: 6600, cycle: 15500, initials: 'PM', name: 'Priya M.',     product: 'Blessing 3 · Grade S',    text: '"Grade S IEMs showed up literally sealed. Unbelievable."' },
-  { id: 'rv5', style: { top: '42%', left: '50%', transform: 'translateX(-50%) translateY(-50%)' }, dotXFrac: 0.50, delay: 9200, hold: 5000, cycle: 13500, initials: 'NK', name: 'Nikhil K.', product: 'Topping D90SE · Grade A', text: '"Condition grading is honest. Zero surprises."' },
+const HOLD    = 5000;
+const IN_DUR  = 1100;
+const OUT_DUR = 1000;
+const GAP     = 1200;
+
+type Corner = 'tl' | 'tr' | 'bl' | 'br';
+
+const REVIEWS: { av: string; name: string; prod: string; text: string; corner: Corner }[] = [
+  { av: 'RK', name: 'Rohan K.',     prod: 'HD 800 S · Grade A',            text: '"Arrived in mint condition. Exactly as described, maybe better."',     corner: 'tl' },
+  { av: 'AT', name: 'Arjun T.',     prod: 'LCD-2 Classic · Grade B',        text: '"Escrow made me feel safe buying a ₹68k headphone from a stranger."', corner: 'tr' },
+  { av: 'SV', name: 'Siddharth V.', prod: 'Chord Mojo 2 · Sold',            text: '"Sold my Mojo 2 in 3 days. Payout was faster than expected."',        corner: 'bl' },
+  { av: 'PM', name: 'Priya M.',     prod: 'Blessing 3 · Grade S',           text: '"Grade S IEMs showed up literally sealed. Unbelievable value."',      corner: 'br' },
+  { av: 'NK', name: 'Nikhil K.',    prod: 'Topping D90SE · Grade A',        text: '"Condition grading is honest. Zero surprises on arrival."',           corner: 'tl' },
+  { av: 'AS', name: 'Ananya S.',    prod: 'Beyerdynamic DT 1990 · Grade A', text: '"The whole process felt premium. Will buy again for sure."',          corner: 'br' },
 ];
 
 export function HeroWaveform() {
-  const panelRef = useRef<HTMLDivElement>(null);
+  const panelRef  = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
-  const dotRefs  = useRef<(HTMLDivElement | null)[]>([]);
-  const rafRef   = useRef<number>(0);
-  const timers   = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const bubbleRef = useRef<HTMLDivElement>(null);
+  const bTextRef  = useRef<HTMLDivElement>(null);
+  const bAvRef    = useRef<HTMLDivElement>(null);
+  const bNameRef  = useRef<HTMLDivElement>(null);
+  const bProdRef  = useRef<HTMLDivElement>(null);
+  const rafRef    = useRef<number>(0);
+  const timers    = useRef<ReturnType<typeof setTimeout>[]>([]);
 
   useEffect(() => {
     const panel  = panelRef.current;
     const canvas = canvasRef.current;
-    if (!panel || !canvas) return;
+    const bubble = bubbleRef.current;
+    if (!panel || !canvas || !bubble) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
+    // ── Waveform ──
     const bars = Array.from({ length: BAR_COUNT }, (_, i) => {
       const pos  = i / (BAR_COUNT - 1);
       const c    = Math.exp(-Math.pow((pos - 0.5) * 2.6, 2));
@@ -58,17 +70,13 @@ export function HeroWaveform() {
     }
 
     let tick = 0;
-
     function draw() {
-      // Resize canvas to panel every frame — same as mockup
       const W = canvas!.width  = panel!.offsetWidth;
       const H = canvas!.height = panel!.offsetHeight;
       ctx!.clearRect(0, 0, W, H);
-
       const totalW = BAR_COUNT * BAR_W + (BAR_COUNT - 1) * BAR_GAP;
       const startX = (W - totalW) / 2;
       const cy = H / 2;
-
       bars.forEach((bar, i) => {
         bar.tgt = bar.base * (0.5 + 0.5 * Math.sin(tick * bar.spd + bar.phase));
         bar.cur += (bar.tgt - bar.cur) * 0.05;
@@ -76,52 +84,49 @@ export function HeroWaveform() {
         const bx  = startX + i * (BAR_W + BAR_GAP);
         const pos = i / (BAR_COUNT - 1);
         const c   = Math.exp(-Math.pow((pos - 0.5) * 2.4, 2));
-        ctx!.fillStyle = `rgba(10,10,10,${0.22 + c * 0.55})`;
+        ctx!.fillStyle = `rgba(10,10,10,${0.2 + c * 0.58})`;
         roundBar(bx, cy - bh, BAR_W, bh, BAR_R, true);
         roundBar(bx, cy,      BAR_W, bh * 0.68, BAR_R, false);
       });
-
-      // Update dot positions on the centre line every frame
-      REVIEWS.forEach((r, i) => {
-        const el = dotRefs.current[i];
-        if (!el) return;
-        el.style.left = `${startX + r.dotXFrac * totalW}px`;
-        el.style.top  = `${cy}px`;
-      });
-
       tick++;
       rafRef.current = requestAnimationFrame(draw);
     }
     draw();
 
-    // Schedule review cards
-    const FADE_DUR = 1600;
-    function show(i: number) {
-      cardRefs.current[i]?.classList.remove('abw-fading');
-      cardRefs.current[i]?.classList.add('abw-visible');
-      dotRefs.current[i]?.classList.add('abw-dot-visible');
-    }
-    function hide(i: number) {
-      cardRefs.current[i]?.classList.add('abw-fading');
-      dotRefs.current[i]?.classList.remove('abw-dot-visible');
-      const t = setTimeout(() => cardRefs.current[i]?.classList.remove('abw-visible', 'abw-fading'), FADE_DUR);
-      timers.current.push(t);
+    // ── Bubble cycle ──
+    let current = 0;
+
+    function showNext() {
+      const r = REVIEWS[current % REVIEWS.length];
+      current++;
+
+      bubble.className = `hbw-bubble corner-${r.corner}`;
+      if (bTextRef.current) bTextRef.current.textContent = r.text;
+      if (bAvRef.current)   bAvRef.current.textContent   = r.av;
+      if (bNameRef.current) bNameRef.current.textContent = r.name;
+      if (bProdRef.current) bProdRef.current.textContent = r.prod;
+
+      // Force reflow so animation restarts cleanly
+      void bubble.offsetWidth;
+      bubble.classList.add(`in-${r.corner}`);
+
+      const t1 = setTimeout(() => {
+        bubble.classList.remove(`in-${r.corner}`);
+        bubble.classList.add(`out-${r.corner}`);
+
+        const t2 = setTimeout(() => {
+          bubble.classList.remove(`out-${r.corner}`);
+          bubble.style.opacity = '0';
+          const t3 = setTimeout(showNext, GAP);
+          timers.current.push(t3);
+        }, OUT_DUR);
+        timers.current.push(t2);
+      }, HOLD);
+      timers.current.push(t1);
     }
 
-    REVIEWS.forEach((r, i) => {
-      const t1 = setTimeout(() => {
-        show(i);
-        const t2 = setTimeout(() => hide(i), r.hold);
-        timers.current.push(t2);
-        const iv = setInterval(() => {
-          show(i);
-          const t3 = setTimeout(() => hide(i), r.hold);
-          timers.current.push(t3);
-        }, r.cycle);
-        timers.current.push(iv as unknown as ReturnType<typeof setTimeout>);
-      }, r.delay);
-      timers.current.push(t1);
-    });
+    const t0 = setTimeout(showNext, 1200);
+    timers.current.push(t0);
 
     return () => {
       cancelAnimationFrame(rafRef.current);
@@ -138,32 +143,24 @@ export function HeroWaveform() {
         ref={canvasRef}
         style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', display: 'block' }}
       />
-
-      {REVIEWS.map((r, i) => (
+      <div ref={bubbleRef} className="hbw-bubble">
+        <div style={{ fontSize: '10px', letterSpacing: '1px', color: '#0a0a0a', marginBottom: '7px' }}>★★★★★</div>
         <div
-          key={r.id}
-          ref={el => { cardRefs.current[i] = el; }}
-          className="abw-review"
-          style={{ ...(r.style as React.CSSProperties), maxWidth: '188px', boxSizing: 'border-box' }}
-        >
-          <div style={{ fontSize: '10px', letterSpacing: '1px', color: '#0a0a0a', marginBottom: '7px' }}>★★★★★</div>
-          <div style={{ fontSize: '11.5px', fontWeight: 400, color: '#444', lineHeight: 1.6, marginBottom: '10px', fontStyle: 'italic' }}>{r.text}</div>
-          <div style={{ height: '1px', background: '#f0f0ee', marginBottom: '10px' }} />
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: '#0a0a0a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '8px', fontWeight: 700, color: '#E8FF4D', flexShrink: 0 }}>
-              {r.initials}
-            </div>
-            <div>
-              <div style={{ fontSize: '10px', fontWeight: 700, color: '#0a0a0a', lineHeight: 1.2 }}>{r.name}</div>
-              <div style={{ fontSize: '9px', color: '#aaa', marginTop: '1px' }}>{r.product}</div>
-            </div>
+          ref={bTextRef}
+          style={{ fontSize: '11.5px', color: '#444', lineHeight: 1.6, fontStyle: 'italic', marginBottom: '11px' }}
+        />
+        <div style={{ height: '1px', background: '#f0f0ee', marginBottom: '10px' }} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div
+            ref={bAvRef}
+            style={{ width: '26px', height: '26px', borderRadius: '50%', background: '#0a0a0a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '8px', fontWeight: 700, color: '#E8FF4D', flexShrink: 0, letterSpacing: '0.04em' }}
+          />
+          <div>
+            <div ref={bNameRef} style={{ fontSize: '10px', fontWeight: 700, color: '#0a0a0a', lineHeight: 1.2 }} />
+            <div ref={bProdRef} style={{ fontSize: '9px', color: '#aaa', marginTop: '2px' }} />
           </div>
         </div>
-      ))}
-
-      {REVIEWS.map((_, i) => (
-        <div key={`dot-${i}`} ref={el => { dotRefs.current[i] = el; }} className="abw-dot" />
-      ))}
+      </div>
     </div>
   );
 }

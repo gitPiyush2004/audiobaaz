@@ -23,7 +23,7 @@ export function DelistButton({ listingId }: { listingId: string }) {
     <button
       onClick={handleDelist}
       disabled={loading}
-      className="rounded-md border border-error/30 px-3 py-1 text-xs text-error transition-colors hover:bg-error/10 disabled:opacity-50"
+      style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#B91C1C', border: '1px solid #FECACA', padding: '3px 10px', background: 'none', cursor: 'pointer', opacity: loading ? 0.5 : 1 }}
     >
       {loading ? '…' : 'Delist'}
     </button>

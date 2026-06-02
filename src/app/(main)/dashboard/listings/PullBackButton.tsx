@@ -23,7 +23,7 @@ export function PullBackButton({ listingId }: { listingId: string }) {
     <button
       onClick={handlePullBack}
       disabled={loading}
-      className="rounded-md border border-border px-3 py-1 text-xs text-muted-foreground transition-colors hover:border-border-2 hover:text-foreground disabled:opacity-50"
+      style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#666', border: '1px solid #E8E8E4', padding: '3px 10px', background: 'none', cursor: 'pointer', opacity: loading ? 0.5 : 1 }}
     >
       {loading ? '…' : 'Pull back'}
     </button>

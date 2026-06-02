@@ -26,11 +26,11 @@ export function UpiForm({ currentUpi }: { currentUpi: string | null }) {
 
   if (!editing) {
     return (
-      <div className="flex items-center justify-between gap-4">
-        <span className="font-mono text-sm text-foreground">{upi}</span>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px' }}>
+        <span style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '14px', fontWeight: 600, color: '#0a0a0a' }}>{upi}</span>
         <button
           onClick={() => setEditing(true)}
-          className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+          style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#666', border: '1px solid #E8E8E4', padding: '5px 14px', background: 'none', cursor: 'pointer' }}
         >
           Edit
         </button>
@@ -39,27 +39,29 @@ export function UpiForm({ currentUpi }: { currentUpi: string | null }) {
   }
 
   return (
-    <div className="space-y-3">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
       <input
         type="text"
         value={upi}
         onChange={e => setUpi(e.target.value)}
         placeholder="yourname@upi"
-        className="w-full rounded-lg border border-border bg-surface-2 px-4 py-2.5 font-mono text-sm text-foreground placeholder:text-dim-foreground focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent transition-colors"
+        style={{ width: '100%', border: '1.5px solid #E8E8E4', padding: '10px 14px', fontFamily: 'var(--font-mono, monospace)', fontSize: '13px', color: '#0a0a0a', outline: 'none', background: '#fff' }}
+        onFocus={e => (e.target.style.borderColor = '#0a0a0a')}
+        onBlur={e => (e.target.style.borderColor = '#E8E8E4')}
       />
-      {error && <p className="text-xs text-error">{error}</p>}
-      <div className="flex gap-2">
+      {error && <p style={{ fontSize: '11px', color: '#B91C1C' }}>{error}</p>}
+      <div style={{ display: 'flex', gap: '8px' }}>
         <button
           onClick={save}
           disabled={saving || !upi.trim()}
-          className="h-9 rounded-lg bg-accent px-5 text-sm font-semibold text-black transition-all hover:bg-accent-hover disabled:opacity-40"
+          style={{ background: '#E8FF4D', color: '#0a0a0a', border: 'none', padding: '10px 24px', fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', cursor: 'pointer', opacity: (saving || !upi.trim()) ? 0.4 : 1 }}
         >
           {saving ? 'Saving…' : 'Save'}
         </button>
         {currentUpi && (
           <button
             onClick={() => { setEditing(false); setUpi(currentUpi); }}
-            className="h-9 rounded-lg border border-border px-5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+            style={{ background: 'none', color: '#666', border: '1px solid #E8E8E4', padding: '10px 24px', fontSize: '11px', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', cursor: 'pointer' }}
           >
             Cancel
           </button>

@@ -171,7 +171,7 @@ export type BrowseSort =
   | "most_viewed";
 
 /** Coarse price buckets shown on the filter sidebar. Values are in PAISE. */
-export type PriceBucket = "under_5k" | "5k_15k" | "15k_30k" | "30k_plus";
+export type PriceBucket = "under_5k" | "5k_15k" | "15k_30k" | "30k_75k" | "75k_plus";
 
 /**
  * Filter inputs accepted by `getBrowseListings()` and other browse-shaped

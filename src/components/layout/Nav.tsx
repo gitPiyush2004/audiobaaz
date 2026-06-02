@@ -44,7 +44,7 @@ export async function Nav() {
           <nav className="flex items-center gap-6">
             <Link
               href="/browse"
-              style={{ fontSize: '13px', fontWeight: 300, color: '#888' }}
+              style={{ fontSize: '13px', fontWeight: 500, color: '#333' }}
               className="transition-colors hover:text-[#0a0a0a]"
             >
               Browse
@@ -61,7 +61,7 @@ export async function Nav() {
               <>
                 <Link
                   href="/login"
-                  style={{ fontSize: '13px', fontWeight: 300, color: '#888' }}
+                  style={{ fontSize: '13px', fontWeight: 500, color: '#333' }}
                   className="transition-colors hover:text-[#0a0a0a]"
                 >
                   Log in

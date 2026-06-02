@@ -1,15 +1,7 @@
 /**
  * Browse — buyer inventory surface.
- *
- * Server component. Reads filters and sort from the URL search params
- * (so the page is shareable, back-button friendly, and SSR-cacheable later).
- * All listing reads go through the access boundary `getBrowseListings()` —
- * no direct mock or Supabase access in this file.
- *
- * Filter sidebar is anchor-based (no client JS yet) — every interactive
- * filter is a Link that updates the URL. Client-side interactivity (debounced
- * search, multi-select chips, keyboard nav) can be added later as client
- * islands without changing this file's contract.
+ * Server component. Filters + sort read from URL search params for
+ * shareability, back-button correctness, and future SSR caching.
  */
 
 import Link from "next/link";
@@ -19,20 +11,19 @@ import {
   VALID_CATEGORIES,
   VALID_CONDITIONS,
   VALID_PRICE_BUCKETS,
-  VALID_SORTS,
 } from "@/lib/listings/browse";
 import type { BrowseSort, PriceBucket } from "@/lib/listings/types";
 import { ListingCard } from "@/components/listing/ListingCard";
-import { ListingGrid } from "@/components/listing/ListingGrid";
-import { cn } from "@/lib/utils/cn";
 import type { ConditionGrade, ProductCategory } from "@/types";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 export const metadata = {
   title: "Browse — Audiobaaz",
   description: "Browse condition-graded, escrow-protected secondhand audio gear.",
 };
+
+// ── Static maps ──────────────────────────────────────────────────────────────
 
 const CATEGORY_LABEL: Record<ProductCategory, string> = {
   iem:       "IEM",
@@ -50,70 +41,77 @@ const PRICE_LABEL: Record<PriceBucket, string> = {
   under_5k:  "Under ₹5,000",
   "5k_15k":  "₹5,000 – ₹15,000",
   "15k_30k": "₹15,000 – ₹30,000",
-  "30k_plus":"₹30,000+",
+  "30k_75k": "₹30,000 – ₹75,000",
+  "75k_plus":"₹75,000+",
 };
 
 const SORT_LABEL: Record<BrowseSort, string> = {
-  rating_desc: "Seller rating",
   newest:      "Newest",
   price_asc:   "Price ↑",
   price_desc:  "Price ↓",
+  rating_desc: "Seller rating",
   most_viewed: "Most viewed",
 };
+
+const SORT_ORDER: BrowseSort[] = ["newest", "price_asc", "price_desc", "rating_desc", "most_viewed"];
+
+const GRADE_ACTIVE: Record<string, { bg: string; color: string; border: string }> = {
+  S: { bg: "#DBEAFE", color: "#1D4ED8", border: "#1D4ED8" },
+  A: { bg: "#DCFCE7", color: "#15803D", border: "#15803D" },
+  B: { bg: "#FEF9C3", color: "#A16207", border: "#A16207" },
+  C: { bg: "#F3F4F6", color: "#374151", border: "#374151" },
+  D: { bg: "#FEE2E2", color: "#B91C1C", border: "#B91C1C" },
+};
+
+const GRADE_EXPLAINER = [
+  { grade: "S", title: "Sealed / Mint", desc: "Unopened or pristine. Original packaging, zero use. Indistinguishable from new.", bg: "#DBEAFE", color: "#1D4ED8" },
+  { grade: "A", title: "Like new",      desc: "Light use, no visible wear. May be missing minor accessories. Fully functional.", bg: "#DCFCE7", color: "#15803D" },
+  { grade: "B", title: "Good",          desc: "Normal signs of use. Minor cosmetic marks. Sounds and functions perfectly.",      bg: "#FEF9C3", color: "#A16207" },
+  { grade: "C", title: "Fair",          desc: "Visible wear but fully working. Clearly described and priced accordingly.",      bg: "#F3F4F6", color: "#374151" },
+];
+
+// ── Page ─────────────────────────────────────────────────────────────────────
 
 interface BrowsePageProps {
   searchParams: Record<string, string | string[] | undefined>;
 }
 
 export default async function BrowsePage({ searchParams }: BrowsePageProps) {
-  const filters = parseBrowseSearchParams(searchParams);
+  const filters  = parseBrowseSearchParams(searchParams);
   const listings = await getBrowseListings(filters);
 
-  // Helpers for building filter links — preserve everything else, toggle one key.
+  // Build a URL that preserves all current filters except the given overrides.
   const buildHref = (overrides: Record<string, string | undefined>) => {
     const merged: Record<string, string> = {};
-
-    // Re-emit the current filters back into the URL.
-    if (filters.categories && filters.categories.length > 0) {
-      merged.category = filters.categories.join(",");
-    }
-    if (filters.conditions && filters.conditions.length > 0) {
-      merged.condition = filters.conditions.join(",");
-    }
-    if (filters.priceBucket) merged.price = filters.priceBucket;
-    if (filters.negotiableOnly) merged.negotiable = "1";
-    if (filters.sort && filters.sort !== "rating_desc") merged.sort = filters.sort;
-
+    if (filters.categories?.length)              merged.category   = filters.categories.join(",");
+    if (filters.conditions?.length)              merged.condition  = filters.conditions.join(",");
+    if (filters.priceBucket)                     merged.price      = filters.priceBucket;
+    if (filters.negotiableOnly)                  merged.negotiable = "1";
+    if (filters.sort && filters.sort !== "newest") merged.sort     = filters.sort;
     for (const [k, v] of Object.entries(overrides)) {
-      if (v === undefined) {
-        delete merged[k];
-      } else {
-        merged[k] = v;
-      }
+      if (v === undefined) delete merged[k]; else merged[k] = v;
     }
-
     const qs = new URLSearchParams(merged).toString();
     return qs ? `/browse?${qs}` : "/browse";
   };
 
-  // Toggling a multi-select category or condition.
-  const toggleInList = (current: string[], value: string) =>
-    current.includes(value) ? current.filter((v) => v !== value) : [...current, value];
+  const toggle = (list: string[], val: string) =>
+    list.includes(val) ? list.filter(v => v !== val) : [...list, val];
 
-  const categoryHref = (c: ProductCategory) => {
-    const next = toggleInList(filters.categories ?? [], c);
+  const catHref   = (c: ProductCategory) => {
+    const next = toggle(filters.categories ?? [], c);
     return buildHref({ category: next.length ? next.join(",") : undefined });
   };
-  const conditionHref = (g: ConditionGrade) => {
-    const next = toggleInList(filters.conditions ?? [], g);
+  const condHref  = (g: ConditionGrade) => {
+    const next = toggle(filters.conditions ?? [], g);
     return buildHref({ condition: next.length ? next.join(",") : undefined });
   };
   const priceHref = (b: PriceBucket | undefined) => buildHref({ price: b });
-  const sortHref  = (s: BrowseSort) => buildHref({ sort: s === "rating_desc" ? undefined : s });
-  const negotiableHref = () => buildHref({ negotiable: filters.negotiableOnly ? undefined : "1" });
-  const clearAllHref   = () => "/browse";
+  const sortHref  = (s: BrowseSort) => buildHref({ sort: s === "newest" ? undefined : s });
+  const negHref   = () => buildHref({ negotiable: filters.negotiableOnly ? undefined : "1" });
 
-  const activeSort = filters.sort ?? "rating_desc";
+  const activeSort   = filters.sort ?? "newest";
+  const isAllCats    = !filters.categories?.length;
   const hasAnyFilter =
     (filters.categories?.length ?? 0) > 0 ||
     (filters.conditions?.length ?? 0) > 0 ||
@@ -121,167 +119,250 @@ export default async function BrowsePage({ searchParams }: BrowsePageProps) {
     !!filters.negotiableOnly;
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-      <header className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+    <>
+      {/* ── Page header ── */}
+      <div style={{
+        display: "flex", alignItems: "flex-end", justifyContent: "space-between",
+        padding: "36px 40px 20px", borderBottom: "1px solid #E8E8E4",
+      }}>
         <div>
-          <h1 className="font-heading text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-            Browse listings
+          <div style={{ fontSize: "10px", fontWeight: 600, letterSpacing: "0.14em", textTransform: "uppercase", color: "#999", marginBottom: "6px" }}>
+            {listings.length} {listings.length === 1 ? "listing" : "listings"} live right now
+          </div>
+          <h1 style={{ fontSize: "32px", fontWeight: 900, letterSpacing: "-0.04em", lineHeight: 1 }}>
+            Browse{" "}
+            <em style={{ fontFamily: "var(--font-serif)", fontStyle: "italic", fontWeight: 400 }}>listings</em>
           </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {listings.length} {listings.length === 1 ? "listing" : "listings"}
-            {hasAnyFilter ? " match your filters" : " live right now"}.
-          </p>
         </div>
-
-        {/* Sort */}
-        <div className="flex flex-wrap items-center gap-1 rounded-lg border border-border bg-surface p-1 text-xs">
-          {VALID_SORTS.map((s) => {
-            const isActive = activeSort === s;
+        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+          <span style={{ fontSize: "10px", fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: "#999", marginRight: "4px" }}>
+            Sort
+          </span>
+          {SORT_ORDER.map(s => {
+            const on = activeSort === s;
             return (
               <Link
                 key={s}
                 href={sortHref(s)}
-                aria-current={isActive ? "true" : undefined}
-                className={cn(
-                  "rounded-md px-2.5 py-1.5 font-medium transition-colors",
-                  isActive
-                    ? "bg-accent text-black"
-                    : "text-muted-foreground hover:text-foreground"
-                )}
+                style={{
+                  fontSize: "11px", fontWeight: 600, letterSpacing: "0.06em",
+                  padding: "6px 14px",
+                  border: `1.5px solid ${on ? "#0a0a0a" : "#E8E8E4"}`,
+                  color: on ? "#ffffff" : "#666",
+                  background: on ? "#0a0a0a" : "#ffffff",
+                  textTransform: "uppercase", whiteSpace: "nowrap",
+                  textDecoration: "none", display: "inline-block",
+                }}
               >
                 {SORT_LABEL[s]}
               </Link>
             );
           })}
         </div>
-      </header>
+      </div>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[220px_1fr]">
+      {/* ── Browse body ── */}
+      <div style={{ display: "grid", gridTemplateColumns: "240px 1fr", minHeight: "calc(100vh - 220px)" }}>
+
         {/* Sidebar */}
-        <aside className="flex flex-col gap-6 lg:sticky lg:top-20 lg:self-start">
-          {hasAnyFilter && (
-            <Link
-              href={clearAllHref()}
-              className="text-xs font-medium text-accent hover:underline"
-            >
-              Clear all filters
-            </Link>
-          )}
+        <aside style={{ borderRight: "1px solid #E8E8E4", padding: "28px 24px", position: "sticky", top: "60px", height: "fit-content" }}>
 
-          <FilterGroup title="Category">
-            <div className="flex flex-wrap gap-1.5">
-              {VALID_CATEGORIES.map((c) => {
-                const isActive = filters.categories?.includes(c);
-                return (
-                  <Link
-                    key={c}
-                    href={categoryHref(c)}
-                    className={chipClass(isActive)}
-                  >
-                    {CATEGORY_LABEL[c]}
-                  </Link>
-                );
-              })}
+          {/* Category */}
+          <div style={{ marginBottom: "28px" }}>
+            <div style={LABEL_STYLE}>Category</div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
+              <Link href="/browse" style={chipStyle(isAllCats)}>All</Link>
+              {(VALID_CATEGORIES as ProductCategory[]).map(c => (
+                <Link key={c} href={catHref(c)} style={chipStyle(filters.categories?.includes(c))}>
+                  {CATEGORY_LABEL[c]}
+                </Link>
+              ))}
             </div>
-          </FilterGroup>
+          </div>
 
-          <FilterGroup title="Condition">
-            <div className="flex flex-wrap gap-1.5">
-              {VALID_CONDITIONS.map((g) => {
-                const isActive = filters.conditions?.includes(g);
+          <Rule />
+
+          {/* Condition */}
+          <div style={{ marginBottom: "28px" }}>
+            <div style={LABEL_STYLE}>Condition</div>
+            <div style={{ display: "flex", gap: "6px" }}>
+              {(["S", "A", "B", "C"] as ConditionGrade[]).map(g => {
+                const on = filters.conditions?.includes(g);
+                const a  = GRADE_ACTIVE[g];
                 return (
                   <Link
                     key={g}
-                    href={conditionHref(g)}
-                    className={chipClass(isActive)}
+                    href={condHref(g)}
+                    style={{
+                      width: "36px", height: "36px",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      fontSize: "12px", fontWeight: 800,
+                      textDecoration: "none", flexShrink: 0,
+                      border: `1.5px solid ${on ? a.border : "#E8E8E4"}`,
+                      background: on ? a.bg : "#fff",
+                      color: on ? a.color : "#0a0a0a",
+                    }}
                   >
                     {g}
                   </Link>
                 );
               })}
             </div>
-          </FilterGroup>
+          </div>
 
-          <FilterGroup title="Price">
-            <div className="flex flex-col gap-1">
-              <Link
-                href={priceHref(undefined)}
-                className={priceItemClass(!filters.priceBucket)}
-              >
-                Any price
+          <Rule />
+
+          {/* Price */}
+          <div style={{ marginBottom: "28px" }}>
+            <div style={LABEL_STYLE}>Price</div>
+            <PriceOpt href={priceHref(undefined)} active={!filters.priceBucket} last={false}>Any price</PriceOpt>
+            {VALID_PRICE_BUCKETS.map((b, i) => (
+              <PriceOpt key={b} href={priceHref(b)} active={filters.priceBucket === b} last={i === VALID_PRICE_BUCKETS.length - 1}>
+                {PRICE_LABEL[b]}
+              </PriceOpt>
+            ))}
+          </div>
+
+          <Rule />
+
+          {/* Negotiable */}
+          <div style={{ marginBottom: "28px" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <span style={{ fontSize: "12px", fontWeight: 400, color: "#666" }}>Negotiable only</span>
+              <Link href={negHref()} style={{ textDecoration: "none" }}>
+                <div style={{ width: "36px", height: "20px", background: filters.negotiableOnly ? "#E8FF4D" : "#E8E8E4", borderRadius: "10px", position: "relative" }}>
+                  <div style={{ position: "absolute", width: "14px", height: "14px", background: "#fff", borderRadius: "50%", top: "3px", left: filters.negotiableOnly ? "19px" : "3px", boxShadow: "0 1px 3px rgba(0,0,0,0.15)" }} />
+                </div>
               </Link>
-              {VALID_PRICE_BUCKETS.map((b) => (
-                <Link
-                  key={b}
-                  href={priceHref(b)}
-                  className={priceItemClass(filters.priceBucket === b)}
-                >
-                  {PRICE_LABEL[b]}
-                </Link>
-              ))}
             </div>
-          </FilterGroup>
+          </div>
 
-          <FilterGroup title="Other">
-            <Link
-              href={negotiableHref()}
-              className={cn(
-                "inline-flex items-center gap-2 rounded-md border px-3 py-1.5 text-xs font-medium transition-colors",
-                filters.negotiableOnly
-                  ? "border-accent bg-accent/10 text-accent"
-                  : "border-border bg-surface text-muted-foreground hover:text-foreground"
-              )}
-            >
-              <span
-                className={cn(
-                  "h-3 w-3 rounded-sm border",
-                  filters.negotiableOnly
-                    ? "border-accent bg-accent"
-                    : "border-border"
-                )}
-                aria-hidden
-              />
-              Negotiable only
-            </Link>
-          </FilterGroup>
+          <Rule />
+
+          <Link href="/browse" style={{ fontSize: "10px", fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: "#999", textDecoration: "none", borderBottom: "1px solid #E8E8E4", paddingBottom: "1px", display: "inline-block", marginTop: "4px" }}>
+            Reset filters
+          </Link>
         </aside>
 
-        {/* Grid */}
-        <ListingGrid>
-          {listings.map((l, i) => (
-            <ListingCard key={l.id} listing={l} priority={i < 4} />
-          ))}
-        </ListingGrid>
+        {/* Main */}
+        <main>
+          {listings.length > 0 ? (
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)" }}>
+              {listings.map((l, i) => (
+                <ListingCard key={l.id} listing={l} priority={i < 3} />
+              ))}
+            </div>
+          ) : (
+            <>
+              {/* Empty state */}
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "440px", gap: "20px", borderBottom: "1px solid #E8E8E4", padding: "60px 40px", textAlign: "center" }}>
+                <svg width="80" height="80" viewBox="0 0 80 80" fill="none" style={{ opacity: 0.12 }}>
+                  <circle cx="40" cy="32" r="18" stroke="#0a0a0a" strokeWidth="2.5"/>
+                  <path d="M22 32 Q22 54 40 54 Q58 54 58 32" stroke="#0a0a0a" strokeWidth="2.5" fill="none"/>
+                  <rect x="17" y="27" width="7" height="12" rx="1.5" stroke="#0a0a0a" strokeWidth="2" fill="none"/>
+                  <rect x="56" y="27" width="7" height="12" rx="1.5" stroke="#0a0a0a" strokeWidth="2" fill="none"/>
+                </svg>
+                <div style={{ fontSize: "18px", fontWeight: 800, letterSpacing: "-0.03em" }}>No listings yet.</div>
+                <div style={{ fontSize: "13px", color: "#999", lineHeight: 1.6, maxWidth: "300px" }}>
+                  Be the first to list your gear. Every listing is condition-graded and escrow-protected.
+                </div>
+                <div style={{ display: "flex", gap: "10px", marginTop: "4px" }}>
+                  <Link href="/sell/new" style={{ background: "#E8FF4D", color: "#0a0a0a", padding: "11px 24px", fontSize: "11px", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", textDecoration: "none", display: "inline-block" }}>
+                    List your gear
+                  </Link>
+                  <Link href="/how-it-works" style={{ border: "1.5px solid #E8E8E4", color: "#666", padding: "11px 24px", fontSize: "11px", fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", textDecoration: "none", display: "inline-block" }}>
+                    How it works
+                  </Link>
+                </div>
+              </div>
+
+              {/* Notify strip */}
+              <div style={{ margin: "24px 32px", border: "1px solid #E8E8E4", padding: "20px 24px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "20px" }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: "9px", fontWeight: 700, letterSpacing: "0.16em", textTransform: "uppercase", color: "#999", marginBottom: "5px" }}>Early access</div>
+                  <div style={{ fontSize: "14px", fontWeight: 700, letterSpacing: "-0.02em" }}>Get notified when listings go live</div>
+                  <div style={{ fontSize: "12px", color: "#666", marginTop: "3px", lineHeight: 1.5 }}>{"We'll email you the moment gear matching your filters is listed. No spam."}</div>
+                </div>
+                <form style={{ display: "flex" }}>
+                  <input
+                    type="email"
+                    name="email"
+                    placeholder="your@email.com"
+                    style={{ fontFamily: "inherit", fontSize: "12px", padding: "9px 14px", border: "1.5px solid #0a0a0a", borderRight: "none", outline: "none", width: "220px", color: "#0a0a0a", background: "#fff" }}
+                  />
+                  <button
+                    type="submit"
+                    style={{ background: "#0a0a0a", color: "#fff", border: "none", padding: "9px 18px", fontSize: "11px", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", cursor: "pointer", whiteSpace: "nowrap" }}
+                  >
+                    Notify me
+                  </button>
+                </form>
+              </div>
+
+              {/* Grade explainer */}
+              <div style={{ borderTop: "1px solid #E8E8E4" }}>
+                <div style={{ padding: "20px 32px 0" }}>
+                  <div style={{ fontSize: "9px", fontWeight: 700, letterSpacing: "0.16em", textTransform: "uppercase", color: "#999", marginBottom: "6px" }}>How we grade</div>
+                  <div style={{ fontSize: "14px", fontWeight: 700, letterSpacing: "-0.02em", marginBottom: "16px" }}>Every listing condition-verified before going live</div>
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", borderTop: "1px solid #E8E8E4" }}>
+                  {GRADE_EXPLAINER.map((item, i) => (
+                    <div key={item.grade} style={{ padding: "16px 24px", borderRight: i < GRADE_EXPLAINER.length - 1 ? "1px solid #E8E8E4" : "none" }}>
+                      <div style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: "28px", height: "28px", fontSize: "13px", fontWeight: 800, background: item.bg, color: item.color, marginBottom: "8px" }}>
+                        {item.grade}
+                      </div>
+                      <div style={{ fontSize: "11px", fontWeight: 700, marginBottom: "4px" }}>{item.title}</div>
+                      <div style={{ fontSize: "11px", color: "#666", lineHeight: 1.5 }}>{item.desc}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
+        </main>
       </div>
-    </div>
+    </>
   );
 }
 
-function FilterGroup({ title, children }: { title: string; children: React.ReactNode }) {
+// ── Sidebar helpers ───────────────────────────────────────────────────────────
+
+const LABEL_STYLE: React.CSSProperties = {
+  fontSize: "9px", fontWeight: 700, letterSpacing: "0.18em",
+  textTransform: "uppercase", color: "#999", marginBottom: "12px",
+};
+
+function Rule() {
+  return <div style={{ height: "1px", background: "#E8E8E4", margin: "4px 0 24px" }} />;
+}
+
+function chipStyle(active: boolean | undefined): React.CSSProperties {
+  return {
+    fontSize: "11px", fontWeight: 500, padding: "5px 12px",
+    border: `1px solid ${active ? "#0a0a0a" : "#E8E8E4"}`,
+    color: active ? "#fff" : "#666",
+    background: active ? "#0a0a0a" : "#fff",
+    textDecoration: "none", display: "inline-block", letterSpacing: "0.01em",
+  };
+}
+
+function PriceOpt({ href, active, last, children }: { href: string; active: boolean; last: boolean; children: React.ReactNode }) {
   return (
-    <section>
-      <h2 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-dim-foreground">
-        {title}
-      </h2>
+    <Link
+      href={href}
+      style={{
+        fontSize: "12px", fontWeight: active ? 600 : 400,
+        color: active ? "#0a0a0a" : "#666",
+        padding: "9px 0",
+        borderBottom: last ? "none" : "1px solid #E8E8E4",
+        display: "flex", alignItems: "center", gap: "8px",
+        textDecoration: "none",
+      }}
+    >
+      {active && (
+        <span style={{ width: "3px", height: "3px", borderRadius: "50%", background: "#E8FF4D", flexShrink: 0, boxShadow: "0 0 4px #E8FF4D" }} />
+      )}
       {children}
-    </section>
-  );
-}
-
-function chipClass(active: boolean | undefined): string {
-  return cn(
-    "rounded-md border px-2.5 py-1 text-xs font-medium transition-colors",
-    active
-      ? "border-accent bg-accent/10 text-accent"
-      : "border-border bg-surface text-muted-foreground hover:text-foreground"
-  );
-}
-
-function priceItemClass(active: boolean): string {
-  return cn(
-    "rounded-md px-2 py-1.5 text-xs font-medium transition-colors",
-    active
-      ? "bg-accent/10 text-accent"
-      : "text-muted-foreground hover:bg-surface hover:text-foreground"
+    </Link>
   );
 }

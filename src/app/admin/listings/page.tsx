@@ -4,80 +4,69 @@ import Link from 'next/link';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { formatPrice, formatDate } from '@/lib/utils/formatting';
 
-const conditionColors: Record<string, string> = {
-  S: 'text-accent',
-  A: 'text-success',
-  B: 'text-blue-400',
-  C: 'text-warning',
-  D: 'text-error',
+const GRADE_STYLE: Record<string, { background: string; color: string }> = {
+  S: { background: '#DBEAFE', color: '#1D4ED8' },
+  A: { background: '#DCFCE7', color: '#15803D' },
+  B: { background: '#FEF9C3', color: '#A16207' },
+  C: { background: '#F3F4F6', color: '#374151' },
+  D: { background: '#FEE2E2', color: '#B91C1C' },
 };
 
 export default async function AdminListingsPage() {
   const supabase = createAdminClient();
-
   const { data: listings } = await supabase
     .from('listings')
-    .select(`
-      id, product_name, brand, category, condition_grade,
-      asking_price, photos, status, created_at,
-      users!seller_id ( full_name, city )
-    `)
+    .select(`id, product_name, brand, category, condition_grade, asking_price, photos, status, created_at, users!seller_id ( full_name, city )`)
     .eq('status', 'pending')
     .order('created_at', { ascending: true });
 
   return (
-    <div>
-      <h1 className="mb-6 font-heading text-2xl font-bold text-foreground">
-        Review Queue
-        {listings?.length ? (
-          <span className="ml-3 rounded-full bg-accent px-2.5 py-0.5 font-mono text-sm font-bold text-black">
-            {listings.length}
-          </span>
-        ) : null}
-      </h1>
+    <>
+      <div style={{ padding: '32px 40px 24px', borderBottom: '1px solid #E8E8E4', display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>
+        <div>
+          <div style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#999', marginBottom: '6px' }}>Admin panel</div>
+          <h1 style={{ fontSize: '28px', fontWeight: 900, letterSpacing: '-0.04em', lineHeight: 1 }}>Review queue</h1>
+        </div>
+        {!!listings?.length && (
+          <span style={{ background: '#0a0a0a', color: '#E8FF4D', fontSize: '13px', fontWeight: 700, padding: '4px 12px' }}>{listings.length}</span>
+        )}
+      </div>
 
       {!listings?.length ? (
-        <p className="text-text-2">No listings pending review.</p>
+        <div style={{ padding: '56px 40px', textAlign: 'center' }}>
+          <div style={{ fontSize: '13px', color: '#999' }}>No listings pending review.</div>
+        </div>
       ) : (
-        <ul className="space-y-3">
-          {listings.map((l) => {
+        <div>
+          {listings.map(l => {
             const sellerRaw = Array.isArray(l.users) ? l.users[0] : l.users;
             const seller = sellerRaw as { full_name: string | null; city: string | null } | null;
+            const grade = GRADE_STYLE[l.condition_grade] ?? GRADE_STYLE.D;
             return (
-              <li key={l.id}>
-                <Link
-                  href={`/admin/listings/${l.id}`}
-                  className="flex items-center gap-4 rounded-xl border border-border bg-surface p-4 transition-colors hover:bg-surface-2"
-                >
+              <Link key={l.id} href={`/admin/listings/${l.id}`}
+                style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '16px 40px', borderBottom: '1px solid #E8E8E4', textDecoration: 'none', color: 'inherit' }}
+                className="hover:bg-[#FAFAF8] transition-colors"
+              >
+                <div style={{ width: '56px', height: '56px', flexShrink: 0, overflow: 'hidden', background: '#F5F5F2' }}>
                   {l.photos?.[0] && (
-                    <img
-                      src={l.photos[0]}
-                      alt={l.product_name}
-                      className="h-16 w-16 shrink-0 rounded-lg object-cover"
-                    />
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={l.photos[0]} alt="" style={{ width: '56px', height: '56px', objectFit: 'cover' }} />
                   )}
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate font-medium text-foreground">{l.product_name}</p>
-                    <p className="text-sm text-text-2">
-                      {l.brand} · {l.category.replace('_', '+')}
-                      {seller?.city ? ` · ${seller.city}` : ''}
-                    </p>
-                    <p className="text-xs text-text-2">
-                      {seller?.full_name ?? 'Unknown seller'} · Submitted {formatDate(l.created_at)}
-                    </p>
-                  </div>
-                  <div className="shrink-0 text-right">
-                    <p className="font-mono font-bold text-accent">{formatPrice(l.asking_price)}</p>
-                    <p className={['text-sm font-bold', conditionColors[l.condition_grade]].join(' ')}>
-                      {l.condition_grade}
-                    </p>
-                  </div>
-                </Link>
-              </li>
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: '13px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '-0.01em', marginBottom: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.product_name}</div>
+                  <div style={{ fontSize: '10px', color: '#666' }}>{l.brand} · {l.category.replace('_', '+')}{seller?.city ? ` · ${seller.city}` : ''}</div>
+                  <div style={{ fontSize: '10px', color: '#999', marginTop: '1px' }}>{seller?.full_name ?? 'Unknown'} · Submitted {formatDate(l.created_at)}</div>
+                </div>
+                <div style={{ flexShrink: 0, textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px' }}>
+                  <span style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '14px', fontWeight: 800 }}>{formatPrice(l.asking_price)}</span>
+                  <span style={{ ...grade, fontSize: '9px', fontWeight: 700, padding: '2px 8px' }}>{l.condition_grade}</span>
+                </div>
+              </Link>
             );
           })}
-        </ul>
+        </div>
       )}
-    </div>
+    </>
   );
 }

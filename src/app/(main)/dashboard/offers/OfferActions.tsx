@@ -19,18 +19,18 @@ export function OfferActions({ offerId }: { offerId: string }) {
   }
 
   return (
-    <div className="flex shrink-0 gap-2">
+    <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
       <button
         disabled={!!loading}
         onClick={() => handle('accept')}
-        className="h-9 rounded-lg border border-success/30 bg-success/10 px-4 text-sm font-medium text-success transition-colors hover:bg-success/20 disabled:opacity-50"
+        style={{ background: '#E8FF4D', color: '#0a0a0a', border: 'none', padding: '10px 20px', fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', cursor: 'pointer', opacity: !!loading ? 0.5 : 1 }}
       >
         {loading === 'accept' ? '…' : 'Accept'}
       </button>
       <button
         disabled={!!loading}
         onClick={() => handle('decline')}
-        className="h-9 rounded-lg border border-error/30 bg-error/10 px-4 text-sm font-medium text-error transition-colors hover:bg-error/20 disabled:opacity-50"
+        style={{ background: '#fff', color: '#B91C1C', border: '1px solid #FECACA', padding: '10px 20px', fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', cursor: 'pointer', opacity: !!loading ? 0.5 : 1 }}
       >
         {loading === 'decline' ? '…' : 'Decline'}
       </button>

@@ -21,7 +21,7 @@ export function ResubmitButton({ listingId }: { listingId: string }) {
     <button
       onClick={handleResubmit}
       disabled={loading}
-      className="rounded-md border border-accent/40 bg-accent/5 px-3 py-1 text-xs text-accent transition-colors hover:bg-accent/10 disabled:opacity-50"
+      style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#0a0a0a', background: '#E8FF4D', border: 'none', padding: '3px 10px', cursor: 'pointer', opacity: loading ? 0.5 : 1 }}
     >
       {loading ? '…' : 'Edit & resubmit'}
     </button>
