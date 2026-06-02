@@ -1,6 +1,6 @@
 # UI Redesign — Context File
 **Branch:** feature/ui-redesign
-**Last updated:** 2026-05-30
+**Last updated:** 2026-06-02
 
 ---
 
@@ -63,13 +63,23 @@ src/components/layout/Footer.tsx        Minimal footer with Lapidaria credit
 
 ### Modified
 ```
-src/app/globals.css          Light theme tokens, sharp-corner rule, abw-* CSS
+src/app/globals.css          Light theme tokens, sharp-corner rule, hbw-* CSS,
+                               driftL/driftR keyframes + login-row-* classes
 src/app/layout.tsx           Instrument Serif added, DM Sans kept as fallback
 src/app/page.tsx             Full homepage redesign (see Homepage Structure below)
+src/app/(auth)/login/page.tsx  Two-column login redesign: dark panel with real
+                               product photo cards (driftL/driftR rows), white form panel
 src/components/layout/Nav.tsx            60px, full-bleed 40px, vinyl logo
 src/components/layout/ProfileMenu.tsx   Avatar updated for light bg (#0a0a0a)
 src/components/listing/ListingCard.tsx  Newspaper grid style, sharp corners
 tailwind.config.ts           serif font family added (var(--font-serif))
+```
+
+### New static assets
+```
+public/images/signin-ie.png   IEM product photo (Audeze-style, black bg)
+public/images/signin-hp.png   Headphone product photo (Bose QC35, black bg)
+public/images/signin-sp.png   Speaker product photo (bookshelf, black bg)
 ```
 
 ---
@@ -119,6 +129,33 @@ audiobaaz_logo.html      Original animated logo HTML
 audiobaaz_mockup.html    Full page layout mockup
 audiobaaz_waveform.html  Waveform + review cards panel mockup
 ```
+
+---
+
+## Login Page Design
+
+Two-column layout, full viewport height:
+
+```
+Nav (60px) — Logo left | Browse · [Sell With Us] right
+
+Left column (#0a0a0a):
+  ├─ Eyebrow: green dot · "Managed · Verified · Trusted"
+  ├─ Headline: "Serious gear." (900 weight) + italic serif "Waiting for you." (#E8FF4D)
+  ├─ Two sliding card rows (CSS driftL 30s / driftR 24s, pauses on hover)
+  │    Cards: real product photos, 190×154px image area, grade badge
+  └─ Footer: "Sign in to browse all listings →"
+
+Right column (#fff):
+  └─ Welcome back · Sign in headline · Google OAuth button ·
+     OR divider · email input · magic link submit · footer legal
+```
+
+Card row implementation:
+- `.login-row-wrap` applies the mask-image fade on left/right edges
+- `.login-row-track` / `.login-row-track-rev` hold doubled arrays for seamless loop
+- Keyframes in `globals.css`: `driftL` (0→−50%) and `driftR` (−50%→0)
+- Hover on wrapper pauses both track classes via CSS parent-child selector
 
 ---
 

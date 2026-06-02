@@ -80,47 +80,86 @@
 
   a { color: inherit; text-decoration: none; }
 
-/* ── HeroWaveform review cards ───────────────────────────── */
-.abw-review {
+/* ── HeroWaveform bubble ── */
+.hbw-bubble {
   position: absolute;
   background: #ffffff;
-  border: 1px solid #E8E8E4;
+  border: 1.5px solid #E8E8E4;
+  border-radius: 16px;
   padding: 14px 16px;
-  max-width: 196px;
-  opacity: 0;
-  transform: translateY(8px);
-  transition: opacity 1.4s cubic-bezier(0.4,0,0.2,1),
-              transform 1.4s cubic-bezier(0.4,0,0.2,1);
+  width: 216px;
+  box-shadow: 0 6px 28px rgba(0,0,0,0.09);
   pointer-events: none;
+  opacity: 0;
 }
-.abw-review::before {
+.hbw-bubble::before {
   content: '';
   position: absolute;
-  top: 0; left: 0; right: 0;
-  height: 2px;
+  top: -1.5px; left: 20px; right: 20px;
+  height: 2.5px;
   background: #E8FF4D;
+  border-radius: 2px;
 }
-.abw-review.abw-visible { opacity: 1; transform: translateY(0); }
-.abw-review.abw-fading  {
-  opacity: 0;
-  transform: translateY(-6px);
-  transition: opacity 1.6s cubic-bezier(0.4,0,0.2,1),
-              transform 1.6s cubic-bezier(0.4,0,0.2,1);
-}
-.abw-dot {
+.hbw-bubble::after {
+  content: '';
   position: absolute;
-  width: 6px; height: 6px;
-  border-radius: 50%;
-  background: #E8FF4D;
-  box-shadow: 0 0 6px rgba(232,255,77,0.8);
-  opacity: 0;
-  transition: opacity 1.4s ease;
-  pointer-events: none;
-  transform: translate(-50%, -50%);
+  width: 0; height: 0;
+  border: 10px solid transparent;
 }
-.abw-dot.abw-dot-visible { opacity: 1; }
+.hbw-bubble.corner-tl { top: 24px; left: 24px; }
+.hbw-bubble.corner-tr { top: 24px; right: 24px; }
+.hbw-bubble.corner-bl { bottom: 24px; left: 24px; }
+.hbw-bubble.corner-br { bottom: 24px; right: 24px; }
+.hbw-bubble.corner-tl::after { bottom: -18px; left: 24px; border-top-color: #E8E8E4; border-bottom-width: 0; }
+.hbw-bubble.corner-tr::after { bottom: -18px; right: 24px; border-top-color: #E8E8E4; border-bottom-width: 0; }
+.hbw-bubble.corner-bl::after { top: -18px; left: 24px; border-bottom-color: #E8E8E4; border-top-width: 0; }
+.hbw-bubble.corner-br::after { top: -18px; right: 24px; border-bottom-color: #E8E8E4; border-top-width: 0; }
 }
 
 @layer utilities {
   .text-balance { text-wrap: balance; }
+}
+
+/* ── HeroWaveform keyframes + animation classes ── */
+@keyframes hbw-slideInTL  { from { opacity:0; transform:translate(-16px,-16px) scale(.96); } to { opacity:1; transform:translate(0,0) scale(1); } }
+@keyframes hbw-slideInTR  { from { opacity:0; transform:translate(16px,-16px) scale(.96);  } to { opacity:1; transform:translate(0,0) scale(1); } }
+@keyframes hbw-slideInBL  { from { opacity:0; transform:translate(-16px,16px) scale(.96);  } to { opacity:1; transform:translate(0,0) scale(1); } }
+@keyframes hbw-slideInBR  { from { opacity:0; transform:translate(16px,16px) scale(.96);   } to { opacity:1; transform:translate(0,0) scale(1); } }
+@keyframes hbw-slideOutTL { from { opacity:1; transform:translate(0,0) scale(1); } to { opacity:0; transform:translate(-12px,-12px) scale(.97); } }
+@keyframes hbw-slideOutTR { from { opacity:1; transform:translate(0,0) scale(1); } to { opacity:0; transform:translate(12px,-12px) scale(.97);  } }
+@keyframes hbw-slideOutBL { from { opacity:1; transform:translate(0,0) scale(1); } to { opacity:0; transform:translate(-12px,12px) scale(.97);  } }
+@keyframes hbw-slideOutBR { from { opacity:1; transform:translate(0,0) scale(1); } to { opacity:0; transform:translate(12px,12px) scale(.97);   } }
+.hbw-bubble.in-tl  { animation: hbw-slideInTL  1.1s cubic-bezier(.22,1,.36,1) forwards; }
+.hbw-bubble.in-tr  { animation: hbw-slideInTR  1.1s cubic-bezier(.22,1,.36,1) forwards; }
+.hbw-bubble.in-bl  { animation: hbw-slideInBL  1.1s cubic-bezier(.22,1,.36,1) forwards; }
+.hbw-bubble.in-br  { animation: hbw-slideInBR  1.1s cubic-bezier(.22,1,.36,1) forwards; }
+.hbw-bubble.out-tl { animation: hbw-slideOutTL 1.0s cubic-bezier(.4,0,.2,1) forwards; }
+.hbw-bubble.out-tr { animation: hbw-slideOutTR 1.0s cubic-bezier(.4,0,.2,1) forwards; }
+.hbw-bubble.out-bl { animation: hbw-slideOutBL 1.0s cubic-bezier(.4,0,.2,1) forwards; }
+.hbw-bubble.out-br { animation: hbw-slideOutBR 1.0s cubic-bezier(.4,0,.2,1) forwards; }
+
+/* ── Login page sliding card rows ─────────────────────────────────────────── */
+@keyframes driftL { from { transform: translateX(0);    } to { transform: translateX(-50%); } }
+@keyframes driftR { from { transform: translateX(-50%); } to { transform: translateX(0);    } }
+
+.login-row-wrap {
+  overflow: hidden;
+  mask-image: linear-gradient(to right, transparent 0%, black 10%, black 82%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to right, transparent 0%, black 10%, black 82%, transparent 100%);
+}
+.login-row-track {
+  display: flex;
+  gap: 16px;
+  width: max-content;
+  animation: driftL 30s linear infinite;
+}
+.login-row-track-rev {
+  display: flex;
+  gap: 16px;
+  width: max-content;
+  animation: driftR 24s linear infinite;
+}
+.login-row-wrap:hover .login-row-track,
+.login-row-wrap:hover .login-row-track-rev {
+  animation-play-state: paused;
 }
