@@ -283,6 +283,20 @@ in `ENGINEERING.md` under "Development Utilities".
 **Resolution (long-term):** Google OAuth as the primary auth path —
 no email sent, no rate limit. Magic link kept as a fallback.
 
+### 6 — Nixpacks (Dokploy) builds with Node 18, causing EBADENGINE warnings
+
+**Symptom:** `npm warn EBADENGINE` for `@supabase/supabase-js`, `eslint-visitor-keys`
+etc., and `⚠️ Node.js 18 and below are deprecated` from Supabase during `next build`.
+
+**Root cause:** Nixpacks defaults to Node 18 when no version is specified.
+
+**Resolution:** `.node-version` file in the repo root with content `20`. Nixpacks
+reads this and pins the build to Node 20, eliminating all engine warnings.
+
+**Avoid going forward:** Always keep `.node-version` (or `engines.node` in
+`package.json`) in sync with the minimum Node version required by the app's
+dependencies. Check with `npm run build` locally after any major dep upgrade.
+
 ---
 
 ## Operational Runbooks

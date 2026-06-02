@@ -27,7 +27,8 @@
 | Payments | Razorpay (test keys for V1) |
 | Shipping | Shiprocket |
 | Notifications | Telegram Bot API |
-| Hosting | Ubuntu VPS + Nginx + PM2 |
+| Hosting | Dokploy (VPS) + Vercel |
+| Node.js | **20** (`.node-version` in repo root — Nixpacks reads this) |
 | Styling | Tailwind CSS + CSS variables |
 | Language | TypeScript throughout |
 
