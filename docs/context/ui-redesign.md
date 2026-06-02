@@ -1,6 +1,7 @@
 # UI Redesign — Context File
 **Branch:** feature/ui-redesign
-**Last updated:** 2026-06-02 (session 2)
+**Last updated:** 2026-06-02 (session 3)
+**Status:** VALIDATED — lifecycle runbook scenarios A–H all pass. Ready to merge to `dev`.
 
 ---
 
@@ -248,10 +249,26 @@ Mockup showed only S, A, B, C. Internal spec (ENGINEERING.md) defines S through 
 
 ---
 
-## Next Steps (if this direction is approved)
+## Validation (session 3 — 2026-06-02)
 
-1. Apply light theme to all other pages: listing detail, checkout, orders
+Lifecycle runbook scenarios A–H executed against `ui.audiobaaz.com` (Dokploy deployment).
+All pass. Full results: `docs/reviews/lifecycle-validation-results.md`.
+
+Issues found and fixed during validation:
+- `webhook_events` table missing from deployed Supabase — applied via pg-meta DDL
+- Auth callback + webhook-replay using `req.nextUrl.origin` (resolves to `localhost:3000`
+  behind Cloudflare reverse proxy) — fixed to use `NEXT_PUBLIC_APP_URL` first
+- `ENABLE_DEV_ROUTES=true` guard added to dev routes so they work on production-mode
+  Dokploy deployments
+- `hashed_token` added to `/api/dev/sign-in` response for server-side auth exchange
+- `/api/dev/approve-listing` endpoint added for validation test setup
+
+**Gate closed. Branch is ready to merge `feature/ui-redesign → dev`.**
+
+## Next Steps (post-merge)
+
+1. Apply light theme to remaining pages: listing detail, checkout, orders
 2. Mobile responsive breakpoints (hero stacks vertically, 2-col grids stack below 768px)
 3. Replace mock ticker items with real listing data
-4. Add `/admin` link to nav for admin users (same as dark theme implementation)
+4. Add `/admin` link to nav for admin users
 5. ListingForm: mobile layout (sidebar collapses to top progress bar on narrow screens)

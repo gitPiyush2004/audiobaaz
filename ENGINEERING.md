@@ -209,9 +209,9 @@ These are final. Do not suggest alternatives.
 | Person 1 | AI coding tool | Seller flow + dashboard | COMPLETE — onboarding, nav profile menu, rejected listings tab, resubmit flow, Google OAuth on login page (commit 15ff3f1). Magic-link OTP retained as fallback. See docs/context/seller-flow.md |
 | Person 2 | Kiro | Buyer flow + listing page | READY TO MERGE — full lifecycle tested on `feature/order-lifecycle-shipping`: checkout (dev simulator) → escrow → seller shipment → tracking → delivery → inspection → confirm receipt (completed) + dispute flow. tsc + next build clean. Pending: Vercel env var `PAYMENT_PROVIDER=dev` for dev.audiobaaz.com, Supabase CLI setup for migration tracking. See docs/context/buyer-flow.md |
 | Person 3 | - | Admin panel | MERGED to dev — core panel complete (listings review, disputes, users, payouts queue + history). Orders monitor remains a stub. Vercel build lint failures resolved in commit e0d84e4. See docs/context/admin-panel.md |
-| Person 4 | AI coding tool | Payments + shipping | PARTIALLY MERGED — Phase 1 schema substrate merged via PR #2 (commit 230d9ae), Phase 2 Razorpay routes merged via PR #3 (commit 7b294e9). Active branch `feature/order-lifecycle-shipping` carries: `PaymentProvider` abstraction (RazorpayPaymentProvider + DevPaymentProvider), `ShippingProvider` abstraction (MockShippingProvider; ShiprocketProvider deferred), shipping migration 007 (shipments + shipment_events + mock_shipments + RPCs), seller shipment flow, OrderTimeline + ShipmentTracking components, dev simulation routes. **Migration 007 + race-loser refund path validated against real local Postgres 16 (smoke tests in `supabase/tests/`).** Lifecycle scenarios A–H pending against `dev.audiobaaz.com`. PR #4 (`feature/checkout-razorpay-wire`) is superseded by this branch and should be closed. See docs/context/payments-shipping.md and docs/V1-LAUNCH.md. |
+| Person 4 | AI coding tool | Payments + shipping | VALIDATED — lifecycle runbook scenarios A–H all pass on `ui.audiobaaz.com` (2026-06-02). All transaction-engine code lives on `feature/order-lifecycle-shipping` (absorbed into `feature/ui-redesign`). Ready to merge. See docs/context/payments-shipping.md, docs/reviews/lifecycle-validation-results.md, and docs/V1-LAUNCH.md. |
 | Project | — | Deployment + domain + auth infrastructure | LIVE — production at audiobaaz.com, dev at dev.audiobaaz.com, both on Vercel with Cloudflare DNS + Email Routing. Magic-link + Google OAuth wired through Supabase. See docs/DEPLOYMENT.md |
-| Design | AI coding tool | UI redesign exploration | IN PROGRESS — white editorial redesign on `feature/ui-redesign` (NOT merged to dev). Helvetica Neue, Instrument Serif, full-bleed layout, animated vinyl logo, waveform hero panel, newspaper listing grid. See docs/context/ui-redesign.md |
+| Design | AI coding tool | UI redesign exploration | VALIDATED — lifecycle runbook scenarios A–H all pass on `ui.audiobaaz.com` (2026-06-02). Ready to merge `feature/ui-redesign → dev`. See docs/context/ui-redesign.md and docs/reviews/lifecycle-validation-results.md |
 
 > Update this table when features change status.
 
@@ -236,7 +236,8 @@ lifecycle, order timeline, admin operations).
 | `feature/payment-routes` | **MERGED** | Merged via PR #3. Zero commits ahead of `dev`. Safe to delete. |
 | `feature/payments-shipping` | **MERGED** | Merged via PR #2. Zero commits ahead of `dev`. Safe to delete. |
 | `feature/buyer-flow` | **MERGED** | Earlier merge. Zero commits ahead of `dev`. Safe to delete. |
-| `feature/admin-panel`, `feature/seller-flow`, `feature/ui-redesign` | historical | Remote-only. Pre-V1 history; defer cleanup. |
+| `feature/ui-redesign` | **READY TO MERGE** | Superset of `feature/order-lifecycle-shipping`. Lifecycle validation complete (2026-06-02). Merge to `dev` as single PR. |
+| `feature/admin-panel`, `feature/seller-flow` | historical | Remote-only. Pre-V1 history; defer cleanup. |
 
 ### Status by capability
 
@@ -271,11 +272,9 @@ routes compile. TypeScript + lint clean.
 - Audit: `docs/reviews/order-lifecycle-shipping-audit.md` — ✅ five bugs surfaced, all fixed (4 by audit, 1 by smoke).
 - Validation runbook: `docs/reviews/lifecycle-validation-runbook.md` — ✅ written.
 - DB-layer smoke: `supabase/tests/{lifecycle_smoke,refund_lifecycle_smoke}.sql` — ✅ passing on real local Postgres 16.
-- Validation results: `docs/reviews/lifecycle-validation-results.md` — ❌ still to be filled in by running the runbook against `dev.audiobaaz.com` (or a preview deploy) with `PAYMENT_PROVIDER=dev`.
+- Validation results: `docs/reviews/lifecycle-validation-results.md` — ✅ all 8 scenarios pass (run against `ui.audiobaaz.com` 2026-06-02).
 
-The runbook results doc is the gate for merging
-`feature/order-lifecycle-shipping → dev`. No new code on the branch
-until the runbook scenarios A–H produce a clean results report.
+**Gate is closed. `feature/ui-redesign` is ready to merge to `dev`.**
 
 ---
 
