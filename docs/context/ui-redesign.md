@@ -77,9 +77,33 @@ tailwind.config.ts           serif font family added (var(--font-serif))
 
 ### New static assets
 ```
-public/images/signin-ie.png   IEM product photo (Audeze-style, black bg)
-public/images/signin-hp.png   Headphone product photo (Bose QC35, black bg)
-public/images/signin-sp.png   Speaker product photo (bookshelf, black bg)
+public/images/signin-ie.png      IEM product photo (Audeze-style, black bg)
+public/images/signin-hp.png      Headphone product photo (Bose QC35, black bg)
+public/images/signin-sp.png      Speaker product photo (bookshelf, black bg)
+public/signin-story.mp4          Sell page hero video (landscape)
+public/signin-story-portrait.mp4 Sell page hero video (portrait/mobile)
+```
+
+### New components
+```
+src/app/(main)/sell/PayoutCalculator.tsx  Interactive payout calculator on sell page
+src/app/(auth)/layout.tsx                 Auth layout wrapper
+```
+
+### Pages redesigned (light theme applied)
+```
+src/app/(main)/sell/page.tsx              Editorial sell landing + hero video + steps
+src/app/(main)/dashboard/page.tsx         Seller dashboard home
+src/app/(main)/dashboard/layout.tsx       Dashboard shell
+src/app/(main)/dashboard/listings/        All listing management pages + action buttons
+src/app/(main)/dashboard/offers/          Offer list + OfferActions
+src/app/(main)/dashboard/orders/page.tsx  Orders list
+src/app/(main)/dashboard/payouts/         Payouts page + UpiForm
+src/app/(main)/dashboard/account/page.tsx Account settings
+src/app/browse/page.tsx                   Browse / marketplace grid
+src/app/admin/page.tsx                    Admin home
+src/app/admin/layout.tsx                  Admin shell
+src/app/admin/listings/page.tsx           Admin listings review
 ```
 
 ---
