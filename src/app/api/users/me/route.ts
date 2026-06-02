@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { NextRequest, NextResponse } from 'next/server';
 
 function ok<T>(data: T) {
@@ -9,6 +10,7 @@ function err(message: string, code: string, status = 400) {
 }
 
 export async function PATCH(req: NextRequest) {
+  // Verify identity with the user-scoped client
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return err('Unauthorized', 'UNAUTHORIZED', 401);
@@ -28,10 +30,13 @@ export async function PATCH(req: NextRequest) {
     }
   }
 
-  const { data, error } = await supabase
+  // Upsert via admin client so new users (no public.users row yet) are handled
+  // correctly. Identity is already verified above — admin is used only to bypass
+  // the missing INSERT RLS policy on first-time profile completion.
+  const admin = createAdminClient();
+  const { data, error } = await admin
     .from('users')
-    .update(update)
-    .eq('id', user.id)
+    .upsert({ id: user.id, email: user.email, ...update }, { onConflict: 'id' })
     .select('id, full_name, city, pincode, upi_id, availability, phone')
     .single();
 

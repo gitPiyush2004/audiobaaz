@@ -1,6 +1,6 @@
 # UI Redesign — Context File
 **Branch:** feature/ui-redesign
-**Last updated:** 2026-06-02
+**Last updated:** 2026-06-02 (session 2)
 
 ---
 
@@ -104,6 +104,8 @@ src/app/browse/page.tsx                   Browse / marketplace grid
 src/app/admin/page.tsx                    Admin home
 src/app/admin/layout.tsx                  Admin shell
 src/app/admin/listings/page.tsx           Admin listings review
+src/app/(auth)/onboarding/page.tsx        Two-column onboarding (session 2)
+src/components/forms/ListingForm.tsx      6-step listing wizard redesign (session 2)
 ```
 
 ---
@@ -183,11 +185,73 @@ Card row implementation:
 
 ---
 
+## Onboarding Page (session 2)
+
+Two-column layout matching the login page:
+
+```
+Nav (60px, sticky)
+
+Left column (#0a0a0a):
+  ├─ Eyebrow: green dot · "One-time setup"
+  ├─ Headline: "Almost there." + italic serif "Just a few details." (#E8FF4D)
+  ├─ Body copy
+  └─ 3-step progress tracker (Sign in ✓ | Complete profile ● | Start browsing ○)
+
+Right column (#fff):
+  └─ Profile setup eyebrow · form title · fields:
+     First name / Last name (grid) | Phone (+91 prefix) |
+     Telegram @ (optional) | Pincode (auto-resolves city/state via /api/pincode/[code])
+     → Continue button
+```
+
+Pincode flow: 6-digit input → debounced fetch to `/api/pincode/[code]` (Nominatim, cached 24h)
+→ green chip shows "City, State" on success. Both `pincode` and `city` submitted to PATCH.
+
+### Bug fixed (session 2)
+
+`PATCH /api/users/me` was failing with "Cannot coerce the result to a single JSON object"
+because new users have no `public.users` row — the table has no `handle_new_user` trigger
+(phone is NOT NULL so a trigger-based approach is not viable at signup time).
+
+Fix: PATCH now uses `upsert` via admin client (identity still verified with user-scoped client
+first). The admin client bypasses RLS; the upsert succeeds for both new and existing rows.
+
+Migration `supabase/migrations/008_handle_new_user.sql` adds the `users_insert_own` RLS policy
+(already applied to production DB via `/pg/query`).
+
+---
+
+## ListingForm — 6-step Wizard (session 2)
+
+Full visual rewrite. All logic, state, API calls, and validation unchanged.
+
+### Shell structure
+```
+listing-header  (sticky top:60, z:40)  — "New listing" + autosave status + Cancel
+steps-bar       (sticky top:112, z:39) — 6 horizontal steps with ✓ / ● / ○ dots
+body            (grid 1fr 320px)       — main content + sidebar
+  sidebar       (sticky top:164, align-self:start) — progress list + per-step tips box
+footer-bar      (sticky bottom:0, z:40) — "Step N of 6 — Label" + ← Back + Continue →
+```
+
+### Per-step content
+- **Step 0** — 4-col category grid, sharp-corner cards, black bg + white text when selected, inline SVG icons for all 8 types, accent ✓ tick on selected card
+- **Step 1** — Catalogue search with dropdown, Brand + Model inputs, "Listing as" confirmation chip
+- **Step 2** — 5 grade cards (S/A/B/C/D — all five grades retained, mockup had D omitted by mistake), each card uses its semantic color (blue/green/amber/orange/red); condition checklist below selected grade
+- **Step 3** — Flush inclusion rows separated by 1px gaps
+- **Step 4** — 4-slot photo grid (4:3 aspect ratio), dashed upload placeholder, resolution enforcement
+- **Step 5** — Price oracle panel + asking price input + payout calculation + negotiation toggle + floor/auto-accept private fields
+
+### Grade clarification
+Mockup showed only S, A, B, C. Internal spec (ENGINEERING.md) defines S through D (5 grades). D retained in code. Grade colors use light-theme semantic values from globals.css.
+
+---
+
 ## Next Steps (if this direction is approved)
 
-1. Apply light theme to all other pages: browse, listing detail, checkout, dashboard, admin
-2. Update seller dashboard typography and card styles to match light theme
-3. Listing cards on browse page — currently uses old dark-theme card
-4. Mobile responsive breakpoints (hero stacks vertically, 2-col grid below 768px)
-5. Replace mock ticker items with real listing data
-6. Add `/admin` link to nav for admin users (same as dark theme implementation)
+1. Apply light theme to all other pages: listing detail, checkout, orders
+2. Mobile responsive breakpoints (hero stacks vertically, 2-col grids stack below 768px)
+3. Replace mock ticker items with real listing data
+4. Add `/admin` link to nav for admin users (same as dark theme implementation)
+5. ListingForm: mobile layout (sidebar collapses to top progress bar on narrow screens)
