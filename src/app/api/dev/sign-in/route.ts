@@ -22,5 +22,6 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({
     email,
     email_otp: data.properties?.email_otp,
+    hashed_token: data.properties?.hashed_token,
   });
 }
