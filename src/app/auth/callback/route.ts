@@ -20,7 +20,8 @@ async function checkOnboarding(
 }
 
 export async function GET(request: NextRequest) {
-  const { searchParams, origin } = new URL(request.url);
+  const { searchParams } = new URL(request.url);
+  const origin = process.env.NEXT_PUBLIC_APP_URL ?? new URL(request.url).origin;
   const next = searchParams.get('next') ?? '/';
 
   const supabase = createClient();

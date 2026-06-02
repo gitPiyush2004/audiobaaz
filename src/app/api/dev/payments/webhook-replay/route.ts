@@ -130,7 +130,7 @@ export async function POST(req: NextRequest) {
   // origin, no external network. We could call the handler directly,
   // but going through the HTTP boundary exercises the full path
   // including the request parsing and signature header pickup.
-  const origin = req.nextUrl.origin;
+  const origin = process.env.NEXT_PUBLIC_APP_URL ?? req.nextUrl.origin;
   const webhookRes = await fetch(`${origin}/api/payments/webhook`, {
     method: 'POST',
     headers: {
