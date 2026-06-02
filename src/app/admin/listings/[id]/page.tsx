@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { formatPrice, formatDate } from '@/lib/utils/formatting';
 import { ReviewActions } from './ReviewActions';
@@ -68,11 +69,14 @@ export default async function AdminListingReviewPage({ params }: { params: { id:
             <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
               {listing.photos.map((url: string, i: number) => (
                 <a key={i} href={url} target="_blank" rel="noopener noreferrer">
-                  <img
-                    src={url}
-                    alt={`Photo ${i + 1}`}
-                    className="aspect-square w-full rounded-lg object-cover transition-opacity hover:opacity-80"
-                  />
+                  <div className="relative aspect-square w-full overflow-hidden rounded-lg">
+                    <Image
+                      src={url}
+                      alt={`Photo ${i + 1}`}
+                      fill
+                      className="object-cover transition-opacity hover:opacity-80"
+                    />
+                  </div>
                 </a>
               ))}
             </div>

@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { formatPrice, formatDate } from '@/lib/utils/formatting';
 
@@ -49,8 +50,7 @@ export default async function AdminListingsPage() {
               >
                 <div style={{ width: '56px', height: '56px', flexShrink: 0, overflow: 'hidden', background: '#F5F5F2' }}>
                   {l.photos?.[0] && (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={l.photos[0]} alt="" style={{ width: '56px', height: '56px', objectFit: 'cover' }} />
+                    <Image src={l.photos[0]} alt="" width={56} height={56} style={{ objectFit: 'cover' }} />
                   )}
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
