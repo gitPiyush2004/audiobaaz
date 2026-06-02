@@ -7,9 +7,10 @@ import { DevPaymentProvider } from './dev';
  *
  * Selection rules (evaluated in order):
  *
- *   1. If PAYMENT_PROVIDER === 'dev' AND NODE_ENV !== 'production',
- *      return DevPaymentProvider. This is the validation path for
- *      environments without Razorpay credentials.
+ *   1. If PAYMENT_PROVIDER === 'dev' AND (NODE_ENV !== 'production'
+ *      OR ENABLE_DEV_ROUTES === 'true'), return DevPaymentProvider.
+ *      ENABLE_DEV_ROUTES allows staging deployments that run in
+ *      production mode (e.g. Dokploy) to use the dev provider.
  *
  *   2. Otherwise, return RazorpayPaymentProvider. This is the default
  *      and the only path used in production.
@@ -29,7 +30,8 @@ export function getPaymentProvider(): PaymentProvider {
   const explicit = process.env.PAYMENT_PROVIDER?.toLowerCase();
   const isProduction = process.env.NODE_ENV === 'production';
 
-  if (explicit === 'dev' && !isProduction) {
+  const devRoutesEnabled = process.env.ENABLE_DEV_ROUTES === 'true';
+  if (explicit === 'dev' && (!isProduction || devRoutesEnabled)) {
     _cached = new DevPaymentProvider();
     return _cached;
   }
