@@ -348,12 +348,12 @@ img,svg{display:block}
 .sticky-stmt{
   position:absolute;top:0;left:0;right:0;
   opacity:0;
-  transform:translateY(32px);
-  filter:blur(4px);
+  transform:translateY(20px);
+  filter:blur(3px);
   transition:
-    opacity 0.55s var(--ease),
-    transform 0.55s var(--ease),
-    filter 0.55s var(--ease);
+    opacity 0.32s var(--ease),
+    transform 0.32s var(--ease),
+    filter 0.32s var(--ease);
   pointer-events:none;
 }
 .sticky-stmt:first-child{position:relative}
@@ -362,7 +362,7 @@ img,svg{display:block}
   pointer-events:auto;
 }
 .sticky-stmt.exit{
-  opacity:0;transform:translateY(-32px);filter:blur(4px);
+  opacity:0;transform:translateY(-20px);filter:blur(3px);
 }
 .stmt-num{
   font-size:10px;font-weight:700;letter-spacing:0.2em;
@@ -693,7 +693,7 @@ footer{
   .sticky-right{display:none}
   .sticky-stmt,.sticky-stmt:not(.active){
     position:absolute;top:0;left:0;right:0;
-    opacity:0;transform:translateY(32px);filter:blur(4px);
+    opacity:0;transform:translateY(20px);filter:blur(3px);
     display:block;pointer-events:none;
   }
   .sticky-stmt:first-child{position:relative}
@@ -701,7 +701,7 @@ footer{
     opacity:1;transform:translateY(0);filter:blur(0);pointer-events:auto;
   }
   .sticky-stmt.exit{
-    opacity:0;transform:translateY(-32px);filter:blur(4px);
+    opacity:0;transform:translateY(-20px);filter:blur(3px);
   }
   .sticky-stmt+.sticky-stmt{margin-top:0}
   .sticky-dots{display:flex}
@@ -1483,7 +1483,7 @@ setupHold('ccTg', 'barTg', 'ctaTg');
     stmts[current].classList.add('exit');
     dots[current].classList.remove('active');
     const prev = current;
-    setTimeout(() => stmts[prev].classList.remove('exit'), 550);
+    setTimeout(() => stmts[prev].classList.remove('exit'), 320);
     current = idx;
     stmts[current].classList.add('active');
     dots[current].classList.add('active');
