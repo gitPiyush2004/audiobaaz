@@ -1,0 +1,1500 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Audiobaaz — The market for audio obsessives</title>
+<meta name="description" content="India's first managed secondhand marketplace for headphones, IEMs, speakers, DACs, and amps. Condition-graded. Escrow-protected.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+/* ─── TOKENS ─── */
+:root {
+  --white:  #ffffff;
+  --off:    #F5F5F2;
+  --black:  #0a0a09;
+  --mid:    #52524e;
+  --muted:  #9a9990;
+  --border: #e2e1dc;
+  --acc:    #E8FF4D;
+  --ease:   cubic-bezier(0.16,1,0.3,1);
+  --ease-io:cubic-bezier(0.77,0,0.175,1);
+  --f-sans: 'Inter',system-ui,sans-serif;
+  --f-serif:'Instrument Serif',Georgia,serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{
+  background:var(--off);color:var(--black);
+  font-family:var(--f-sans);font-size:15px;line-height:1.5;
+  -webkit-font-smoothing:antialiased;overflow-x:hidden;
+}
+a{color:inherit;text-decoration:none}
+img,svg{display:block}
+
+/* ─── GRAIN ─── */
+.grain{
+  position:fixed;inset:0;z-index:900;pointer-events:none;
+  opacity:0.025;mix-blend-mode:multiply;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size:180px 180px;
+}
+
+/* ─── NAV ─── */
+.nav{
+  position:fixed;top:18px;left:50%;
+  transform:translateX(-50%) translateY(-16px);
+  background:rgba(245,245,242,0.86);
+  backdrop-filter:blur(24px) saturate(180%);
+  -webkit-backdrop-filter:blur(24px) saturate(180%);
+  border:1px solid rgba(226,225,220,0.65);
+  padding:10px 18px 10px 14px;
+  display:flex;align-items:center;gap:24px;
+  width:fit-content;white-space:nowrap;
+  z-index:500;opacity:0;
+  box-shadow:0 2px 24px rgba(0,0,0,0.07),0 1px 4px rgba(0,0,0,0.04);
+  transition:opacity 0.7s var(--ease),transform 0.7s var(--ease);
+}
+.nav.visible{opacity:1;transform:translateX(-50%) translateY(0)}
+.nav-logo{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:800;letter-spacing:-0.03em;text-transform:uppercase}
+.nav-vinyl{width:26px;height:26px;flex-shrink:0}
+@keyframes nav-spin{to{transform:rotate(360deg)}}
+.nav-vinyl-group{transform-box:fill-box;transform-origin:center;animation:nav-spin 10s linear infinite}
+@keyframes nav-arrow-pulse{0%{opacity:0}25%{opacity:1}65%{opacity:1}100%{opacity:0}}
+.nav-ag{opacity:0;animation:nav-arrow-pulse 3.5s ease-in-out infinite}
+.nav-ag2{animation-delay:.4s}.nav-ag3{animation-delay:.8s}.nav-ag4{animation-delay:1.2s}
+.nav-logo-b{background:var(--acc);padding:0 3px;color:var(--black)}
+.nav-links{display:flex;align-items:center;gap:20px}
+.nav-link{font-size:12px;font-weight:500;color:var(--mid);transition:color 0.15s}
+.nav-link:hover{color:var(--black)}
+.nav-btn{
+  display:inline-flex;align-items:center;background:var(--black);color:var(--white);
+  font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;
+  padding:9px 18px;position:relative;overflow:hidden;
+  transition:transform 160ms ease-out,background 0.15s;
+}
+.nav-btn::after{
+  content:'';position:absolute;inset:0;background:rgba(255,255,255,0.1);
+  transform:scaleX(0);transform-origin:left;transition:transform 0.3s var(--ease);
+}
+.nav-btn:hover::after{transform:scaleX(1)}
+.nav-btn:active{transform:scale(0.97)}
+
+/* ─── HERO ─── */
+.hero{
+  position:relative;width:100%;height:100dvh;min-height:640px;
+  overflow:hidden;background:var(--off);
+}
+.hero-bg-layer,.hero-vinyl-layer,.hero-text-layer{
+  position:absolute;will-change:transform;
+}
+.hero-bg-layer{inset:0;pointer-events:none;z-index:0}
+.hero-bg-rings{
+  position:absolute;top:46%;left:58%;
+  transform:translate(-50%,-50%);
+  width:130vmin;height:130vmin;opacity:0.03;
+}
+.hero-vinyl-layer{
+  inset:0;display:flex;align-items:center;
+  justify-content:flex-end;pointer-events:none;z-index:1;
+}
+.vinyl-wrap{
+  position:relative;
+  width:clamp(500px,68vmin,900px);
+  height:clamp(500px,68vmin,900px);
+  perspective:1200px;flex-shrink:0;
+  margin-right:-10%;margin-top:-3%;
+  animation:disc-breathe 7s ease-in-out infinite;
+  filter:drop-shadow(0 64px 112px rgba(0,0,0,0.22)) drop-shadow(0 24px 40px rgba(0,0,0,0.14));
+}
+@keyframes disc-breathe{0%,100%{margin-top:-3%}50%{margin-top:-7%}}
+.vinyl-disc{
+  width:100%;height:100%;
+  position:relative;transform-style:preserve-3d;
+  transform:rotateX(10deg) rotateY(-8deg);
+}
+.vinyl-face-svg{position:absolute;inset:0;border-radius:50%;overflow:hidden}
+.vinyl-sheen{
+  position:absolute;inset:0;border-radius:50%;
+  background:conic-gradient(
+    from var(--sheen-angle,210deg),
+    transparent 0deg,
+    rgba(255,255,255,0.07) 22deg,
+    rgba(255,255,255,0.18) 34deg,
+    rgba(255,255,255,0.07) 46deg,
+    transparent 80deg,
+    transparent 180deg,
+    rgba(255,255,255,0.03) 215deg,
+    transparent 255deg
+  );
+  pointer-events:none;
+}
+.vinyl-ground-shadow{
+  position:absolute;bottom:-4%;left:50%;transform:translateX(-50%);
+  width:70%;height:10%;
+  background:radial-gradient(ellipse,rgba(0,0,0,0.16) 0%,transparent 70%);
+  filter:blur(22px);pointer-events:none;
+}
+.vinyl-arrow-base{fill:none;stroke:#383838;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
+.vinyl-ag{opacity:0;fill:none;stroke:#E8FF4D;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round;filter:drop-shadow(0 0 6px rgba(232,255,77,0.95))}
+@keyframes vag{0%{opacity:0}20%{opacity:1}65%{opacity:1}100%{opacity:0}}
+.vag1{animation:vag 3.5s ease-in-out infinite}
+.vag2{animation:vag 3.5s ease-in-out infinite;animation-delay:.4s}
+.vag3{animation:vag 3.5s ease-in-out infinite;animation-delay:.8s}
+.vag4{animation:vag 3.5s ease-in-out infinite;animation-delay:1.2s}
+
+.hero-text-layer{
+  left:0;bottom:0;max-width:660px;
+  padding:0 40px 64px 48px;z-index:3;
+}
+.hero-text-inner{pointer-events:auto}
+
+.hero-badge{
+  display:inline-flex;align-items:center;gap:9px;
+  font-size:10px;font-weight:600;letter-spacing:0.18em;text-transform:uppercase;
+  color:var(--muted);border:1px solid var(--border);
+  padding:5px 14px;width:fit-content;margin-bottom:24px;
+  background:rgba(245,245,242,0.72);backdrop-filter:blur(8px);
+  opacity:0;transform:translateY(10px);
+  transition:opacity 0.7s var(--ease),transform 0.7s var(--ease);
+}
+.hero-badge.in{opacity:1;transform:translateY(0)}
+.badge-dot{
+  width:5px;height:5px;border-radius:50%;background:#22c55e;flex-shrink:0;
+  animation:badge-pulse 2s ease-in-out infinite;
+}
+@keyframes badge-pulse{0%,100%{box-shadow:0 0 0 0 rgba(34,197,94,0.4)}50%{box-shadow:0 0 0 5px rgba(34,197,94,0)}}
+
+.hero-h1{
+  font-size:clamp(56px,8.5vw,120px);
+  font-weight:900;letter-spacing:-0.055em;line-height:0.86;
+  text-wrap:balance;
+}
+.h1-line{display:block;overflow:hidden}
+.h1-line span{
+  display:block;transform:translateY(110%);
+  transition:transform 0.95s var(--ease);
+}
+.h1-line.in span{transform:translateY(0)}
+.h1-line:nth-child(2) span{transition-delay:0.07s}
+.h1-line:nth-child(3) span{transition-delay:0.14s}
+.h1-serif{font-family:var(--f-serif);font-style:italic;font-weight:400}
+
+.hero-sub{
+  font-size:16px;color:var(--mid);line-height:1.8;
+  max-width:420px;margin-top:24px;
+  opacity:0;transform:translateY(14px);filter:blur(4px);
+  transition:opacity 0.85s var(--ease),transform 0.85s var(--ease),filter 0.85s var(--ease);
+  transition-delay:0.3s;
+}
+.hero-sub.in{opacity:1;transform:translateY(0);filter:blur(0)}
+
+.hero-ctas{
+  display:flex;align-items:center;gap:12px;margin-top:32px;
+  opacity:0;transform:translateY(12px);
+  transition:opacity 0.7s var(--ease),transform 0.7s var(--ease);
+  transition-delay:0.46s;
+}
+.hero-ctas.in{opacity:1;transform:translateY(0)}
+
+.btn-primary{
+  display:inline-flex;align-items:center;gap:8px;
+  background:var(--acc);color:var(--black);
+  font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;
+  padding:15px 34px;border:none;cursor:pointer;
+  position:relative;overflow:hidden;
+  transition:transform 160ms ease-out;
+}
+.btn-primary .fill{
+  position:absolute;inset:0;background:rgba(0,0,0,0.12);
+  transform:scaleX(0);transform-origin:left;
+  transition:transform 0.35s var(--ease);pointer-events:none;
+}
+.btn-primary:hover .fill{transform:scaleX(1)}
+.btn-primary:active{transform:scale(0.97)}
+.btn-primary > span{position:relative;z-index:1}
+
+.btn-ghost{
+  display:inline-flex;align-items:center;
+  background:transparent;color:var(--black);
+  font-size:11px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;
+  padding:15px 26px;border:1.5px solid rgba(10,10,9,0.2);cursor:pointer;
+  transition:border-color 0.2s,transform 160ms ease-out;
+}
+.btn-ghost:hover{border-color:var(--black)}
+.btn-ghost:active{transform:scale(0.97)}
+
+.hero-dissolve{position:absolute;inset:0;z-index:4;pointer-events:none;background:transparent}
+
+
+/* ─── TICKER ─── */
+.ticker-wrap{
+  background:var(--black);overflow:hidden;position:relative;cursor:default;
+}
+.ticker-wrap::before,.ticker-wrap::after{
+  content:'';position:absolute;top:0;bottom:0;
+  width:120px;z-index:2;pointer-events:none;
+}
+.ticker-wrap::before{left:0;background:linear-gradient(to right,var(--black),transparent)}
+.ticker-wrap::after{right:0;background:linear-gradient(to left,var(--black),transparent)}
+@keyframes tickL{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+.ticker-track{
+  display:flex;width:max-content;padding:15px 0;
+  animation:tickL 36s linear infinite;
+}
+.ticker-item{
+  display:flex;align-items:center;gap:12px;
+  padding:0 30px;border-right:1px solid #1e1e1c;white-space:nowrap;
+}
+.ti-cat{font-size:8px;font-weight:600;letter-spacing:0.18em;text-transform:uppercase;color:#3a3a38}
+.ti-name{font-size:13px;font-weight:500;color:#b8b8b0}
+.ti-price{font-size:13px;font-weight:800;letter-spacing:-0.02em;color:var(--acc)}
+.ti-grade{font-size:8px;font-weight:700;letter-spacing:0.06em;padding:2px 7px;border:1px solid}
+.tg-s{color:#60a5fa;border-color:rgba(96,165,250,0.3)}
+.tg-a{color:#4ade80;border-color:rgba(74,222,128,0.3)}
+.tg-b{color:#fbbf24;border-color:rgba(251,191,36,0.3)}
+
+/* ─── MANIFESTO ─── */
+.manifesto{
+  background:var(--white);
+  display:grid;grid-template-columns:1fr 1fr;
+  border-bottom:1px solid var(--border);
+}
+.mani-left{
+  padding:96px 64px 96px 48px;
+  border-right:1px solid var(--border);
+}
+.mani-rule{width:36px;height:2px;background:var(--acc);margin-bottom:36px}
+.mani-h{
+  font-size:clamp(38px,5vw,68px);font-weight:900;
+  letter-spacing:-0.055em;line-height:0.88;text-wrap:balance;
+}
+.mani-h .serif{font-family:var(--f-serif);font-style:italic;font-weight:400;display:block}
+.mani-right{
+  padding:96px 48px 96px 64px;
+  display:flex;flex-direction:column;justify-content:center;
+}
+.mani-body{font-size:17px;color:var(--mid);line-height:1.85}
+.mani-body p+p{margin-top:22px}
+.mani-em{color:var(--black);font-weight:500}
+
+/* ─── VIDEO ─── */
+.video-section{
+  background:#050504;
+  border-bottom:1px solid #1a1a18;
+  padding:72px 48px;
+}
+.video-label{
+  font-size:10px;font-weight:600;letter-spacing:0.18em;text-transform:uppercase;
+  color:#555;margin-bottom:28px;
+  display:flex;align-items:center;gap:12px;
+}
+.video-label::before{
+  content:'';display:block;width:28px;height:1px;background:#333;
+}
+.video-frame{
+  position:relative;overflow:hidden;
+  border:1px solid #1e1e1c;
+  box-shadow:0 0 0 1px rgba(232,255,77,0.04),0 40px 120px rgba(0,0,0,0.8),0 0 80px rgba(232,255,77,0.03);
+}
+.video-frame::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:1px;
+  background:linear-gradient(to right,transparent,rgba(232,255,77,0.3),transparent);
+  z-index:2;pointer-events:none;
+}
+.video-inner{position:relative}
+.video-inner video{display:block;width:100%;max-height:72vh;object-fit:cover}
+.video-overlay{
+  position:absolute;inset:0;
+  display:flex;align-items:center;justify-content:center;
+  background:rgba(0,0,0,0.35);
+  transition:opacity 0.4s ease;
+}
+.video-overlay.hidden{opacity:0;pointer-events:none}
+.play-ring{
+  width:80px;height:80px;
+  border:1.5px solid rgba(255,255,255,0.3);
+  display:flex;align-items:center;justify-content:center;
+  transition:border-color 0.2s,transform 160ms ease-out;cursor:pointer;
+}
+.play-ring:hover{border-color:rgba(255,255,255,0.7)}
+.play-ring:active{transform:scale(0.95)}
+.play-ring svg{margin-left:5px}
+.video-footer{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:16px 0 0;
+}
+.video-footer-label{font-size:11px;color:#555}
+.video-footer-duration{font-size:10px;font-weight:600;letter-spacing:0.1em;color:#555;border:1px solid #1e1e1c;padding:3px 8px}
+
+/* ─── STICKY SCROLL ─── */
+.sticky-outer{
+  height:400vh;
+  background:#050504;
+}
+.sticky-pin{
+  position:sticky;top:0;
+  height:100vh;min-height:600px;
+  display:grid;grid-template-columns:1fr 1fr;
+  overflow:hidden;
+}
+.sticky-left{
+  display:flex;flex-direction:column;
+  justify-content:center;
+  padding:0 64px 0 48px;
+  position:relative;z-index:2;
+}
+.sticky-statements{position:relative}
+.sticky-stmt{
+  position:absolute;top:0;left:0;right:0;
+  opacity:0;
+  transform:translateY(32px);
+  filter:blur(4px);
+  transition:
+    opacity 0.55s var(--ease),
+    transform 0.55s var(--ease),
+    filter 0.55s var(--ease);
+  pointer-events:none;
+}
+.sticky-stmt:first-child{position:relative}
+.sticky-stmt.active{
+  opacity:1;transform:translateY(0);filter:blur(0);
+  pointer-events:auto;
+}
+.sticky-stmt.exit{
+  opacity:0;transform:translateY(-32px);filter:blur(4px);
+}
+.stmt-num{
+  font-size:10px;font-weight:700;letter-spacing:0.2em;
+  text-transform:uppercase;color:rgba(255,255,255,0.25);
+  margin-bottom:24px;
+}
+.stmt-h{
+  font-size:clamp(40px,5vw,68px);
+  font-weight:900;letter-spacing:-0.05em;line-height:0.88;
+  color:#ffffff;margin-bottom:24px;
+}
+.stmt-h em{
+  font-family:var(--f-serif);font-style:italic;font-weight:400;
+  color:var(--acc);display:block;
+}
+.stmt-body{
+  font-size:16px;color:rgba(255,255,255,0.4);
+  line-height:1.75;max-width:400px;
+}
+.sticky-dots{display:flex;gap:8px;margin-top:48px}
+.sticky-dot{
+  width:24px;height:3px;background:rgba(255,255,255,0.15);
+  transition:background 0.4s,width 0.4s;
+}
+.sticky-dot.active{background:var(--acc);width:40px}
+.sticky-right{
+  background:#050504;
+  display:flex;align-items:center;justify-content:center;
+  position:relative;overflow:hidden;
+}
+.sticky-right .stage-tonearm{
+  position:absolute;top:6%;right:8%;
+  width:clamp(60px,8vmin,100px);
+  transform-origin:95% 5%;
+  transform:rotate(-9deg);
+}
+.sticky-right .stage-waveform{
+  position:absolute;bottom:10%;left:8%;opacity:1;
+}
+.sticky-right::before{
+  content:'';position:absolute;
+  width:clamp(280px,54vmin,580px);height:clamp(280px,54vmin,580px);
+  background:radial-gradient(circle,rgba(232,255,77,0.05) 0%,transparent 65%);
+  border-radius:50%;animation:halo-pulse 4.5s ease-in-out infinite;pointer-events:none;
+}
+@keyframes halo-pulse{0%,100%{opacity:0.5;transform:scale(1)}50%{opacity:1;transform:scale(1.1)}}
+.stage-vinyl-wrap{
+  width:clamp(300px,56vmin,600px);height:clamp(300px,56vmin,600px);
+  position:relative;
+  filter:drop-shadow(0 70px 140px rgba(0,0,0,0.95)) drop-shadow(0 0 80px rgba(232,255,77,0.05));
+  animation:stage-rotate 48s linear infinite;
+}
+@keyframes stage-rotate{
+  from{transform:perspective(800px) rotateX(12deg) rotateY(0deg)}
+  to{transform:perspective(800px) rotateX(12deg) rotateY(360deg)}
+}
+.wv{
+  width:3px;background:var(--acc);transform-origin:bottom;
+  animation:wv-pulse 2s ease-in-out infinite;
+}
+.wv:nth-child(1){height:8px;animation-delay:0ms}
+.wv:nth-child(2){height:16px;animation-delay:80ms}
+.wv:nth-child(3){height:12px;animation-delay:160ms}
+.wv:nth-child(4){height:22px;animation-delay:240ms}
+.wv:nth-child(5){height:10px;animation-delay:80ms}
+.wv:nth-child(6){height:18px;animation-delay:160ms}
+.wv:nth-child(7){height:8px;animation-delay:240ms}
+@keyframes wv-pulse{0%,100%{transform:scaleY(0.3)}50%{transform:scaleY(1)}}
+.stage-waveform{display:flex;align-items:flex-end;gap:4px}
+
+/* ─── HOW IT WORKS ─── */
+.howSection{border-bottom:1px solid var(--border)}
+.howHead{
+  padding:72px 48px 56px;border-bottom:1px solid var(--border);
+  display:grid;grid-template-columns:1fr 1fr;gap:48px;align-items:end;
+}
+.howHead h2{font-size:clamp(34px,4.2vw,58px);font-weight:900;letter-spacing:-0.04em;line-height:0.9}
+.howHead h2 em{font-family:var(--f-serif);font-style:italic;font-weight:400}
+.howHead-sub{font-size:15px;color:var(--mid);line-height:1.7;max-width:380px;align-self:end}
+.howRow{
+  display:grid;grid-template-columns:160px 1fr 1fr;
+  border-bottom:1px solid var(--border);
+  position:relative;overflow:hidden;cursor:default;
+}
+.howRow:last-child{border-bottom:none}
+.howRow::before{
+  content:'';position:absolute;inset:0;
+  background:var(--off);
+  clip-path:inset(0 100% 0 0);
+  transition:clip-path 0.4s var(--ease);
+  pointer-events:none;z-index:0;
+}
+.howRow:hover::before{clip-path:inset(0 0% 0 0)}
+.howRow:hover .hrTag{border-color:var(--black);color:var(--black)}
+.hrNum{
+  padding:40px;font-size:56px;font-weight:900;
+  letter-spacing:-0.05em;color:var(--border);line-height:1;
+  border-right:1px solid var(--border);
+  display:flex;align-items:flex-start;
+  position:relative;z-index:1;
+  transition:color 0.3s var(--ease);
+}
+.howRow:hover .hrNum{color:#d0d0cc}
+.hrTitleCol{
+  padding:40px;border-right:1px solid var(--border);
+  display:flex;flex-direction:column;justify-content:space-between;
+  position:relative;z-index:1;
+}
+.hrTitle{font-size:19px;font-weight:800;letter-spacing:-0.02em;margin-bottom:12px}
+.hrTag{
+  font-size:9px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;
+  color:var(--muted);border:1px solid var(--border);padding:3px 10px;
+  display:inline-block;width:fit-content;
+  transition:border-color 0.2s,color 0.2s;
+}
+.hrDescCol{padding:40px;display:flex;align-items:center;position:relative;z-index:1}
+.hrDesc{font-size:14px;color:var(--mid);line-height:1.75;max-width:380px}
+
+/* ─── BENTO ─── */
+.bentoSection{padding:96px 40px;border-bottom:1px solid var(--border)}
+.bentoH{
+  font-size:clamp(32px,4vw,52px);font-weight:900;
+  letter-spacing:-0.04em;line-height:0.9;margin-bottom:52px;
+}
+.bentoH em{font-family:var(--f-serif);font-style:italic;font-weight:400}
+.bentoGrid{
+  display:grid;grid-template-columns:repeat(3,1fr);
+  gap:1px;background:var(--border);border:1px solid var(--border);
+}
+.bc{
+  background:var(--white);padding:36px 32px;
+  transition:background 0.2s;position:relative;overflow:hidden;
+}
+.bc:hover{background:var(--off)}
+.bcDark{background:var(--black)}
+.bcDark:hover{background:#111}
+.bcYel{background:var(--acc)}
+.bcYel:hover{background:#d8ef3d}
+.bcWide{grid-column:span 2}
+.bcTall{grid-row:span 2}
+.bc::before{
+  content:'';position:absolute;inset:0;
+  background:radial-gradient(300px circle at var(--mx,50%) var(--my,50%),rgba(232,255,77,0.09),transparent 70%);
+  opacity:0;transition:opacity 0.3s;pointer-events:none;
+}
+.bc:hover::before{opacity:1}
+.bcStat{font-size:62px;font-weight:900;letter-spacing:-0.05em;line-height:1;margin:16px 0 10px}
+.bcStatAcc{color:var(--acc)}
+.bcTitle{font-size:18px;font-weight:800;letter-spacing:-0.02em;margin-bottom:10px}
+.bcTitleL{color:#fff}
+.bcDesc{font-size:13px;color:var(--mid);line-height:1.65}
+.bcDescL{color:#555}
+.bcLock{position:absolute;bottom:24px;right:24px;opacity:0.12;pointer-events:none}
+.lockShackle{
+  stroke-dasharray:90;stroke-dashoffset:90;
+  transition:stroke-dashoffset 0.8s var(--ease);
+}
+.bcDark:hover .lockShackle{stroke-dashoffset:0}
+.gradeRow{display:flex;flex-wrap:wrap;gap:6px;margin-top:14px}
+.gradePill{font-size:10px;font-weight:700;padding:4px 10px}
+.gpS{background:#0a0a0a;color:#E8FF4D;border:1px solid #E8FF4D}
+.gpA{background:#0a0a0a;color:#4DFF91;border:1px solid #4DFF91}
+.gpB{background:#0a0a0a;color:#4D9FFF;border:1px solid #4D9FFF}
+.gpC{background:#0a0a0a;color:#FFB84D;border:1px solid #FFB84D}
+.tgRows{display:flex;flex-direction:column;gap:9px;margin-top:12px}
+.tgRow{display:flex;align-items:flex-start;gap:8px;font-size:12px;line-height:1.4}
+.tgDot{width:6px;height:6px;background:#229ED9;border-radius:50%;margin-top:4px;flex-shrink:0}
+.tgText{color:var(--mid)}.tgText strong{color:var(--black);font-weight:600}
+
+/* ─── COMMUNITY ─── */
+.communitySection{border-bottom:1px solid var(--border)}
+.communityHead{
+  padding:64px 48px 52px;border-bottom:1px solid var(--border);
+}
+.communityHead h2{
+  font-size:clamp(32px,4vw,52px);font-weight:900;
+  letter-spacing:-0.04em;line-height:0.9;margin-bottom:16px;
+}
+.communityHead h2 em{font-family:var(--f-serif);font-style:italic;font-weight:400}
+.communityHead p{font-size:15px;color:var(--mid);line-height:1.7;max-width:480px}
+.commCards{display:grid;grid-template-columns:1fr 1fr}
+.cc{
+  display:flex;flex-direction:column;gap:20px;
+  padding:52px 44px;border-right:1px solid var(--border);
+  position:relative;cursor:pointer;
+  user-select:none;-webkit-user-select:none;
+  transition:background 0.2s;
+}
+.cc:last-child{border-right:none}
+.cc:hover{background:var(--off)}
+.ccBar{
+  position:absolute;top:0;left:0;right:0;height:3px;
+  clip-path:inset(0 100% 0 0);
+  transition:clip-path 200ms var(--ease);
+}
+.ccBar.holding{clip-path:inset(0 0% 0 0);transition:clip-path 2s linear}
+.ccBarWa{background:#25D366}
+.ccBarTg{background:#229ED9}
+.ccIconRow{display:flex;align-items:center;gap:12px}
+.ccIcon{width:36px;height:36px;flex-shrink:0}
+.ccPlatform{font-size:10px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:var(--muted)}
+.ccTitle{font-size:26px;font-weight:900;letter-spacing:-0.03em}
+.ccDesc{font-size:14px;color:var(--mid);line-height:1.65}
+.ccCta{
+  display:inline-flex;align-items:center;gap:8px;
+  font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;
+  border-bottom:1.5px solid var(--black);padding-bottom:2px;
+  width:fit-content;margin-top:8px;
+  transition:filter 0.2s,opacity 0.2s;
+}
+.ccCta.completing{filter:blur(4px);opacity:0}
+.ccArrow{transition:transform 0.2s var(--ease)}
+.cc:hover .ccArrow{transform:translate(3px,-3px)}
+.holdHint{
+  position:absolute;bottom:18px;right:22px;
+  font-size:9px;letter-spacing:0.12em;text-transform:uppercase;
+  color:var(--muted);opacity:0;transition:opacity 0.2s;
+}
+.cc:hover .holdHint{opacity:1}
+
+/* ─── NOTIFY ─── */
+.notifySection{background:var(--acc);border-bottom:1px solid rgba(0,0,0,0.08)}
+.notifyInner{
+  max-width:700px;margin:0 auto;padding:112px 40px;
+  text-align:center;display:flex;flex-direction:column;align-items:center;
+}
+.notifyH{
+  font-size:clamp(54px,8.5vw,108px);font-weight:900;
+  letter-spacing:-0.055em;line-height:0.85;color:var(--black);text-wrap:balance;
+}
+.notifyH em{font-family:var(--f-serif);font-style:italic;font-weight:400;display:block}
+.notifySub{font-size:16px;color:rgba(0,0,0,0.5);line-height:1.7;margin-top:24px;max-width:400px}
+.notifyForm{
+  display:flex;gap:0;margin-top:44px;width:100%;max-width:480px;
+}
+.notifyInput{
+  flex:1;padding:17px 22px;
+  background:rgba(0,0,0,0.07);border:1.5px solid rgba(0,0,0,0.14);border-right:none;
+  color:var(--black);font-family:var(--f-sans);font-size:14px;
+  outline:none;transition:background 0.2s,border-color 0.2s;
+}
+.notifyInput:focus{background:rgba(0,0,0,0.04);border-color:rgba(0,0,0,0.42)}
+.notifyInput::placeholder{color:rgba(0,0,0,0.28)}
+.notifyInput.error{border-color:#dc2626}
+.notifySubmit{
+  padding:17px 30px;min-width:140px;
+  background:var(--black);color:var(--acc);border:none;cursor:pointer;
+  font-family:var(--f-sans);font-size:10px;font-weight:700;
+  letter-spacing:0.1em;text-transform:uppercase;
+  position:relative;overflow:hidden;
+  transition:transform 160ms ease-out,background 0.15s;white-space:nowrap;
+}
+.notifySubmit:hover{background:#1a1a18}
+.notifySubmit:active:not(:disabled){transform:scale(0.97)}
+.notifySubmit:disabled{opacity:0.5;cursor:default}
+.notifySubmit::after{
+  content:'';position:absolute;inset:0;
+  background:rgba(255,255,255,0.08);
+  clip-path:inset(0 100% 0 0);
+  transition:clip-path 1000ms linear;pointer-events:none;
+}
+.notifySubmit.loading::after{clip-path:inset(0 0% 0 0)}
+.submitLabel{transition:filter 180ms ease,opacity 180ms ease;pointer-events:none}
+.submitLabel.morphing{filter:blur(5px);opacity:0}
+.notifyNote{font-size:11px;color:rgba(0,0,0,0.36);margin-top:16px;transition:color 0.3s}
+.notifyPromises{
+  display:flex;align-items:center;gap:20px;
+  margin-top:20px;flex-wrap:wrap;justify-content:center;
+}
+.np{display:flex;align-items:center;gap:6px;font-size:11px;color:rgba(0,0,0,0.42)}
+.np-dot{width:3px;height:3px;border-radius:50%;background:rgba(0,0,0,0.28)}
+
+/* ─── FOOTER ─── */
+footer{
+  padding:28px 48px;display:flex;
+  justify-content:space-between;align-items:center;
+  background:var(--white);border-top:1px solid var(--border);
+  flex-wrap:wrap;gap:12px;
+}
+.foot-logo{font-size:14px;font-weight:800;letter-spacing:-0.02em;text-transform:uppercase}
+.foot-logo span{background:var(--acc);padding:0 2px}
+.foot-copy{font-size:11px;color:var(--muted)}
+.foot-links{display:flex;gap:20px}
+.foot-link{font-size:11px;color:var(--muted);transition:color 0.15s}
+.foot-link:hover{color:var(--black)}
+
+/* ─── SCROLL REVEALS ─── */
+.reveal{
+  opacity:0;transform:translateY(28px);filter:blur(2px);
+  transition:opacity 0.9s var(--ease),transform 0.9s var(--ease),filter 0.9s var(--ease);
+}
+.reveal.in{opacity:1;transform:translateY(0);filter:blur(0)}
+.rd1{transition-delay:0.07s}.rd2{transition-delay:0.15s}.rd3{transition-delay:0.23s}
+
+/* ─── MOBILE ─── */
+@media(max-width:860px){
+  .nav{padding:9px 14px;gap:14px;max-width:calc(100vw - 24px)}
+  .nav-links{display:none}
+  .hero{height:auto;min-height:100svh}
+  .hero-vinyl-layer{
+    position:relative;inset:auto;justify-content:center;
+    padding:80px 20px 0;pointer-events:auto;
+  }
+  .vinyl-wrap{
+    width:clamp(280px,80vw,400px);height:clamp(280px,80vw,400px);
+    margin-right:0;margin-top:0;
+    animation:disc-breathe-m 7s ease-in-out infinite;
+  }
+  @keyframes disc-breathe-m{0%,100%{transform:translateY(0)}50%{transform:translateY(-16px)}}
+  .vinyl-disc{transform:rotateX(8deg) rotateY(-6deg) !important}
+  .hero-text-layer{position:relative;inset:auto;max-width:100%;padding:28px 24px 52px}
+  .hero-bg-layer{display:none}
+  .hero-h1{font-size:clamp(40px,11vw,56px)}
+  .hero-ctas{flex-direction:column}
+  .btn-primary,.btn-ghost{width:100%;justify-content:center;padding:17px 24px}
+  .nav-btn{padding:11px 16px}
+  .manifesto{grid-template-columns:1fr}
+  .mani-left{padding:64px 24px;border-right:none;border-bottom:1px solid var(--border)}
+  .mani-right{padding:48px 24px}
+  .video-section{padding:48px 24px}
+  .sticky-outer{height:auto}
+  .sticky-pin{
+    position:relative;height:auto;
+    grid-template-columns:1fr;grid-template-rows:auto auto;
+  }
+  .sticky-left{padding:64px 24px 48px}
+  .sticky-stmt,.sticky-stmt:not(.active){
+    position:relative;top:auto;left:auto;right:auto;
+    opacity:1;transform:none;filter:none;
+    display:block;pointer-events:auto;
+  }
+  .sticky-stmt+.sticky-stmt{margin-top:56px}
+  .sticky-dots{display:none}
+  .sticky-right{min-height:60vh}
+  .howHead{grid-template-columns:1fr;gap:20px}
+  .howRow{grid-template-columns:1fr}
+  .hrNum{padding:24px 20px 0;border-right:none;font-size:40px}
+  .hrTitleCol{padding:16px 20px;border-right:none;border-bottom:1px solid var(--border)}
+  .hrDescCol{padding:20px 20px 32px}
+  .bentoSection{padding:56px 20px}
+  .bentoGrid{grid-template-columns:1fr}
+  .bcWide,.bcTall{grid-column:span 1;grid-row:span 1}
+  .communityHead{padding:48px 24px 40px}
+  .commCards{grid-template-columns:1fr}
+  .cc{border-right:none;border-bottom:1px solid var(--border);padding:40px 24px}
+  .cc:last-child{border-bottom:none}
+  .notifyInner{padding:80px 20px}
+  .notifyForm{flex-direction:column}
+  .notifyInput{border-right:1.5px solid rgba(0,0,0,0.14);border-bottom:none}
+  .notifySubmit{min-width:auto}
+  footer{padding:24px;flex-direction:column;text-align:center}
+  .foot-links{justify-content:center}
+}
+
+/* ─── REDUCED MOTION ─── */
+@media(prefers-reduced-motion:reduce){
+  .hero-badge,.hero-sub,.hero-ctas,.reveal{opacity:1;transform:none;filter:none}
+  .h1-line span{transform:none}
+  .hero-vinyl-layer,.hero-text-layer,.hero-bg-layer{transform:none !important;will-change:auto}
+  .vinyl-disc{transform:rotateX(10deg) rotateY(-8deg) !important}
+  .vinyl-wrap,.stage-vinyl-wrap{animation:none}
+  .wv{animation:none}
+  .sticky-stmt{transition:none}
+}
+</style>
+</head>
+<body>
+<div class="grain"></div>
+
+<!-- ─── NAV ─── -->
+<nav class="nav" id="mainNav">
+  <a class="nav-logo" href="#">
+    <svg class="nav-vinyl" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="24" cy="24" r="23" fill="#111" stroke="#555" stroke-width="0.8"/>
+      <circle cx="24" cy="24" r="20" fill="none" stroke="#2a2a2a" stroke-width="0.7"/>
+      <circle cx="24" cy="24" r="17" fill="none" stroke="#222" stroke-width="0.6"/>
+      <g class="nav-vinyl-group">
+        <circle cx="24" cy="24" r="13" fill="#141414" stroke="#2a2a2a" stroke-width="0.6"/>
+        <circle cx="24" cy="24" r="9"  fill="none" stroke="#1e1e1c" stroke-width="0.5"/>
+        <circle cx="24" cy="24" r="5.5" fill="#E8FF4D"/>
+        <circle cx="24" cy="24" r="2"  fill="#0a0a09"/>
+      </g>
+      <polyline points="21,8 24,5 27,8"    fill="none" stroke="#383838" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <polyline points="21,40 24,43 27,40" fill="none" stroke="#383838" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <polyline points="8,21 5,24 8,27"    fill="none" stroke="#383838" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <polyline points="40,21 43,24 40,27" fill="none" stroke="#383838" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <polyline class="nav-ag"       points="21,8 24,5 27,8"    fill="none" stroke="#E8FF4D" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="filter:drop-shadow(0 0 4px rgba(232,255,77,1))"/>
+      <polyline class="nav-ag nav-ag2" points="40,21 43,24 40,27" fill="none" stroke="#E8FF4D" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="filter:drop-shadow(0 0 4px rgba(232,255,77,1))"/>
+      <polyline class="nav-ag nav-ag3" points="21,40 24,43 27,40" fill="none" stroke="#E8FF4D" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="filter:drop-shadow(0 0 4px rgba(232,255,77,1))"/>
+      <polyline class="nav-ag nav-ag4" points="8,21 5,24 8,27"    fill="none" stroke="#E8FF4D" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="filter:drop-shadow(0 0 4px rgba(232,255,77,1))"/>
+    </svg>
+    <span>AUDIO<span class="nav-logo-b">BAAZ</span></span>
+  </a>
+  <div class="nav-links">
+    <a class="nav-link" href="#manifesto">About</a>
+    <a class="nav-link" href="#how">How it works</a>
+    <a class="nav-link" href="#community">Community</a>
+  </div>
+  <a class="nav-btn" href="#notify">Get early access</a>
+</nav>
+
+<!-- ─── HERO ─── -->
+<section class="hero" id="heroSection">
+
+  <div class="hero-bg-layer" id="layerBg">
+    <svg class="hero-bg-rings" viewBox="0 0 600 600" fill="none">
+      <circle cx="300" cy="300" r="295" stroke="#111" stroke-width="1.2"/>
+      <circle cx="300" cy="300" r="281" stroke="#111" stroke-width="0.6"/>
+      <circle cx="300" cy="300" r="267" stroke="#111" stroke-width="1.0"/>
+      <circle cx="300" cy="300" r="253" stroke="#111" stroke-width="0.6"/>
+      <circle cx="300" cy="300" r="239" stroke="#111" stroke-width="1.1"/>
+      <circle cx="300" cy="300" r="225" stroke="#111" stroke-width="0.6"/>
+      <circle cx="300" cy="300" r="211" stroke="#111" stroke-width="1.0"/>
+      <circle cx="300" cy="300" r="197" stroke="#111" stroke-width="0.6"/>
+      <circle cx="300" cy="300" r="183" stroke="#111" stroke-width="1.1"/>
+      <circle cx="300" cy="300" r="169" stroke="#111" stroke-width="0.6"/>
+      <circle cx="300" cy="300" r="155" stroke="#111" stroke-width="1.0"/>
+      <circle cx="300" cy="300" r="141" stroke="#111" stroke-width="0.6"/>
+    </svg>
+  </div>
+
+  <div class="hero-vinyl-layer" id="layerVinyl">
+    <div class="vinyl-wrap" id="vinylWrap">
+      <div class="vinyl-disc" id="vinylDisc">
+        <svg class="vinyl-face-svg" viewBox="0 0 500 500" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <radialGradient id="bodyGrad" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stop-color="#252522"/>
+              <stop offset="100%" stop-color="#0c0c0b"/>
+            </radialGradient>
+            <radialGradient id="grooveGrad" cx="40%" cy="36%" r="58%">
+              <stop offset="0%" stop-color="#2e2e2a"/>
+              <stop offset="100%" stop-color="#131312"/>
+            </radialGradient>
+          </defs>
+          <circle cx="250" cy="250" r="249" fill="url(#bodyGrad)"/>
+          <circle cx="250" cy="250" r="243" fill="none" stroke="url(#grooveGrad)" stroke-width="1.1"/>
+          <circle cx="250" cy="250" r="236" fill="none" stroke="url(#grooveGrad)" stroke-width="0.6"/>
+          <circle cx="250" cy="250" r="229" fill="none" stroke="url(#grooveGrad)" stroke-width="1.0"/>
+          <circle cx="250" cy="250" r="222" fill="none" stroke="url(#grooveGrad)" stroke-width="0.55"/>
+          <circle cx="250" cy="250" r="215" fill="none" stroke="url(#grooveGrad)" stroke-width="1.1"/>
+          <circle cx="250" cy="250" r="208" fill="none" stroke="url(#grooveGrad)" stroke-width="0.6"/>
+          <circle cx="250" cy="250" r="201" fill="none" stroke="url(#grooveGrad)" stroke-width="1.0"/>
+          <circle cx="250" cy="250" r="194" fill="none" stroke="url(#grooveGrad)" stroke-width="0.55"/>
+          <circle cx="250" cy="250" r="187" fill="none" stroke="url(#grooveGrad)" stroke-width="1.1"/>
+          <circle cx="250" cy="250" r="180" fill="none" stroke="url(#grooveGrad)" stroke-width="0.6"/>
+          <circle cx="250" cy="250" r="173" fill="none" stroke="url(#grooveGrad)" stroke-width="1.0"/>
+          <circle cx="250" cy="250" r="166" fill="none" stroke="url(#grooveGrad)" stroke-width="0.55"/>
+          <circle cx="250" cy="250" r="159" fill="none" stroke="url(#grooveGrad)" stroke-width="1.2"/>
+          <circle cx="250" cy="250" r="152" fill="none" stroke="url(#grooveGrad)" stroke-width="0.6"/>
+          <circle cx="250" cy="250" r="145" fill="none" stroke="url(#grooveGrad)" stroke-width="1.0"/>
+          <circle cx="250" cy="250" r="138" fill="none" stroke="url(#grooveGrad)" stroke-width="0.55"/>
+          <circle cx="250" cy="250" r="131" fill="none" stroke="url(#grooveGrad)" stroke-width="1.1"/>
+          <circle cx="250" cy="250" r="124" fill="none" stroke="url(#grooveGrad)" stroke-width="0.6"/>
+          <circle cx="250" cy="250" r="117" fill="none" stroke="url(#grooveGrad)" stroke-width="1.0"/>
+          <circle cx="250" cy="250" r="110" fill="none" stroke="url(#grooveGrad)" stroke-width="0.55"/>
+          <circle cx="250" cy="250" r="103" fill="none" stroke="#1e1e1c" stroke-width="2"/>
+          <circle cx="250" cy="250" r="101" fill="#E8FF4D"/>
+          <defs>
+            <radialGradient id="labelShine" cx="36%" cy="30%" r="60%">
+              <stop offset="0%" stop-color="white" stop-opacity="0.6"/>
+              <stop offset="100%" stop-color="white" stop-opacity="0"/>
+            </radialGradient>
+          </defs>
+          <circle cx="250" cy="250" r="101" fill="url(#labelShine)" opacity="0.28"/>
+          <text x="250" y="240" text-anchor="middle" font-family="Inter,sans-serif" font-size="11" font-weight="900" letter-spacing="2.5" fill="rgba(0,0,0,0.7)">AUDIO</text>
+          <line x1="220" y1="247" x2="280" y2="247" stroke="rgba(0,0,0,0.14)" stroke-width="0.8"/>
+          <text x="250" y="261" text-anchor="middle" font-family="Inter,sans-serif" font-size="11" font-weight="900" letter-spacing="2.5" fill="rgba(0,0,0,0.7)">BAAZ</text>
+          <text x="250" y="276" text-anchor="middle" font-family="Inter,sans-serif" font-size="6.5" letter-spacing="3.5" fill="rgba(0,0,0,0.32)">INDIA</text>
+          <polyline points="238,50 250,40 262,50" class="vinyl-arrow-base"/>
+          <polyline points="238,50 250,40 262,50" class="vinyl-ag vag1"/>
+          <polyline points="450,238 460,250 450,262" class="vinyl-arrow-base"/>
+          <polyline points="450,238 460,250 450,262" class="vinyl-ag vag2"/>
+          <polyline points="238,450 250,460 262,450" class="vinyl-arrow-base"/>
+          <polyline points="238,450 250,460 262,450" class="vinyl-ag vag3"/>
+          <polyline points="50,238 40,250 50,262" class="vinyl-arrow-base"/>
+          <polyline points="50,238 40,250 50,262" class="vinyl-ag vag4"/>
+        </svg>
+        <div class="vinyl-sheen" id="vinylSheen"></div>
+      </div>
+      <div class="vinyl-ground-shadow" id="vinylShadow"></div>
+    </div>
+  </div>
+
+  <div class="hero-text-layer" id="layerText">
+    <div class="hero-text-inner">
+      <div class="hero-badge" id="hbadge">
+        <span class="badge-dot"></span>
+        Launching in India
+      </div>
+      <h1 class="hero-h1">
+        <span class="h1-line" id="hl1"><span>The market</span></span>
+        <span class="h1-line" id="hl2"><span>for audio</span></span>
+        <span class="h1-line" id="hl3"><span><span class="h1-serif">obsessives.</span></span></span>
+      </h1>
+      <p class="hero-sub" id="hsub">
+        India's first managed secondhand marketplace for headphones, IEMs, speakers, DACs, and amps. Condition-graded. Escrow-protected.
+      </p>
+      <div class="hero-ctas" id="hctas">
+        <a class="btn-primary" href="#notify">
+          <span class="fill"></span>
+          <span>Get early access</span>
+        </a>
+        <a class="btn-ghost" href="#community">Join the community</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="hero-dissolve" id="heroDis"></div>
+</section>
+
+<!-- ─── TICKER ─── -->
+<div class="ticker-wrap">
+  <div class="ticker-track" id="ticker"></div>
+</div>
+
+<!-- ─── MANIFESTO ─── -->
+<section class="manifesto" id="manifesto">
+  <div class="mani-left reveal">
+    <div class="mani-rule"></div>
+    <h2 class="mani-h">
+      Buying secondhand<br>gear in India has<br>always been
+      <span class="serif">a gamble.</span>
+    </h2>
+  </div>
+  <div class="mani-right reveal rd2">
+    <div class="mani-body">
+      <p>You find something on a forum. You hope the seller is honest. You transfer the money. You wait. <span class="mani-em">Sometimes it works. Often it doesn't.</span></p>
+      <p>We're building the infrastructure that makes the entire experience trustworthy, for both sides. Every listing is verified. Every payment is held in escrow. Every dispute is handled. You don't trust a stranger. <span class="mani-em">You trust us.</span></p>
+    </div>
+  </div>
+</section>
+
+<!-- ─── VIDEO ─── -->
+<section class="video-section reveal" id="how-video">
+  <div class="video-label">How Audiobaaz works</div>
+  <div class="video-frame">
+    <div class="video-inner">
+      <video id="mainVideo" muted playsinline preload="metadata" loop
+             src="e73d147d-724e-4406-83e0-6616d17c268c.mp4">
+      </video>
+      <div class="video-overlay" id="videoOverlay">
+        <div class="play-ring" id="playBtn">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+            <path d="M5 3l12 7-12 7V3z" fill="white"/>
+          </svg>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="video-footer">
+    <span class="video-footer-label">From listing to payout — five steps</span>
+    <span class="video-footer-duration">0:10</span>
+  </div>
+</section>
+
+<!-- ─── STICKY SCROLL ─── -->
+<div class="sticky-outer" id="stickyOuter">
+  <div class="sticky-pin" id="stickyPin">
+
+    <div class="sticky-left">
+      <div class="sticky-statements" id="stickyStatements">
+
+        <div class="sticky-stmt active" id="stmt0">
+          <div class="stmt-num">01 / 03</div>
+          <h2 class="stmt-h">Every listing<br><em>condition-graded.</em></h2>
+          <p class="stmt-body">Before anything goes live, our team inspects it. We assign a grade — S, A, B, or C — that buyers can trust. No surprises when the gear arrives.</p>
+        </div>
+
+        <div class="sticky-stmt" id="stmt1">
+          <div class="stmt-num">02 / 03</div>
+          <h2 class="stmt-h">Every transaction<br><em>escrow-protected.</em></h2>
+          <p class="stmt-body">Payment is locked in escrow the moment a deal is made. You never transfer money to a stranger. It releases only after you confirm delivery.</p>
+        </div>
+
+        <div class="sticky-stmt" id="stmt2">
+          <div class="stmt-num">03 / 03</div>
+          <h2 class="stmt-h">Built for India's<br><em>audio community.</em></h2>
+          <p class="stmt-body">UPI payouts. Telegram notifications. IST support hours. Every detail designed for the Indian audiophile — not adapted from abroad.</p>
+        </div>
+
+      </div>
+
+      <div class="sticky-dots">
+        <div class="sticky-dot active" id="dot0"></div>
+        <div class="sticky-dot" id="dot1"></div>
+        <div class="sticky-dot" id="dot2"></div>
+      </div>
+    </div>
+
+    <div class="sticky-right" id="vinylStage">
+      <svg class="stage-tonearm" viewBox="0 0 80 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <line x1="72" y1="8" x2="20" y2="108" stroke="#555" stroke-width="2.5" stroke-linecap="round"/>
+        <circle cx="72" cy="8" r="7" fill="#333" stroke="#555" stroke-width="1.5"/>
+        <rect x="14" y="104" width="14" height="8" rx="1" fill="#2a2a2a" stroke="#555" stroke-width="1"/>
+      </svg>
+      <div class="stage-waveform">
+        <div class="wv"></div><div class="wv"></div><div class="wv"></div>
+        <div class="wv"></div><div class="wv"></div><div class="wv"></div>
+        <div class="wv"></div>
+      </div>
+      <div class="stage-vinyl-wrap" id="stageVinyl">
+        <svg viewBox="0 0 500 500" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%;border-radius:50%;overflow:hidden">
+          <defs>
+            <radialGradient id="sBodyGrad" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stop-color="#1e1e1c"/>
+              <stop offset="100%" stop-color="#080807"/>
+            </radialGradient>
+            <radialGradient id="sGrooveGrad" cx="38%" cy="34%" r="62%">
+              <stop offset="0%" stop-color="#282826"/>
+              <stop offset="100%" stop-color="#0f0f0e"/>
+            </radialGradient>
+          </defs>
+          <circle cx="250" cy="250" r="249" fill="url(#sBodyGrad)"/>
+          <circle cx="250" cy="250" r="244" fill="none" stroke="url(#sGrooveGrad)" stroke-width="1.2"/>
+          <circle cx="250" cy="250" r="236" fill="none" stroke="url(#sGrooveGrad)" stroke-width="0.6"/>
+          <circle cx="250" cy="250" r="228" fill="none" stroke="url(#sGrooveGrad)" stroke-width="1.1"/>
+          <circle cx="250" cy="250" r="220" fill="none" stroke="url(#sGrooveGrad)" stroke-width="0.55"/>
+          <circle cx="250" cy="250" r="212" fill="none" stroke="url(#sGrooveGrad)" stroke-width="1.0"/>
+          <circle cx="250" cy="250" r="204" fill="none" stroke="url(#sGrooveGrad)" stroke-width="0.55"/>
+          <circle cx="250" cy="250" r="196" fill="none" stroke="url(#sGrooveGrad)" stroke-width="1.2"/>
+          <circle cx="250" cy="250" r="188" fill="none" stroke="url(#sGrooveGrad)" stroke-width="0.6"/>
+          <circle cx="250" cy="250" r="180" fill="none" stroke="url(#sGrooveGrad)" stroke-width="1.0"/>
+          <circle cx="250" cy="250" r="172" fill="none" stroke="url(#sGrooveGrad)" stroke-width="0.55"/>
+          <circle cx="250" cy="250" r="164" fill="none" stroke="url(#sGrooveGrad)" stroke-width="1.1"/>
+          <circle cx="250" cy="250" r="156" fill="none" stroke="url(#sGrooveGrad)" stroke-width="0.6"/>
+          <circle cx="250" cy="250" r="148" fill="none" stroke="url(#sGrooveGrad)" stroke-width="1.0"/>
+          <circle cx="250" cy="250" r="140" fill="none" stroke="url(#sGrooveGrad)" stroke-width="0.55"/>
+          <circle cx="250" cy="250" r="132" fill="none" stroke="url(#sGrooveGrad)" stroke-width="1.2"/>
+          <circle cx="250" cy="250" r="124" fill="none" stroke="url(#sGrooveGrad)" stroke-width="0.6"/>
+          <circle cx="250" cy="250" r="116" fill="none" stroke="url(#sGrooveGrad)" stroke-width="1.0"/>
+          <circle cx="250" cy="250" r="106" fill="none" stroke="#1a1a18" stroke-width="2"/>
+          <circle cx="250" cy="250" r="104" fill="#E8FF4D"/>
+          <defs>
+            <radialGradient id="sLabelShine" cx="36%" cy="30%" r="60%">
+              <stop offset="0%" stop-color="white" stop-opacity="0.55"/>
+              <stop offset="100%" stop-color="white" stop-opacity="0"/>
+            </radialGradient>
+          </defs>
+          <circle cx="250" cy="250" r="104" fill="url(#sLabelShine)" opacity="0.25"/>
+          <text x="250" y="240" text-anchor="middle" font-family="Inter,sans-serif" font-size="11.5" font-weight="900" letter-spacing="2.5" fill="rgba(0,0,0,0.68)">AUDIO</text>
+          <line x1="218" y1="247" x2="282" y2="247" stroke="rgba(0,0,0,0.13)" stroke-width="0.8"/>
+          <text x="250" y="262" text-anchor="middle" font-family="Inter,sans-serif" font-size="11.5" font-weight="900" letter-spacing="2.5" fill="rgba(0,0,0,0.68)">BAAZ</text>
+          <polyline points="238,52 250,42 262,52"   fill="none" stroke="#383838" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+          <polyline points="448,238 458,250 448,262" fill="none" stroke="#383838" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+          <polyline points="238,448 250,458 262,448" fill="none" stroke="#383838" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+          <polyline points="52,238 42,250 52,262"   fill="none" stroke="#383838" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+          <polyline points="238,52 250,42 262,52"   fill="none" stroke="#E8FF4D" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="filter:drop-shadow(0 0 7px rgba(232,255,77,1))"/>
+          <polyline points="448,238 458,250 448,262" fill="none" stroke="#E8FF4D" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="filter:drop-shadow(0 0 7px rgba(232,255,77,1))"/>
+          <polyline points="238,448 250,458 262,448" fill="none" stroke="#E8FF4D" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="filter:drop-shadow(0 0 7px rgba(232,255,77,1))"/>
+          <polyline points="52,238 42,250 52,262"   fill="none" stroke="#E8FF4D" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="filter:drop-shadow(0 0 7px rgba(232,255,77,1))"/>
+        </svg>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ─── HOW IT WORKS ─── -->
+<section class="howSection reveal" id="how">
+  <div class="howHead">
+    <h2>Five steps,<br><em>start to payout.</em></h2>
+    <p class="howHead-sub">Built for the Indian audiophile community. Simple enough to do in 10 minutes. Solid enough to trust with serious gear.</p>
+  </div>
+  <div class="howRow reveal">
+    <div class="hrNum">01</div>
+    <div class="hrTitleCol"><div class="hrTitle">Create your listing</div><span class="hrTag">~10 min</span></div>
+    <div class="hrDescCol"><p class="hrDesc">Walk through our guided 6-step form. Product, condition, inclusions, photos, price. Simple enough that you get it right the first time.</p></div>
+  </div>
+  <div class="howRow reveal rd1">
+    <div class="hrNum">02</div>
+    <div class="hrTitleCol"><div class="hrTitle">We verify it</div><span class="hrTag">Under 24hr</span></div>
+    <div class="hrDescCol"><p class="hrDesc">Our team reviews your listing and assigns an official condition grade. S, A, B, or C. Consistent. Non-negotiable. No surprises for buyers.</p></div>
+  </div>
+  <div class="howRow reveal rd2">
+    <div class="hrNum">03</div>
+    <div class="hrTitleCol"><div class="hrTitle">Buyer pays into escrow</div><span class="hrTag">Instant hold</span></div>
+    <div class="hrDescCol"><p class="hrDesc">When an offer is accepted, payment is locked in escrow. You never touch the money until delivery is confirmed. The buyer is protected too.</p></div>
+  </div>
+  <div class="howRow reveal rd3">
+    <div class="hrNum">04</div>
+    <div class="hrTitleCol"><div class="hrTitle">Ship the gear</div><span class="hrTag">48hr inspection</span></div>
+    <div class="hrDescCol"><p class="hrDesc">Ship it. The buyer has 48 hours to inspect. If everything checks out, or if they don't respond, escrow releases to you automatically.</p></div>
+  </div>
+  <div class="howRow reveal">
+    <div class="hrNum">05</div>
+    <div class="hrTitleCol"><div class="hrTitle">Get paid via UPI</div><span class="hrTag">10% only when sold</span></div>
+    <div class="hrDescCol"><p class="hrDesc">Payment goes directly to your UPI. We take 10% only when the gear sells. No listing fee. No subscription. If it doesn't sell, you pay nothing.</p></div>
+  </div>
+</section>
+
+<!-- ─── BENTO ─── -->
+<section class="bentoSection reveal">
+  <h2 class="bentoH">Built with protection<br><em>at the core.</em></h2>
+  <div class="bentoGrid" id="bentoGrid">
+
+    <div class="bc bcDark bcTall" data-bento>
+      <svg class="bcLock" width="80" height="90" viewBox="0 0 80 90" fill="none">
+        <rect x="8" y="38" width="64" height="50" rx="4" stroke="#fff" stroke-width="2.5"/>
+        <path class="lockShackle" d="M20 38V26a20 20 0 0140 0v12" stroke="#E8FF4D" stroke-width="2.5" stroke-linecap="round"/>
+        <circle cx="40" cy="62" r="6" fill="#E8FF4D"/>
+        <rect x="37" y="62" width="6" height="10" rx="2" fill="#E8FF4D"/>
+      </svg>
+      <div style="font-size:9px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:#555;margin-bottom:18px">01</div>
+      <div class="bcStat bcStatAcc">100%</div>
+      <div class="bcTitle bcTitleL">Escrow on every transaction</div>
+      <div class="bcDesc bcDescL">Funds are collected before the buyer receives the gear. You are never left waiting for payment. Ever.</div>
+    </div>
+
+    <div class="bc bcYel" data-bento>
+      <div style="font-size:9px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:rgba(0,0,0,0.4);margin-bottom:18px">02</div>
+      <div class="bcTitle" style="color:var(--black)">Condition grading</div>
+      <div class="bcDesc" style="color:rgba(0,0,0,0.6)">Every listing gets an official grade from our team before it goes live.</div>
+      <div class="gradeRow">
+        <span class="gradePill gpS">S — Sealed</span>
+        <span class="gradePill gpA">A — Like new</span>
+        <span class="gradePill gpB">B — Good</span>
+        <span class="gradePill gpC">C — Fair</span>
+      </div>
+    </div>
+
+    <div class="bc" data-bento>
+      <div style="font-size:9px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:var(--muted);margin-bottom:18px">03</div>
+      <div class="bcTitle">Dispute support</div>
+      <div class="bcDesc">Our team arbitrates. We protect both sides against bad-faith claims. 48-hour inspection window, auto-release after.</div>
+      <svg width="64" height="56" viewBox="0 0 64 56" fill="none" style="margin-top:16px;color:var(--border)">
+        <line x1="32" y1="4" x2="32" y2="52" stroke="currentColor" stroke-width="1.5"/>
+        <line x1="8"  y1="8" x2="56" y2="8"  stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        <path d="M8 8L4 24a12 12 0 0024 0L24 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        <path d="M40 8l-4 16a12 12 0 0024 0L56 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        <rect x="24" y="50" width="16" height="4" rx="1" fill="currentColor"/>
+      </svg>
+    </div>
+
+    <div class="bc" style="background:var(--off)" data-bento>
+      <div style="font-size:9px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:var(--muted);margin-bottom:18px">04</div>
+      <div class="bcTitle">Telegram notifications</div>
+      <div class="tgRows">
+        <div class="tgRow"><div class="tgDot"></div><div class="tgText"><strong>New offer received</strong> — ₹68,000 on Audeze LCD-2</div></div>
+        <div class="tgRow"><div class="tgDot"></div><div class="tgText"><strong>Payment released</strong> — ₹45,000 sent to your UPI</div></div>
+        <div class="tgRow"><div class="tgDot"></div><div class="tgText"><strong>Listing live</strong> — Chord Mojo 2 approved, Grade A</div></div>
+      </div>
+    </div>
+
+    <div class="bc bcWide" data-bento>
+      <div style="font-size:9px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:var(--muted);margin-bottom:18px">05</div>
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:20px">
+        <div>
+          <div class="bcTitle">Zero listing fee</div>
+          <div class="bcDesc" style="max-width:300px">We only charge 10% when your gear sells. If it doesn't sell, you pay absolutely nothing. No risk to list.</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          <div style="font-size:56px;font-weight:900;letter-spacing:-0.05em;line-height:1">10%</div>
+          <div style="font-size:9px;color:var(--muted);letter-spacing:0.12em;text-transform:uppercase;margin-top:6px">Only when sold</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ─── COMMUNITY ─── -->
+<section class="communitySection reveal" id="community">
+  <div class="communityHead">
+    <h2>Join the conversation<br><em>before we launch.</em></h2>
+    <p>We're building Audiobaaz with the community. Get early access, share feedback, and connect with India's audiophile buyers and sellers.</p>
+  </div>
+  <div class="commCards">
+    <div class="cc" id="ccWa" data-href="#">
+      <div class="ccBar ccBarWa" id="barWa"></div>
+      <div class="ccIconRow">
+        <svg class="ccIcon" viewBox="0 0 38 38" fill="none">
+          <circle cx="19" cy="19" r="18" fill="#25D366"/>
+          <path d="M27 11.5C24.9 9.4 22.1 8.2 19 8.2c-6.2 0-11.3 5.1-11.3 11.3 0 2 .5 3.9 1.5 5.7L7.5 31l6-1.5c1.6.9 3.5 1.3 5.4 1.3 6.2 0 11.3-5.1 11.3-11.3 0-3-.9-5.8-3.2-8zM19 29.2c-1.7 0-3.4-.5-4.9-1.3l-.3-.2-3.5.9.9-3.4-.2-.3C10 23.4 9.5 21.3 9.5 19c0-5.2 4.3-9.5 9.5-9.5 2.5 0 4.9 1 6.6 2.8 1.8 1.7 2.8 4 2.8 6.6 0 5.2-4.3 9.3-9.4 9.3zm5.2-7.1c-.3-.14-1.7-.84-2-.94-.3-.1-.5-.14-.7.14-.2.28-.7.94-.9 1.13-.16.18-.33.21-.63.07-.3-.14-1.2-.44-2.3-1.42-.85-.76-1.42-1.7-1.58-1.98-.17-.28 0-.43.13-.57.12-.12.28-.32.42-.48.14-.17.19-.28.28-.48.1-.18.05-.35-.02-.49-.07-.14-.7-1.7-1-2.3-.2-.52-.36-.45-.5-.45h-.57c-.18 0-.49.07-.75.35-.26.28-1 .98-1 2.38s1.02 2.76 1.16 2.95c.14.19 2 3.05 4.84 4.28.67.29 1.2.46 1.61.59.68.22 1.3.19 1.79.11.54-.09 1.67-.68 1.91-1.34.23-.67.23-1.24.16-1.35-.07-.11-.26-.19-.56-.33z" fill="white"/>
+        </svg>
+        <span class="ccPlatform">WhatsApp</span>
+      </div>
+      <div class="ccTitle">Audiobaaz Community</div>
+      <div class="ccDesc">Gear talk, early announcements, and direct access to the team. The most active hub for Indian audiophiles.</div>
+      <div class="ccCta" id="ctaWa">
+        Join now
+        <svg class="ccArrow" width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 10L10 2M10 2H5M10 2v5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+      <span class="holdHint">Hold to open</span>
+    </div>
+    <div class="cc" id="ccTg" data-href="#">
+      <div class="ccBar ccBarTg" id="barTg"></div>
+      <div class="ccIconRow">
+        <svg class="ccIcon" viewBox="0 0 38 38" fill="none">
+          <circle cx="19" cy="19" r="18" fill="#229ED9"/>
+          <path d="M28 10.8L8 18.8c-1.3.56-1.3 1.34-.3 1.6l5.1 1.6 11.9-7.5c.56-.38 1.07-.2.65.2L15.4 24l-.4 5.2c.57 0 .86-.28 1.14-.56l2.74-2.65 5.2 3.8c.96.57 1.63.28 1.9-.96l3.3-15.44c.38-1.62-.57-2.28-1.28-1.58z" fill="white"/>
+        </svg>
+        <span class="ccPlatform">Telegram</span>
+      </div>
+      <div class="ccTitle">Audiobaaz Updates</div>
+      <div class="ccDesc">Launch updates, new listing drops, and community highlights. Be first to know when we go live.</div>
+      <div class="ccCta" id="ctaTg">
+        Subscribe
+        <svg class="ccArrow" width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 10L10 2M10 2H5M10 2v5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+      <span class="holdHint">Hold to open</span>
+    </div>
+  </div>
+</section>
+
+<!-- ─── NOTIFY ─── -->
+<section class="notifySection" id="notify">
+  <div class="notifyInner reveal">
+    <h2 class="notifyH">
+      Be first
+      <em>when we launch.</em>
+    </h2>
+    <p class="notifySub">Drop your email. Early listing credits and priority access, before we open to everyone.</p>
+    <div class="notifyForm">
+      <input class="notifyInput" type="email" id="notifyEmail" placeholder="you@example.com" autocomplete="email"/>
+      <button class="notifySubmit" id="notifySubmit">
+        <span class="submitLabel" id="submitLabel">Notify me</span>
+      </button>
+    </div>
+    <div class="notifyNote" id="notifyNote">We'll email you once, when we're live.</div>
+    <div class="notifyPromises">
+      <div class="np"><span class="np-dot"></span>No spam, ever</div>
+      <div class="np"><span class="np-dot"></span>One email at launch</div>
+      <div class="np"><span class="np-dot"></span>Early listing credits included</div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── FOOTER ─── -->
+<footer>
+  <span class="foot-logo">AUDIO<span>BAAZ</span></span>
+  <span class="foot-copy">2025 Lapidaria. All rights reserved.</span>
+  <div class="foot-links">
+    <a class="foot-link" href="#how">How it works</a>
+    <a class="foot-link" href="#community">Community</a>
+    <a class="foot-link" href="#">Terms</a>
+    <a class="foot-link" href="#">Privacy</a>
+  </div>
+</footer>
+
+<script>
+/* ── Nav entrance ── */
+setTimeout(() => document.getElementById('mainNav').classList.add('visible'), 100);
+
+/* ── Hero staggered entrance ── */
+[['hbadge',180],['hl1',260],['hl2',335],['hl3',410],['hsub',520],['hctas',640]].forEach(([id,d]) =>
+  setTimeout(() => { const el = document.getElementById(id); if (el) el.classList.add('in'); }, d)
+);
+
+/* ══════════════════════════════════════════
+   SPRING PARALLAX ENGINE
+══════════════════════════════════════════ */
+(function(){
+  const layerBg    = document.getElementById('layerBg');
+  const layerVinyl = document.getElementById('layerVinyl');
+  const layerText  = document.getElementById('layerText');
+  const disc       = document.getElementById('vinylDisc');
+  const sheen      = document.getElementById('vinylSheen');
+  const shadow     = document.getElementById('vinylShadow');
+  if (!layerBg || !disc) return;
+
+  /* Skip on touch devices — spring tracks mouse only */
+  if (!window.matchMedia('(hover:hover) and (pointer:fine)').matches) {
+    disc.style.transform = 'rotateX(10deg) rotateY(-8deg)';
+    return;
+  }
+
+  const spring = {
+    bg:    { cx:0,cy:0,tx:0,ty:0,vx:0,vy:0, factor:0.014, stiff:0.055, damp:0.78 },
+    vinyl: { cx:0,cy:0,tx:0,ty:0,vx:0,vy:0, factor:0.044, stiff:0.075, damp:0.72 },
+    text:  { cx:0,cy:0,tx:0,ty:0,vx:0,vy:0, factor:0.070, stiff:0.095, damp:0.68 },
+  };
+  const tilt = { rx:10,ry:-8, trx:10,try:-8, vrx:0,vry:0, stiff:0.065, damp:0.75 };
+  let mouseNX=0, mouseNY=0, mouseActive=false;
+
+  document.addEventListener('mousemove', e => {
+    mouseNX = (e.clientX / window.innerWidth)  - 0.5;
+    mouseNY = (e.clientY / window.innerHeight) - 0.5;
+    mouseActive = true;
+  });
+  document.addEventListener('mouseleave', () => { mouseActive = false; });
+
+  function tick() {
+    const W = window.innerWidth, H = window.innerHeight;
+    if (mouseActive) {
+      spring.bg.tx    = mouseNX * W * spring.bg.factor;
+      spring.bg.ty    = mouseNY * H * spring.bg.factor;
+      spring.vinyl.tx = mouseNX * W * spring.vinyl.factor;
+      spring.vinyl.ty = mouseNY * H * spring.vinyl.factor;
+      spring.text.tx  = mouseNX * W * spring.text.factor;
+      spring.text.ty  = mouseNY * H * spring.text.factor;
+      tilt.trx = -mouseNY * 22;
+      tilt.try  =  mouseNX * 28;
+    } else {
+      spring.bg.tx = spring.bg.ty = 0;
+      spring.vinyl.tx = spring.vinyl.ty = 0;
+      spring.text.tx  = spring.text.ty  = 0;
+      tilt.trx = 10; tilt.try = -8;
+    }
+    for (const k of ['bg','vinyl','text']) {
+      const s = spring[k];
+      s.vx += (s.tx - s.cx) * s.stiff; s.vx *= s.damp; s.cx += s.vx;
+      s.vy += (s.ty - s.cy) * s.stiff; s.vy *= s.damp; s.cy += s.vy;
+    }
+    tilt.vrx += (tilt.trx - tilt.rx) * tilt.stiff; tilt.vrx *= tilt.damp; tilt.rx += tilt.vrx;
+    tilt.vry += (tilt.try - tilt.ry) * tilt.stiff; tilt.vry *= tilt.damp; tilt.ry += tilt.vry;
+
+    layerBg.style.transform    = `translate(${spring.bg.cx.toFixed(2)}px,${spring.bg.cy.toFixed(2)}px)`;
+    layerVinyl.style.transform = `translate(${spring.vinyl.cx.toFixed(2)}px,${spring.vinyl.cy.toFixed(2)}px)`;
+    layerText.style.transform  = `translate(${spring.text.cx.toFixed(2)}px,${spring.text.cy.toFixed(2)}px)`;
+    disc.style.transform = `rotateX(${tilt.rx.toFixed(2)}deg) rotateY(${tilt.ry.toFixed(2)}deg)`;
+    if (sheen) sheen.style.setProperty('--sheen-angle', (Math.atan2(mouseNY,mouseNX)*180/Math.PI+210).toFixed(1)+'deg');
+    if (shadow) shadow.style.transform = `translateX(calc(-50% + ${(tilt.ry*0.55).toFixed(1)}px)) translateY(${(tilt.rx*0.28).toFixed(1)}px)`;
+    requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+
+  /* Scroll: vinyl drifts up + scales down */
+  const heroSection = document.getElementById('heroSection');
+  const dis = document.getElementById('heroDis');
+  window.addEventListener('scroll', () => {
+    if (!heroSection) return;
+    const progress = Math.min(window.scrollY / (heroSection.offsetHeight * 0.65), 1);
+    layerVinyl.style.transform = `translate(${spring.vinyl.cx.toFixed(2)}px,${(spring.vinyl.cy - progress*90).toFixed(2)}px) scale(${(1 - progress*0.18).toFixed(3)})`;
+    if (dis) dis.style.background = `rgba(245,245,242,${(progress*0.92).toFixed(3)})`;
+  }, { passive:true });
+})();
+
+/* ── Ticker ── */
+const items = [
+  {cat:'Headphones',name:'Sennheiser HD 800 S',    price:'₹1,45,000',grade:'A',g:'tg-a'},
+  {cat:'IEMs',      name:'Moondrop Blessing 3',     price:'₹18,000',  grade:'S',g:'tg-s'},
+  {cat:'DAC',       name:'Chord Mojo 2',            price:'₹32,000',  grade:'A',g:'tg-a'},
+  {cat:'Headphones',name:'Audeze LCD-2 Classic',    price:'₹68,000',  grade:'B',g:'tg-b'},
+  {cat:'Amp',       name:'iFi xDSD Gryphon',        price:'₹24,000',  grade:'A',g:'tg-a'},
+  {cat:'Headphones',name:'HiFiMan Sundara',         price:'₹28,000',  grade:'B',g:'tg-b'},
+  {cat:'DAC',       name:'Topping D90SE',           price:'₹35,000',  grade:'S',g:'tg-s'},
+  {cat:'IEMs',      name:'Campfire Andromeda 2023', price:'₹72,000',  grade:'A',g:'tg-a'},
+  {cat:'Headphones',name:'Focal Clear Mg',          price:'₹95,000',  grade:'A',g:'tg-a'},
+  {cat:'IEMs',      name:'64 Audio U12t',           price:'₹1,15,000',grade:'S',g:'tg-s'},
+];
+document.getElementById('ticker').innerHTML = [...items,...items].map(i =>
+  `<div class="ticker-item"><span class="ti-cat">${i.cat}</span><span class="ti-name">${i.name}</span><span class="ti-price">${i.price}</span><span class="ti-grade ${i.g}">${i.grade}</span></div>`
+).join('');
+const tw = document.querySelector('.ticker-wrap');
+tw.addEventListener('mouseenter', () => document.getElementById('ticker').style.animationPlayState = 'paused');
+tw.addEventListener('mouseleave', () => document.getElementById('ticker').style.animationPlayState = 'running');
+
+/* ── Video autoplay ── */
+(function(){
+  const vid = document.getElementById('mainVideo');
+  const overlay = document.getElementById('videoOverlay');
+  const playBtn = document.getElementById('playBtn');
+  if (!vid) return;
+  let started = false;
+
+  new IntersectionObserver(es => {
+    es.forEach(e => {
+      if (e.isIntersecting && !started) {
+        started = true;
+        vid.play().then(() => overlay.classList.add('hidden')).catch(() => {});
+      }
+    });
+  }, { threshold: 0.3 }).observe(vid);
+
+  playBtn.addEventListener('click', () => {
+    if (vid.paused) { vid.play(); overlay.classList.add('hidden'); }
+    else { vid.pause(); overlay.classList.remove('hidden'); }
+  });
+  vid.addEventListener('click', () => { vid.muted = !vid.muted; });
+})();
+
+/* ── Scroll reveals ── */
+const revealObs = new IntersectionObserver(es => {
+  es.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in'); revealObs.unobserve(e.target); } });
+}, { threshold: 0.08 });
+document.querySelectorAll('.reveal').forEach(el => revealObs.observe(el));
+
+/* ── Bento spotlight (hover only) ── */
+if (window.matchMedia('(hover:hover)').matches) {
+  document.querySelectorAll('[data-bento]').forEach(cell => {
+    cell.addEventListener('mousemove', e => {
+      const r = cell.getBoundingClientRect();
+      cell.style.setProperty('--mx', ((e.clientX - r.left) / r.width * 100) + '%');
+      cell.style.setProperty('--my', ((e.clientY - r.top)  / r.height * 100) + '%');
+    });
+  });
+}
+
+/* ── Community hold-to-activate ── */
+function setupHold(cardId, barId, ctaId) {
+  const card = document.getElementById(cardId);
+  const bar  = document.getElementById(barId);
+  const cta  = document.getElementById(ctaId);
+  if (!card) return;
+  let timer = null;
+  const reduced = window.matchMedia('(prefers-reduced-motion:reduce)').matches;
+
+  function startHold() {
+    const href = card.getAttribute('data-href');
+    if (reduced || !href || href === '#') return;
+    bar.classList.add('holding');
+    timer = setTimeout(() => {
+      cta.classList.add('completing');
+      setTimeout(() => {
+        cta.textContent = 'Opening…';
+        cta.classList.remove('completing');
+        setTimeout(() => window.open(href, '_blank', 'noopener,noreferrer'), 150);
+      }, 150);
+    }, 2000);
+  }
+  function cancelHold() {
+    bar.classList.remove('holding');
+    if (timer) { clearTimeout(timer); timer = null; }
+  }
+  card.addEventListener('mousedown',  startHold);
+  card.addEventListener('mouseup',    cancelHold);
+  card.addEventListener('mouseleave', cancelHold);
+  card.addEventListener('touchstart', startHold, { passive: true });
+  card.addEventListener('touchend',   cancelHold);
+}
+/* TODO: replace '#' with real WhatsApp + Telegram links before launch */
+setupHold('ccWa', 'barWa', 'ctaWa');
+setupHold('ccTg', 'barTg', 'ctaTg');
+
+/* ── Morphing notify submit ── */
+(function(){
+  const input  = document.getElementById('notifyEmail');
+  const submit = document.getElementById('notifySubmit');
+  const label  = document.getElementById('submitLabel');
+  const note   = document.getElementById('notifyNote');
+  let done = false;
+
+  function handleNotify() {
+    if (done) return;
+    const email = input.value.trim();
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      input.classList.add('error');
+      note.textContent = 'Enter a valid email address.';
+      note.style.color = '#dc2626';
+      setTimeout(() => {
+        input.classList.remove('error');
+        note.textContent = "We'll email you once, when we're live.";
+        note.style.color = '';
+      }, 2200);
+      return;
+    }
+    done = true;
+    input.disabled = true;
+    submit.classList.add('loading');
+
+    fetch('https://supabase.audiobaaz.com/rest/v1/waitlist_emails', {
+      method: 'POST',
+      headers: {
+        'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzgwMzQzODE0LCJleHAiOjE5MzgwMjM4MTR9.KGkFLmF26W8snTY3Ab2bDS1sWNZL_Twyr0e9RIQgy68',
+        'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzgwMzQzODE0LCJleHAiOjE5MzgwMjM4MTR9.KGkFLmF26W8snTY3Ab2bDS1sWNZL_Twyr0e9RIQgy68',
+        'Content-Type': 'application/json',
+        'Prefer': 'return=minimal'
+      },
+      body: JSON.stringify({ email, source: 'launch_page' })
+    })
+    .then(async res => {
+      await new Promise(r => setTimeout(r, 800));
+      if (res.ok || res.status === 409) {
+        const alreadyExists = res.status === 409;
+        label.classList.add('morphing');
+        setTimeout(() => {
+          label.textContent = alreadyExists ? 'Already registered ✓' : "You're on the list ✓";
+          label.classList.remove('morphing');
+          submit.classList.remove('loading');
+          submit.disabled = true;
+          note.textContent = "We'll be in touch before we go live.";
+          note.style.color = 'rgba(0,0,0,0.55)';
+        }, 180);
+      } else {
+        done = false; input.disabled = false;
+        submit.classList.remove('loading');
+        note.textContent = 'Something went wrong. Please try again.';
+        note.style.color = '#dc2626';
+        setTimeout(() => { note.textContent = "We'll email you once, when we're live."; note.style.color = ''; }, 2500);
+      }
+    })
+    .catch(() => {
+      done = false; input.disabled = false;
+      submit.classList.remove('loading');
+      note.textContent = 'Connection error. Please try again.';
+      note.style.color = '#dc2626';
+      setTimeout(() => { note.textContent = "We'll email you once, when we're live."; note.style.color = ''; }, 2500);
+    });
+
+  }
+
+  submit.addEventListener('click', handleNotify);
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') handleNotify(); });
+})();
+
+/* ── Sticky scroll — text swaps on scroll ── */
+(function(){
+  const outer = document.getElementById('stickyOuter');
+  const pin   = document.getElementById('stickyPin');
+  if (!outer || !pin) return;
+
+  const stmts = ['stmt0','stmt1','stmt2'].map(id => document.getElementById(id));
+  const dots  = ['dot0','dot1','dot2'].map(id => document.getElementById(id));
+  let current = 0;
+
+  function setActive(idx) {
+    if (idx === current) return;
+    stmts[current].classList.remove('active');
+    stmts[current].classList.add('exit');
+    dots[current].classList.remove('active');
+    const prev = current;
+    setTimeout(() => stmts[prev].classList.remove('exit'), 550);
+    current = idx;
+    stmts[current].classList.add('active');
+    dots[current].classList.add('active');
+  }
+
+  function onScroll() {
+    const rect     = outer.getBoundingClientRect();
+    const outerH   = outer.offsetHeight;
+    const pinH     = pin.offsetHeight;
+    const scrolled = -rect.top;
+    const scrollable = outerH - pinH;
+    if (scrolled < 0 || scrolled > scrollable) return;
+    const beat = scrollable / 3;
+    setActive(Math.min(2, Math.floor(scrolled / beat)));
+  }
+
+  window.addEventListener('scroll', onScroll, { passive: true });
+  onScroll();
+})();
+</script>
+</body>
+</html>

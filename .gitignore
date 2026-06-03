@@ -28,3 +28,26 @@ Thumbs.db
 .idea/
 *.swp
 *.swo
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# Local AI tool config
+.ai-local/
+
+# AI tooling (dev-only, not part of the codebase)
+.agents/
+.github/skills/
+skills-lock.json
+
+# Reference/source video files — not for deployment
+original-*.mp4
+Generate_a_second_flat_vect.mp4
+/e73d147d-724e-4406-83e0-6616d17c268c.mp4
+
+# Reference materials
+animation videos/

@@ -215,6 +215,17 @@ These are final. Do not suggest alternatives.
 
 > Update this table when features change status.
 
+### Launch Page (live — separate from app features)
+
+| What | Status | Notes |
+|------|--------|-------|
+| Waitlist landing page | **LIVE on main** | `public/launch.html` — served at `audiobaaz.com/launch.html` |
+| Root redirect | **LIVE on main** | `next.config.mjs` redirects `/` → `/launch.html` temporarily |
+| Email capture | **LIVE** | Writes to `waitlist_emails` table in production Supabase |
+| Source file | `audiobaaz_launch.html` at repo root | Edit this, copy to `public/launch.html` to update |
+
+> The launch page is standalone HTML — no Next.js build steps involved. When the full app ships, remove the redirect from `next.config.mjs` and the root will serve the real app.
+
 ---
 
 ## CURRENT REPOSITORY STATE — 2026-05-30
