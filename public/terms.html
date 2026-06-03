@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Terms of Service — Audiobaaz</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --off:    #F5F5F2;
+  --white:  #ffffff;
+  --black:  #0a0a09;
+  --mid:    #52524e;
+  --muted:  #9a9990;
+  --border: #e2e1dc;
+  --acc:    #E8FF4D;
+  --f-sans: 'Inter', system-ui, sans-serif;
+  --f-serif:'Instrument Serif', Georgia, serif;
+  --ease:   cubic-bezier(0.16,1,0.3,1);
+}
+*,*::before,*::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--off); color: var(--black);
+  font-family: var(--f-sans); font-size: 15px; line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+a { color: inherit; text-decoration: none; }
+
+/* ── NAV ── */
+.nav {
+  position: sticky; top: 0;
+  background: rgba(245,245,242,0.92);
+  backdrop-filter: blur(20px) saturate(180%);
+  border-bottom: 1px solid var(--border);
+  padding: 14px 48px;
+  display: flex; align-items: center; justify-content: space-between;
+  z-index: 100;
+}
+.nav-logo {
+  font-size: 14px; font-weight: 800; letter-spacing: -0.02em; text-transform: uppercase;
+  display: flex; align-items: center; gap: 6px;
+}
+.nav-logo span { background: var(--acc); padding: 0 3px; }
+.nav-back {
+  font-size: 12px; font-weight: 500; color: var(--muted);
+  display: flex; align-items: center; gap: 6px;
+  transition: color 0.15s;
+}
+.nav-back:hover { color: var(--black); }
+
+/* ── HERO ── */
+.page-hero {
+  background: var(--black);
+  padding: 80px 48px 72px;
+  border-bottom: 1px solid #1a1a18;
+}
+.page-hero-label {
+  font-size: 10px; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase;
+  color: rgba(255,255,255,0.3); margin-bottom: 20px;
+}
+.page-hero h1 {
+  font-size: clamp(36px, 5vw, 64px); font-weight: 900;
+  letter-spacing: -0.05em; line-height: 0.9; color: #fff;
+}
+.page-hero h1 em {
+  font-family: var(--f-serif); font-style: italic; font-weight: 400; color: var(--acc);
+}
+.page-hero-meta {
+  margin-top: 24px; font-size: 12px; color: rgba(255,255,255,0.3);
+  letter-spacing: 0.05em;
+}
+
+/* ── CONTENT ── */
+.page-content {
+  max-width: 720px; margin: 0 auto;
+  padding: 72px 40px 96px;
+}
+.section { margin-bottom: 52px; }
+.section h2 {
+  font-size: 13px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--muted); margin-bottom: 16px;
+  padding-bottom: 12px; border-bottom: 1px solid var(--border);
+}
+.section p { font-size: 15px; color: var(--mid); line-height: 1.8; margin-bottom: 14px; }
+.section p:last-child { margin-bottom: 0; }
+.section p strong { color: var(--black); font-weight: 600; }
+.section ul { margin: 12px 0 14px 0; padding-left: 0; list-style: none; }
+.section ul li {
+  font-size: 15px; color: var(--mid); line-height: 1.8;
+  padding-left: 20px; position: relative; margin-bottom: 6px;
+}
+.section ul li::before {
+  content: '—'; position: absolute; left: 0; color: var(--border);
+}
+.contact-block {
+  background: var(--white); border: 1px solid var(--border);
+  padding: 28px 32px; margin-top: 20px;
+}
+.contact-block p { margin: 0; }
+.contact-block a { color: var(--black); font-weight: 600; border-bottom: 1px solid var(--border); }
+.contact-block a:hover { border-color: var(--black); }
+
+/* ── FOOTER ── */
+footer {
+  padding: 28px 48px;
+  display: flex; justify-content: space-between; align-items: center;
+  background: var(--white); border-top: 1px solid var(--border);
+  flex-wrap: wrap; gap: 12px;
+}
+.foot-logo { font-size: 14px; font-weight: 800; letter-spacing: -0.02em; text-transform: uppercase; }
+.foot-logo span { background: var(--acc); padding: 0 2px; }
+.foot-copy { font-size: 11px; color: var(--muted); }
+.foot-links { display: flex; gap: 20px; }
+.foot-link { font-size: 11px; color: var(--muted); transition: color 0.15s; }
+.foot-link:hover { color: var(--black); }
+
+@media (max-width: 640px) {
+  .nav { padding: 12px 20px; }
+  .page-hero { padding: 56px 20px 52px; }
+  .page-content { padding: 48px 20px 72px; }
+  footer { padding: 24px 20px; flex-direction: column; text-align: center; }
+  .foot-links { justify-content: center; }
+}
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <a class="nav-logo" href="/launch.html">AUDIO<span>BAAZ</span></a>
+  <a class="nav-back" href="/launch.html">
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+      <path d="M9 2L4 7l5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    Back
+  </a>
+</nav>
+
+<div class="page-hero">
+  <div class="page-hero-label">Legal</div>
+  <h1>Terms of<br><em>Service</em></h1>
+  <div class="page-hero-meta">Last updated: June 2025 &nbsp;·&nbsp; Lapidaria / Audiobaaz</div>
+</div>
+
+<div class="page-content">
+
+  <div class="section">
+    <h2>About this document</h2>
+    <p>Audiobaaz is currently in pre-launch. By joining our waitlist or using this website, you agree to these terms. The platform described here — listings, escrow, payments — is not yet live. These terms will be updated when the full marketplace launches.</p>
+    <p>Audiobaaz is operated by <strong>Lapidaria</strong>, a company registered in India. "We", "us", and "our" refer to Lapidaria.</p>
+  </div>
+
+  <div class="section">
+    <h2>Waitlist</h2>
+    <p>When you submit your email address on this page, you are joining a waitlist to be notified when Audiobaaz launches. By doing so, you agree to:</p>
+    <ul>
+      <li>Receive one email notification when the platform goes live</li>
+      <li>Potentially receive early access information or invitations</li>
+    </ul>
+    <p>We will not use your email for any other purpose without your explicit consent. You can request removal from the waitlist at any time by emailing us.</p>
+  </div>
+
+  <div class="section">
+    <h2>Acceptable use</h2>
+    <p>You agree not to use this website to:</p>
+    <ul>
+      <li>Submit false or misleading information</li>
+      <li>Attempt to reverse-engineer, scrape, or disrupt our systems</li>
+      <li>Violate any applicable Indian law or regulation</li>
+    </ul>
+  </div>
+
+  <div class="section">
+    <h2>Intellectual property</h2>
+    <p>All content on this website — including the name "Audiobaaz", the logo, design, and copy — is owned by Lapidaria. You may not reproduce, distribute, or use any of it without written permission.</p>
+  </div>
+
+  <div class="section">
+    <h2>Disclaimers</h2>
+    <p>This website is provided "as is". We make no guarantees about the platform's launch date, feature set, or availability. Nothing on this page constitutes a binding offer or contract for the marketplace service.</p>
+    <p>To the extent permitted by Indian law, Lapidaria is not liable for any indirect or consequential damages arising from your use of this website.</p>
+  </div>
+
+  <div class="section">
+    <h2>Governing law</h2>
+    <p>These terms are governed by the laws of India. Any disputes will be subject to the exclusive jurisdiction of the courts of India.</p>
+  </div>
+
+  <div class="section">
+    <h2>Contact</h2>
+    <p>Questions about these terms:</p>
+    <div class="contact-block">
+      <p>Email <a href="mailto:legal@audiobaaz.com">legal@audiobaaz.com</a></p>
+    </div>
+  </div>
+
+</div>
+
+<footer>
+  <span class="foot-logo">AUDIO<span>BAAZ</span></span>
+  <span class="foot-copy">2025 Lapidaria. All rights reserved.</span>
+  <div class="foot-links">
+    <a class="foot-link" href="/terms.html">Terms</a>
+    <a class="foot-link" href="/privacy.html">Privacy</a>
+  </div>
+</footer>
+
+</body>
+</html>
