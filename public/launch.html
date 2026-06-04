@@ -42,16 +42,17 @@ img,svg{display:block}
 
 /* ─── NAV ─── */
 .nav{
-  position:fixed;top:18px;left:50%;
+  position:fixed;top:16px;left:50%;
   transform:translateX(-50%) translateY(-16px);
   background:rgba(245,245,242,0.86);
   backdrop-filter:blur(24px) saturate(180%);
   -webkit-backdrop-filter:blur(24px) saturate(180%);
   border:1px solid rgba(226,225,220,0.65);
-  padding:10px 18px 10px 14px;
-  display:flex;align-items:center;gap:24px;
-  width:fit-content;white-space:nowrap;
-  z-index:500;opacity:0;
+  border-radius:9999px;
+  padding:8px 8px 8px 20px;
+  display:flex;align-items:center;justify-content:space-between;gap:24px;
+  width:calc(100% - 40px);max-width:1360px;
+  white-space:nowrap;z-index:500;opacity:0;
   box-shadow:0 2px 24px rgba(0,0,0,0.07),0 1px 4px rgba(0,0,0,0.04);
   transition:opacity 0.7s var(--ease),transform 0.7s var(--ease);
 }
@@ -70,7 +71,7 @@ img,svg{display:block}
 .nav-btn{
   display:inline-flex;align-items:center;background:var(--black);color:var(--white);
   font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;
-  padding:9px 18px;position:relative;overflow:hidden;
+  padding:9px 20px;border-radius:9999px;position:relative;overflow:hidden;
   transition:transform 160ms ease-out,background 0.15s;
 }
 .nav-btn::after{
@@ -388,6 +389,10 @@ img,svg{display:block}
   transition:background 0.4s,width 0.4s;
 }
 .sticky-dot.active{background:var(--acc);width:40px}
+.stmt-cat{
+  font-size:9px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;
+  color:var(--acc);opacity:0.75;margin-bottom:10px;
+}
 .sticky-right{
   background:#050504;
   display:flex;align-items:center;justify-content:center;
@@ -659,30 +664,57 @@ footer{
 
 /* ─── MOBILE ─── */
 @media(max-width:860px){
-  .nav{padding:9px 14px;gap:14px;max-width:calc(100vw - 24px)}
+  /* ── NAV ── */
+  .nav{padding:8px 8px 8px 16px;gap:12px;width:calc(100% - 24px)}
   .nav-links{display:none}
-  .hero{height:auto;min-height:100svh}
+  .nav-btn{padding:10px 16px}
+
+  /* ── HERO: vinyl becomes background watermark, text anchors to bottom ── */
+  .hero{height:100svh}
   .hero-vinyl-layer{
-    position:relative;inset:auto;justify-content:center;
-    padding:80px 20px 0;pointer-events:auto;
+    inset:auto;top:-6%;right:-14%;
+    width:76vw;height:76vw;
+    pointer-events:none;opacity:0.18;
+    display:flex;justify-content:center;align-items:center;
+    padding:0;
   }
+  @keyframes disc-breathe-m{0%,100%{transform:scale(1)}50%{transform:scale(1.025)}}
   .vinyl-wrap{
-    width:clamp(280px,80vw,400px);height:clamp(280px,80vw,400px);
+    width:100%;height:100%;
     margin-right:0;margin-top:0;
-    animation:disc-breathe-m 7s ease-in-out infinite;
+    animation:disc-breathe-m 9s ease-in-out infinite;
   }
-  @keyframes disc-breathe-m{0%,100%{transform:translateY(0)}50%{transform:translateY(-16px)}}
-  .vinyl-disc{transform:rotateX(8deg) rotateY(-6deg) !important}
-  .hero-text-layer{position:relative;inset:auto;max-width:100%;padding:28px 24px 52px}
+  .vinyl-disc{transform:rotateX(6deg) rotateY(-4deg) !important}
+  .hero-text-layer{
+    position:absolute;inset:0;
+    max-width:100%;padding:0 24px 52px;
+    display:flex;flex-direction:column;justify-content:flex-end;
+  }
   .hero-bg-layer{display:none}
   .hero-h1{font-size:clamp(40px,11vw,56px)}
   .hero-ctas{flex-direction:column}
   .btn-primary,.btn-ghost{width:100%;justify-content:center;padding:17px 24px}
-  .nav-btn{padding:11px 16px}
+
+  /* ── CTA: offset brutalist shadow ── */
+  .btn-primary{
+    border:1px solid var(--black);
+    box-shadow:4px 4px 0 var(--black);
+    transition:transform 120ms ease-out,box-shadow 120ms ease-out;
+  }
+  .btn-primary:active{
+    transform:translate(3px,3px);
+    box-shadow:1px 1px 0 var(--black);
+  }
+
+  /* ── MANIFESTO ── */
   .manifesto{grid-template-columns:1fr}
   .mani-left{padding:64px 24px;border-right:none;border-bottom:1px solid var(--border)}
   .mani-right{padding:48px 24px}
+
+  /* ── VIDEO ── */
   .video-section{padding:48px 24px}
+
+  /* ── STICKY SCROLL ── */
   .sticky-outer{height:280svh}
   .sticky-pin{
     position:sticky;top:0;
@@ -705,22 +737,47 @@ footer{
   }
   .sticky-stmt+.sticky-stmt{margin-top:0}
   .sticky-dots{display:flex}
-  .howHead{grid-template-columns:1fr;gap:20px}
-  .howRow{grid-template-columns:1fr}
-  .hrNum{padding:24px 20px 0;border-right:none;font-size:40px}
-  .hrTitleCol{padding:16px 20px;border-right:none;border-bottom:1px solid var(--border)}
-  .hrDescCol{padding:20px 20px 32px}
-  .bentoSection{padding:56px 20px}
-  .bentoGrid{grid-template-columns:1fr}
-  .bcWide,.bcTall{grid-column:span 1;grid-row:span 1}
+
+  /* ── HOW IT WORKS: compact horizontal rows ── */
+  .howHead{grid-template-columns:1fr;gap:20px;padding:40px 20px}
+  .howRow{display:flex;flex-direction:column}
+  .hrNum{
+    padding:20px 20px 0;border-right:none;
+    font-size:9px;font-weight:700;letter-spacing:0.18em;
+    text-transform:uppercase;color:var(--muted);line-height:1;
+  }
+  .hrNum::before{content:'STEP '}
+  .hrTitleCol{
+    padding:8px 20px 0;border-right:none;border-bottom:none;
+    display:flex;flex-direction:row;align-items:baseline;
+    justify-content:space-between;gap:10px;
+  }
+  .hrTitle{font-size:17px;font-weight:800;margin-bottom:0}
+  .hrDescCol{padding:6px 20px 20px}
+  .hrDesc{font-size:13px}
+
+  /* ── BENTO: 2-col mini-grid ── */
+  .bentoSection{padding:56px 16px}
+  .bentoGrid{grid-template-columns:1fr 1fr}
+  .bcTall{grid-column:span 2;grid-row:span 1}
+  .bcWide{grid-column:span 2;grid-row:span 1}
+  .bentoGrid>.bc:nth-child(4){grid-column:span 2}
+  .bc{padding:24px 20px}
+  .bcStat{font-size:44px;margin:12px 0 8px}
+
+  /* ── COMMUNITY ── */
   .communityHead{padding:48px 24px 40px}
   .commCards{grid-template-columns:1fr}
   .cc{border-right:none;border-bottom:1px solid var(--border);padding:40px 24px}
   .cc:last-child{border-bottom:none}
+
+  /* ── NOTIFY ── */
   .notifyInner{padding:80px 20px}
   .notifyForm{flex-direction:column}
   .notifyInput{border-right:1.5px solid rgba(0,0,0,0.14);border-bottom:none}
   .notifySubmit{min-width:auto}
+
+  /* ── FOOTER ── */
   footer{padding:24px;flex-direction:column;text-align:center}
   .foot-links{justify-content:center}
 }
@@ -935,18 +992,21 @@ footer{
       <div class="sticky-statements" id="stickyStatements">
 
         <div class="sticky-stmt active" id="stmt0">
+          <div class="stmt-cat">Condition Grading</div>
           <div class="stmt-num">01 / 03</div>
           <h2 class="stmt-h">Every listing<br><em>condition-graded.</em></h2>
           <p class="stmt-body">Before anything goes live, our team inspects it. We assign a grade — S, A, B, or C — that buyers can trust. No surprises when the gear arrives.</p>
         </div>
 
         <div class="sticky-stmt" id="stmt1">
+          <div class="stmt-cat">Escrow Protection</div>
           <div class="stmt-num">02 / 03</div>
           <h2 class="stmt-h">Every transaction<br><em>escrow-protected.</em></h2>
           <p class="stmt-body">Payment is locked in escrow the moment a deal is made. You never transfer money to a stranger. It releases only after you confirm delivery.</p>
         </div>
 
         <div class="sticky-stmt" id="stmt2">
+          <div class="stmt-cat">India Built</div>
           <div class="stmt-num">03 / 03</div>
           <h2 class="stmt-h">Built for India's<br><em>audio community.</em></h2>
           <p class="stmt-body">UPI payouts. Telegram notifications. IST support hours. Every detail designed for the Indian audiophile — not adapted from abroad.</p>
