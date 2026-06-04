@@ -525,3 +525,45 @@ Sequence: click → `.loading` (fill starts) → 1000ms → `.morphing` on label
 8. `NotifyForm.tsx` — morphing submit + POST /api/notify.
 9. `TickerMagnetic.tsx` — spring ticker. Last because lowest priority.
 10. Full mobile pass — verify every section on a real device or emulator.
+
+---
+
+## Shipped: Curated for the connoisseur (2026-06-04)
+
+**Status: LIVE on main**
+
+Product card conveyor belt placed between the ticker and the manifesto. Shows 4 real-category items from the kind of gear the platform will carry.
+
+### Section structure
+
+- Heading: "Curated for the" + Instrument Serif italic "connoisseur"
+- `.curated-slider` — `overflow: hidden` window, `padding: 32px 0 40px` for shadow room
+- `.curated-track` — flex container with CSS `@keyframes convey` animation, 18s linear infinite
+- 4 `.curated-card` elements in HTML; JS clones them to make 8 for seamless loop
+
+### Product images
+
+Stored in `public/` as static assets. Relative paths (not `/absolute`) so `file://` local preview works.
+
+| File | Product | Grade |
+|------|---------|-------|
+| `prod-sennheiser-hd800s.png` | Sennheiser HD 800 S | A |
+| `prod-audeze-lcd2.png` | Audeze LCD-2 Classic | B |
+| `prod-chord-mojo2.png` | Chord Mojo 2 | A |
+| `prod-moondrop-blessing3.png` | Moondrop Blessing 3 | S |
+
+### Focus effect
+
+`requestAnimationFrame` loop (started/stopped by `IntersectionObserver`) reads each card's `getBoundingClientRect()` every frame and applies:
+- `transform: scale()` — 0.86 (edge) → 1.0 (centre)
+- `opacity` — 0.35 → 1.0
+- `filter: grayscale()` — 1 (edge) → 0 (centre)
+
+Curve: smoothstep `t² × (3 − 2t)` for natural ease without CSS transitions.
+
+### Responsive
+
+- Desktop card: `flex: 0 0 280px`, `--card-stride: calc(280px + 16px)`
+- Mobile card: `flex: 0 0 240px`, `--card-stride: calc(240px + 16px)` (CSS custom property in `@keyframes` keeps loop math correct)
+- Hover pause: gated behind `@media (hover:hover) and (pointer:fine)` — touch devices never freeze
+- `prefers-reduced-motion`: animation off, cards forced to full opacity/scale/colour via `!important`

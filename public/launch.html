@@ -42,16 +42,17 @@ img,svg{display:block}
 
 /* ─── NAV ─── */
 .nav{
-  position:fixed;top:18px;left:50%;
+  position:fixed;top:16px;left:50%;
   transform:translateX(-50%) translateY(-16px);
   background:rgba(245,245,242,0.86);
   backdrop-filter:blur(24px) saturate(180%);
   -webkit-backdrop-filter:blur(24px) saturate(180%);
   border:1px solid rgba(226,225,220,0.65);
-  padding:10px 18px 10px 14px;
-  display:flex;align-items:center;gap:24px;
-  width:fit-content;white-space:nowrap;
-  z-index:500;opacity:0;
+  border-radius:9999px;
+  padding:8px 8px 8px 20px;
+  display:flex;align-items:center;justify-content:space-between;gap:24px;
+  width:calc(100% - 40px);max-width:1360px;
+  white-space:nowrap;z-index:500;opacity:0;
   box-shadow:0 2px 24px rgba(0,0,0,0.07),0 1px 4px rgba(0,0,0,0.04);
   transition:opacity 0.7s var(--ease),transform 0.7s var(--ease);
 }
@@ -70,7 +71,7 @@ img,svg{display:block}
 .nav-btn{
   display:inline-flex;align-items:center;background:var(--black);color:var(--white);
   font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;
-  padding:9px 18px;position:relative;overflow:hidden;
+  padding:9px 20px;border-radius:9999px;position:relative;overflow:hidden;
   transition:transform 160ms ease-out,background 0.15s;
 }
 .nav-btn::after{
@@ -254,6 +255,57 @@ img,svg{display:block}
 .tg-a{color:#4ade80;border-color:rgba(74,222,128,0.3)}
 .tg-b{color:#fbbf24;border-color:rgba(251,191,36,0.3)}
 
+/* ─── CURATED ─── */
+.curated{background:var(--off);padding:72px 0 80px}
+.curated-head{padding:0 48px;margin-bottom:40px}
+.curated-head h2{
+  font-size:clamp(32px,4.5vw,56px);font-weight:900;
+  letter-spacing:-0.04em;line-height:0.9;
+}
+.curated-head h2 .serif{font-family:var(--f-serif);font-style:italic;font-weight:400}
+.curated-slider{overflow:hidden;padding:32px 0 40px;position:relative}
+.curated-track{
+  display:flex;gap:16px;padding-left:48px;
+  --card-stride:calc(280px + 16px);
+  animation:convey 18s linear infinite;
+  will-change:transform;
+}
+@media(hover:hover) and (pointer:fine){
+  .curated-slider:hover .curated-track{animation-play-state:paused}
+}
+@keyframes convey{
+  to{transform:translateX(calc(-4 * var(--card-stride)))}
+}
+.curated-card{
+  flex:0 0 280px;
+  background:#0a0a09;border:1px solid #1e1e1c;
+  display:flex;flex-direction:column;padding:20px;
+  will-change:transform,opacity;flex-shrink:0;
+}
+.cc-img{
+  width:100%;aspect-ratio:1/1;overflow:hidden;
+  background:#111;margin-bottom:24px;flex-shrink:0;
+}
+.cc-img img{
+  width:100%;height:100%;object-fit:cover;
+}
+.cc-cat{
+  font-size:9px;font-weight:600;letter-spacing:0.18em;
+  text-transform:uppercase;color:#3a3a38;margin-bottom:8px;
+}
+.cc-name{
+  font-size:18px;font-weight:800;letter-spacing:-0.03em;
+  line-height:1.1;color:#f0f0ee;flex:1;
+}
+.cc-footer{
+  display:flex;align-items:center;
+  margin-top:20px;padding-top:16px;border-top:1px solid #1e1e1c;
+}
+.cc-grade{font-size:9px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase}
+.grade-s{color:var(--acc)}
+.grade-a{color:#4DFF91}
+.grade-b{color:#4D9FFF}
+
 /* ─── MANIFESTO ─── */
 .manifesto{
   background:var(--white);
@@ -348,12 +400,12 @@ img,svg{display:block}
 .sticky-stmt{
   position:absolute;top:0;left:0;right:0;
   opacity:0;
-  transform:translateY(32px);
-  filter:blur(4px);
+  transform:translateY(20px);
+  filter:blur(3px);
   transition:
-    opacity 0.55s var(--ease),
-    transform 0.55s var(--ease),
-    filter 0.55s var(--ease);
+    opacity 0.32s var(--ease),
+    transform 0.32s var(--ease),
+    filter 0.32s var(--ease);
   pointer-events:none;
 }
 .sticky-stmt:first-child{position:relative}
@@ -362,7 +414,7 @@ img,svg{display:block}
   pointer-events:auto;
 }
 .sticky-stmt.exit{
-  opacity:0;transform:translateY(-32px);filter:blur(4px);
+  opacity:0;transform:translateY(-20px);filter:blur(3px);
 }
 .stmt-num{
   font-size:10px;font-weight:700;letter-spacing:0.2em;
@@ -388,6 +440,10 @@ img,svg{display:block}
   transition:background 0.4s,width 0.4s;
 }
 .sticky-dot.active{background:var(--acc);width:40px}
+.stmt-cat{
+  font-size:9px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;
+  color:var(--acc);opacity:0.75;margin-bottom:10px;
+}
 .sticky-right{
   background:#050504;
   display:flex;align-items:center;justify-content:center;
@@ -659,60 +715,125 @@ footer{
 
 /* ─── MOBILE ─── */
 @media(max-width:860px){
-  .nav{padding:9px 14px;gap:14px;max-width:calc(100vw - 24px)}
+  /* ── NAV ── */
+  .nav{padding:8px 8px 8px 16px;gap:12px;width:calc(100% - 24px)}
   .nav-links{display:none}
-  .hero{height:auto;min-height:100svh}
+  .nav-btn{padding:10px 16px}
+
+  /* ── HERO: vinyl becomes background watermark, text anchors to bottom ── */
+  .hero{height:100svh}
   .hero-vinyl-layer{
-    position:relative;inset:auto;justify-content:center;
-    padding:80px 20px 0;pointer-events:auto;
+    inset:auto;top:-6%;right:-14%;
+    width:76vw;height:76vw;
+    pointer-events:none;opacity:0.18;
+    display:flex;justify-content:center;align-items:center;
+    padding:0;
   }
+  @keyframes disc-breathe-m{0%,100%{transform:scale(1)}50%{transform:scale(1.025)}}
   .vinyl-wrap{
-    width:clamp(280px,80vw,400px);height:clamp(280px,80vw,400px);
+    width:100%;height:100%;
     margin-right:0;margin-top:0;
-    animation:disc-breathe-m 7s ease-in-out infinite;
+    animation:disc-breathe-m 9s ease-in-out infinite;
   }
-  @keyframes disc-breathe-m{0%,100%{transform:translateY(0)}50%{transform:translateY(-16px)}}
-  .vinyl-disc{transform:rotateX(8deg) rotateY(-6deg) !important}
-  .hero-text-layer{position:relative;inset:auto;max-width:100%;padding:28px 24px 52px}
+  .vinyl-disc{transform:rotateX(6deg) rotateY(-4deg) !important}
+  .hero-text-layer{
+    position:absolute;inset:0;
+    max-width:100%;padding:0 24px 52px;
+    display:flex;flex-direction:column;justify-content:flex-end;
+  }
   .hero-bg-layer{display:none}
   .hero-h1{font-size:clamp(40px,11vw,56px)}
   .hero-ctas{flex-direction:column}
   .btn-primary,.btn-ghost{width:100%;justify-content:center;padding:17px 24px}
-  .nav-btn{padding:11px 16px}
+
+  /* ── CTA: offset brutalist shadow ── */
+  .btn-primary{
+    border:1px solid var(--black);
+    box-shadow:4px 4px 0 var(--black);
+    transition:transform 120ms ease-out,box-shadow 120ms ease-out;
+  }
+  .btn-primary:active{
+    transform:translate(3px,3px);
+    box-shadow:1px 1px 0 var(--black);
+  }
+
+  /* ── MANIFESTO ── */
   .manifesto{grid-template-columns:1fr}
   .mani-left{padding:64px 24px;border-right:none;border-bottom:1px solid var(--border)}
   .mani-right{padding:48px 24px}
+
+  /* ── CURATED ── */
+  .curated-head{padding:0 20px}
+  .curated-card{flex:0 0 240px}
+  .curated-track{--card-stride:calc(240px + 16px);padding-left:20px}
+
+  /* ── VIDEO ── */
   .video-section{padding:48px 24px}
-  .sticky-outer{height:auto}
+
+  /* ── STICKY SCROLL ── */
+  .sticky-outer{height:280svh}
   .sticky-pin{
-    position:relative;height:auto;
-    grid-template-columns:1fr;grid-template-rows:auto auto;
+    position:sticky;top:0;
+    height:100svh;min-height:560px;
+    grid-template-columns:1fr;
   }
-  .sticky-left{padding:64px 24px 48px}
+  .sticky-left{padding:60px 24px 80px;justify-content:center}
+  .sticky-right{display:none}
   .sticky-stmt,.sticky-stmt:not(.active){
-    position:relative;top:auto;left:auto;right:auto;
-    opacity:1;transform:none;filter:none;
-    display:block;pointer-events:auto;
+    position:absolute;top:0;left:0;right:0;
+    opacity:0;transform:translateY(20px);filter:blur(3px);
+    display:block;pointer-events:none;
   }
-  .sticky-stmt+.sticky-stmt{margin-top:56px}
-  .sticky-dots{display:none}
-  .sticky-right{min-height:60vh}
-  .howHead{grid-template-columns:1fr;gap:20px}
-  .howRow{grid-template-columns:1fr}
-  .hrNum{padding:24px 20px 0;border-right:none;font-size:40px}
-  .hrTitleCol{padding:16px 20px;border-right:none;border-bottom:1px solid var(--border)}
-  .hrDescCol{padding:20px 20px 32px}
-  .bentoSection{padding:56px 20px}
-  .bentoGrid{grid-template-columns:1fr}
-  .bcWide,.bcTall{grid-column:span 1;grid-row:span 1}
+  .sticky-stmt:first-child{position:relative}
+  .sticky-stmt.active{
+    opacity:1;transform:translateY(0);filter:blur(0);pointer-events:auto;
+  }
+  .sticky-stmt.exit{
+    opacity:0;transform:translateY(-20px);filter:blur(3px);
+  }
+  .sticky-stmt+.sticky-stmt{margin-top:0}
+  .sticky-dots{display:flex}
+
+  /* ── HOW IT WORKS: compact horizontal rows ── */
+  .howHead{grid-template-columns:1fr;gap:20px;padding:40px 20px}
+  .howRow{display:flex;flex-direction:column}
+  .hrNum{
+    padding:20px 20px 0;border-right:none;
+    font-size:9px;font-weight:700;letter-spacing:0.18em;
+    text-transform:uppercase;color:var(--muted);line-height:1;
+  }
+  .hrNum::before{content:'STEP '}
+  .hrTitleCol{
+    padding:8px 20px 0;border-right:none;border-bottom:none;
+    display:flex;flex-direction:row;align-items:baseline;
+    justify-content:space-between;gap:10px;
+  }
+  .hrTitle{font-size:17px;font-weight:800;margin-bottom:0}
+  .hrDescCol{padding:6px 20px 20px}
+  .hrDesc{font-size:13px}
+
+  /* ── BENTO: 2-col mini-grid ── */
+  .bentoSection{padding:56px 16px}
+  .bentoGrid{grid-template-columns:1fr 1fr}
+  .bcTall{grid-column:span 2;grid-row:span 1}
+  .bcWide{grid-column:span 2;grid-row:span 1}
+  .bentoGrid>.bc:nth-child(4){grid-column:span 2}
+  .bc{padding:24px 20px}
+  .bcStat{font-size:44px;margin:12px 0 8px}
+
+  /* ── COMMUNITY ── */
   .communityHead{padding:48px 24px 40px}
   .commCards{grid-template-columns:1fr}
   .cc{border-right:none;border-bottom:1px solid var(--border);padding:40px 24px}
   .cc:last-child{border-bottom:none}
+
+  /* ── NOTIFY ── */
   .notifyInner{padding:80px 20px}
   .notifyForm{flex-direction:column}
   .notifyInput{border-right:1.5px solid rgba(0,0,0,0.14);border-bottom:none}
   .notifySubmit{min-width:auto}
+
+  /* ── FOOTER ── */
   footer{padding:24px;flex-direction:column;text-align:center}
   .foot-links{justify-content:center}
 }
@@ -726,6 +847,9 @@ footer{
   .vinyl-wrap,.stage-vinyl-wrap{animation:none}
   .wv{animation:none}
   .sticky-stmt{transition:none}
+  .curated-track{animation:none}
+  .curated-card{transform:none !important;opacity:1 !important}
+  .curated-card .cc-img img{filter:grayscale(0%) !important}
 }
 </style>
 </head>
@@ -879,6 +1003,41 @@ footer{
   <div class="ticker-track" id="ticker"></div>
 </div>
 
+<!-- ─── CURATED ─── -->
+<section class="curated reveal">
+  <div class="curated-head">
+    <h2>Curated for the <span class="serif">connoisseur</span></h2>
+  </div>
+  <div class="curated-slider" id="curatedSlider">
+    <div class="curated-track" id="curatedTrack">
+      <div class="curated-card">
+        <div class="cc-img"><img src="prod-sennheiser-hd800s.png" alt="Sennheiser HD 800 S" loading="lazy"></div>
+        <span class="cc-cat">Headphones</span>
+        <h3 class="cc-name">Sennheiser HD 800 S</h3>
+        <div class="cc-footer"><span class="cc-grade grade-a">Grade A</span></div>
+      </div>
+      <div class="curated-card">
+        <div class="cc-img"><img src="prod-audeze-lcd2.png" alt="Audeze LCD-2 Classic" loading="lazy"></div>
+        <span class="cc-cat">Headphones</span>
+        <h3 class="cc-name">Audeze LCD-2 Classic</h3>
+        <div class="cc-footer"><span class="cc-grade grade-b">Grade B</span></div>
+      </div>
+      <div class="curated-card">
+        <div class="cc-img"><img src="prod-chord-mojo2.png" alt="Chord Mojo 2" loading="lazy"></div>
+        <span class="cc-cat">DAC / Amp</span>
+        <h3 class="cc-name">Chord Mojo 2</h3>
+        <div class="cc-footer"><span class="cc-grade grade-a">Grade A</span></div>
+      </div>
+      <div class="curated-card">
+        <div class="cc-img"><img src="prod-moondrop-blessing3.png" alt="Moondrop Blessing 3" loading="lazy"></div>
+        <span class="cc-cat">IEMs</span>
+        <h3 class="cc-name">Moondrop Blessing 3</h3>
+        <div class="cc-footer"><span class="cc-grade grade-s">Grade S</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
 <!-- ─── MANIFESTO ─── -->
 <section class="manifesto" id="manifesto">
   <div class="mani-left reveal">
@@ -927,18 +1086,21 @@ footer{
       <div class="sticky-statements" id="stickyStatements">
 
         <div class="sticky-stmt active" id="stmt0">
+          <div class="stmt-cat">Condition Grading</div>
           <div class="stmt-num">01 / 03</div>
           <h2 class="stmt-h">Every listing<br><em>condition-graded.</em></h2>
           <p class="stmt-body">Before anything goes live, our team inspects it. We assign a grade — S, A, B, or C — that buyers can trust. No surprises when the gear arrives.</p>
         </div>
 
         <div class="sticky-stmt" id="stmt1">
+          <div class="stmt-cat">Escrow Protection</div>
           <div class="stmt-num">02 / 03</div>
           <h2 class="stmt-h">Every transaction<br><em>escrow-protected.</em></h2>
           <p class="stmt-body">Payment is locked in escrow the moment a deal is made. You never transfer money to a stranger. It releases only after you confirm delivery.</p>
         </div>
 
         <div class="sticky-stmt" id="stmt2">
+          <div class="stmt-cat">India Built</div>
           <div class="stmt-num">03 / 03</div>
           <h2 class="stmt-h">Built for India's<br><em>audio community.</em></h2>
           <p class="stmt-body">UPI payouts. Telegram notifications. IST support hours. Every detail designed for the Indian audiophile — not adapted from abroad.</p>
@@ -1198,8 +1360,8 @@ footer{
   <div class="foot-links">
     <a class="foot-link" href="#how">How it works</a>
     <a class="foot-link" href="#community">Community</a>
-    <a class="foot-link" href="#">Terms</a>
-    <a class="foot-link" href="#">Privacy</a>
+    <a class="foot-link" href="/terms.html">Terms</a>
+    <a class="foot-link" href="/privacy.html">Privacy</a>
   </div>
 </footer>
 
@@ -1310,6 +1472,47 @@ document.getElementById('ticker').innerHTML = [...items,...items].map(i =>
 const tw = document.querySelector('.ticker-wrap');
 tw.addEventListener('mouseenter', () => document.getElementById('ticker').style.animationPlayState = 'paused');
 tw.addEventListener('mouseleave', () => document.getElementById('ticker').style.animationPlayState = 'running');
+
+/* ── Curated conveyor belt ── */
+(function(){
+  const sl  = document.getElementById('curatedSlider');
+  const trk = document.getElementById('curatedTrack');
+  if (!sl || !trk) return;
+
+  /* clone cards for seamless loop */
+  Array.from(trk.querySelectorAll('.curated-card')).forEach(c => {
+    const clone = c.cloneNode(true);
+    clone.setAttribute('aria-hidden', 'true');
+    trk.appendChild(clone);
+  });
+
+  const allCards = Array.from(trk.querySelectorAll('.curated-card'));
+
+  /* rAF: scale + opacity + colour based on proximity to viewport centre */
+  let rafId = null;
+  function tick() {
+    const slRect = sl.getBoundingClientRect();
+    const centre = slRect.left + slRect.width / 2;
+    allCards.forEach(card => {
+      const r    = card.getBoundingClientRect();
+      const dist = Math.abs(r.left + r.width / 2 - centre);
+      const max  = slRect.width * 0.55;
+      const t    = Math.max(0, 1 - dist / max);
+      const ease = t * t * (3 - 2 * t); /* smoothstep */
+      card.style.transform = `scale(${(0.86 + 0.14 * ease).toFixed(3)})`;
+      card.style.opacity   = (0.35 + 0.65 * ease).toFixed(3);
+      const img = card.querySelector('.cc-img img');
+      if (img) img.style.filter = `grayscale(${(1 - ease).toFixed(2)})`;
+    });
+    rafId = requestAnimationFrame(tick);
+  }
+
+  /* only run rAF while section is visible */
+  new IntersectionObserver(([e]) => {
+    if (e.isIntersecting) { if (!rafId) rafId = requestAnimationFrame(tick); }
+    else                  { cancelAnimationFrame(rafId); rafId = null; }
+  }, { threshold: 0 }).observe(sl);
+})();
 
 /* ── Video autoplay ── */
 (function(){
@@ -1475,7 +1678,7 @@ setupHold('ccTg', 'barTg', 'ctaTg');
     stmts[current].classList.add('exit');
     dots[current].classList.remove('active');
     const prev = current;
-    setTimeout(() => stmts[prev].classList.remove('exit'), 550);
+    setTimeout(() => stmts[prev].classList.remove('exit'), 320);
     current = idx;
     stmts[current].classList.add('active');
     dots[current].classList.add('active');
