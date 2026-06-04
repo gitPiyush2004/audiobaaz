@@ -255,6 +255,57 @@ img,svg{display:block}
 .tg-a{color:#4ade80;border-color:rgba(74,222,128,0.3)}
 .tg-b{color:#fbbf24;border-color:rgba(251,191,36,0.3)}
 
+/* ─── CURATED ─── */
+.curated{background:var(--off);padding:72px 0 80px}
+.curated-head{padding:0 48px;margin-bottom:40px}
+.curated-head h2{
+  font-size:clamp(32px,4.5vw,56px);font-weight:900;
+  letter-spacing:-0.04em;line-height:0.9;
+}
+.curated-head h2 .serif{font-family:var(--f-serif);font-style:italic;font-weight:400}
+.curated-slider{overflow:hidden;padding:32px 0 40px;position:relative}
+.curated-track{
+  display:flex;gap:16px;padding-left:48px;
+  --card-stride:calc(280px + 16px);
+  animation:convey 18s linear infinite;
+  will-change:transform;
+}
+@media(hover:hover) and (pointer:fine){
+  .curated-slider:hover .curated-track{animation-play-state:paused}
+}
+@keyframes convey{
+  to{transform:translateX(calc(-4 * var(--card-stride)))}
+}
+.curated-card{
+  flex:0 0 280px;
+  background:#0a0a09;border:1px solid #1e1e1c;
+  display:flex;flex-direction:column;padding:20px;
+  will-change:transform,opacity;flex-shrink:0;
+}
+.cc-img{
+  width:100%;aspect-ratio:1/1;overflow:hidden;
+  background:#111;margin-bottom:24px;flex-shrink:0;
+}
+.cc-img img{
+  width:100%;height:100%;object-fit:cover;
+}
+.cc-cat{
+  font-size:9px;font-weight:600;letter-spacing:0.18em;
+  text-transform:uppercase;color:#3a3a38;margin-bottom:8px;
+}
+.cc-name{
+  font-size:18px;font-weight:800;letter-spacing:-0.03em;
+  line-height:1.1;color:#f0f0ee;flex:1;
+}
+.cc-footer{
+  display:flex;align-items:center;
+  margin-top:20px;padding-top:16px;border-top:1px solid #1e1e1c;
+}
+.cc-grade{font-size:9px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase}
+.grade-s{color:var(--acc)}
+.grade-a{color:#4DFF91}
+.grade-b{color:#4D9FFF}
+
 /* ─── MANIFESTO ─── */
 .manifesto{
   background:var(--white);
@@ -711,6 +762,11 @@ footer{
   .mani-left{padding:64px 24px;border-right:none;border-bottom:1px solid var(--border)}
   .mani-right{padding:48px 24px}
 
+  /* ── CURATED ── */
+  .curated-head{padding:0 20px}
+  .curated-card{flex:0 0 240px}
+  .curated-track{--card-stride:calc(240px + 16px);padding-left:20px}
+
   /* ── VIDEO ── */
   .video-section{padding:48px 24px}
 
@@ -791,6 +847,9 @@ footer{
   .vinyl-wrap,.stage-vinyl-wrap{animation:none}
   .wv{animation:none}
   .sticky-stmt{transition:none}
+  .curated-track{animation:none}
+  .curated-card{transform:none !important;opacity:1 !important}
+  .curated-card .cc-img img{filter:grayscale(0%) !important}
 }
 </style>
 </head>
@@ -943,6 +1002,41 @@ footer{
 <div class="ticker-wrap">
   <div class="ticker-track" id="ticker"></div>
 </div>
+
+<!-- ─── CURATED ─── -->
+<section class="curated reveal">
+  <div class="curated-head">
+    <h2>Curated for the <span class="serif">connoisseur</span></h2>
+  </div>
+  <div class="curated-slider" id="curatedSlider">
+    <div class="curated-track" id="curatedTrack">
+      <div class="curated-card">
+        <div class="cc-img"><img src="prod-sennheiser-hd800s.png" alt="Sennheiser HD 800 S" loading="lazy"></div>
+        <span class="cc-cat">Headphones</span>
+        <h3 class="cc-name">Sennheiser HD 800 S</h3>
+        <div class="cc-footer"><span class="cc-grade grade-a">Grade A</span></div>
+      </div>
+      <div class="curated-card">
+        <div class="cc-img"><img src="prod-audeze-lcd2.png" alt="Audeze LCD-2 Classic" loading="lazy"></div>
+        <span class="cc-cat">Headphones</span>
+        <h3 class="cc-name">Audeze LCD-2 Classic</h3>
+        <div class="cc-footer"><span class="cc-grade grade-b">Grade B</span></div>
+      </div>
+      <div class="curated-card">
+        <div class="cc-img"><img src="prod-chord-mojo2.png" alt="Chord Mojo 2" loading="lazy"></div>
+        <span class="cc-cat">DAC / Amp</span>
+        <h3 class="cc-name">Chord Mojo 2</h3>
+        <div class="cc-footer"><span class="cc-grade grade-a">Grade A</span></div>
+      </div>
+      <div class="curated-card">
+        <div class="cc-img"><img src="prod-moondrop-blessing3.png" alt="Moondrop Blessing 3" loading="lazy"></div>
+        <span class="cc-cat">IEMs</span>
+        <h3 class="cc-name">Moondrop Blessing 3</h3>
+        <div class="cc-footer"><span class="cc-grade grade-s">Grade S</span></div>
+      </div>
+    </div>
+  </div>
+</section>
 
 <!-- ─── MANIFESTO ─── -->
 <section class="manifesto" id="manifesto">
@@ -1378,6 +1472,47 @@ document.getElementById('ticker').innerHTML = [...items,...items].map(i =>
 const tw = document.querySelector('.ticker-wrap');
 tw.addEventListener('mouseenter', () => document.getElementById('ticker').style.animationPlayState = 'paused');
 tw.addEventListener('mouseleave', () => document.getElementById('ticker').style.animationPlayState = 'running');
+
+/* ── Curated conveyor belt ── */
+(function(){
+  const sl  = document.getElementById('curatedSlider');
+  const trk = document.getElementById('curatedTrack');
+  if (!sl || !trk) return;
+
+  /* clone cards for seamless loop */
+  Array.from(trk.querySelectorAll('.curated-card')).forEach(c => {
+    const clone = c.cloneNode(true);
+    clone.setAttribute('aria-hidden', 'true');
+    trk.appendChild(clone);
+  });
+
+  const allCards = Array.from(trk.querySelectorAll('.curated-card'));
+
+  /* rAF: scale + opacity + colour based on proximity to viewport centre */
+  let rafId = null;
+  function tick() {
+    const slRect = sl.getBoundingClientRect();
+    const centre = slRect.left + slRect.width / 2;
+    allCards.forEach(card => {
+      const r    = card.getBoundingClientRect();
+      const dist = Math.abs(r.left + r.width / 2 - centre);
+      const max  = slRect.width * 0.55;
+      const t    = Math.max(0, 1 - dist / max);
+      const ease = t * t * (3 - 2 * t); /* smoothstep */
+      card.style.transform = `scale(${(0.86 + 0.14 * ease).toFixed(3)})`;
+      card.style.opacity   = (0.35 + 0.65 * ease).toFixed(3);
+      const img = card.querySelector('.cc-img img');
+      if (img) img.style.filter = `grayscale(${(1 - ease).toFixed(2)})`;
+    });
+    rafId = requestAnimationFrame(tick);
+  }
+
+  /* only run rAF while section is visible */
+  new IntersectionObserver(([e]) => {
+    if (e.isIntersecting) { if (!rafId) rafId = requestAnimationFrame(tick); }
+    else                  { cancelAnimationFrame(rafId); rafId = null; }
+  }, { threshold: 0 }).observe(sl);
+})();
 
 /* ── Video autoplay ── */
 (function(){
