@@ -23,12 +23,7 @@ const nextConfig = {
   },
 
   async redirects() {
-    return [
-      // Temporary: redirect root to launch page until full app is ready
-      { source: '/', destination: '/launch.html', permanent: false },
-      // Pre-launch: browse is not open to buyers yet — listings go live 2026-07-07
-      { source: '/browse', destination: '/dashboard', permanent: false },
-    ];
+    return [];
   },
 };
 
