@@ -249,8 +249,8 @@ export default async function BrowsePage({ searchParams }: BrowsePageProps) {
             </div>
           ) : (
             <>
-              {/* Launch countdown */}
-              <LaunchCountdown />
+              {/* Launch countdown — production only */}
+              {process.env.NODE_ENV === "production" && <LaunchCountdown />}
 
               {/* Notify strip */}
               <div style={{ margin: "24px 32px", border: "1px solid #E8E8E4", padding: "20px 24px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "20px" }}>
