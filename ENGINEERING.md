@@ -223,26 +223,47 @@ These are final. Do not suggest alternatives.
 | Root redirect | **LIVE on main** | `next.config.mjs` redirects `/` → `/launch.html` temporarily |
 | Email capture | **LIVE** | Writes to `waitlist_emails` table in production Supabase |
 | Curated product carousel | **LIVE on main** | Conveyor belt between ticker + manifesto; 4 product images in `public/prod-*.png` |
-| Source file | `audiobaaz_launch.html` at repo root | Edit this, copy to `public/launch.html` to update |
+| Glass cursor effect | **LIVE on main** | Rounded-rect glass overlay trails on link hover. Pure CSS (no backdrop-filter). `#ab-glass` in `audiobaaz_launch.html`. |
+| Source file | `audiobaaz_launch.html` at repo root | Edit this, then `cp audiobaaz_launch.html public/launch.html` to update |
 
 > The launch page is standalone HTML — no Next.js build steps involved. When the full app ships, remove the redirect from `next.config.mjs` and the root will serve the real app.
 
+### Browse page empty state
+
+| What | Status | Notes |
+|------|--------|-------|
+| Launch countdown | **LIVE on main** | `src/components/browse/LaunchCountdown.tsx` — live DD:HH:MM:SS targeting 2026-07-07. Shows when listings array is empty. |
+| CTA | **LIVE on main** | Links to `/dashboard` (not `/sell`) — only sellers see this page pre-launch |
+
+### Production database
+
+| What | Status | Notes |
+|------|--------|-------|
+| Schema | **APPLIED** | `supabase/schema.sql` + `supabase/migrations/008_handle_new_user.sql` applied to production Supabase via Studio SQL Editor (2026-06-07). |
+| Storage bucket | **CREATED** | `listing-photos` public bucket created in production Supabase Storage. |
+| Auth | **LIVE** | Magic-link OTP + Google OAuth both enabled on production Supabase. |
+| Env vars | **SET** | All production env vars configured in Dokploy (Supabase URL, anon key, service role key, app URL, fee pct). |
+
 ---
 
-## CURRENT REPOSITORY STATE — 2026-05-30
+## CURRENT REPOSITORY STATE — 2026-06-07
 
 ### Active development branch
 
-**`feature/order-lifecycle-shipping`** — single source of truth for all
-remaining V1 transaction-engine work (payments, shipping, escrow
-lifecycle, order timeline, admin operations).
+**`main`** — production is now ahead of dev. Main has the full V1 app
+(merged from dev 2026-06-07) + all launch page features + production DB
+configured. Dev needs to be synced forward.
+
+Remaining V1 transaction-engine work (payments, shipping, escrow lifecycle,
+admin operations) is on `feature/order-lifecycle-shipping` / `feature/ui-redesign`
+awaiting merge to dev.
 
 ### Branches and PRs
 
 | Branch | State | Notes |
 |--------|-------|-------|
-| `main` | release | Production. Auto-deploys to audiobaaz.com. |
-| `dev` | integration | Auto-deploys to dev.audiobaaz.com. Tip: `7b294e9` (PR #3 merge). |
+| `main` | release | Production. Auto-deploys to audiobaaz.com. Tip: `52a99e4`. Has full V1 + all launch features + production DB live. |
+| `dev` | integration | Auto-deploys to dev.audiobaaz.com. **BEHIND main** — missing LaunchCountdown component + browse page update + glass cursor (commits `bdf1d51`, `52a99e4`). Needs sync. |
 | `feature/order-lifecycle-shipping` | **ACTIVE** | All remaining V1 transaction-engine work lands here. Tip: `d2f9bc6`. Branched off `dev`; cherry-picked the CheckoutForm wiring from PR #4. **Migration 007 + RPC paths validated against real local Postgres 16; smoke tests at `supabase/tests/{lifecycle_smoke,refund_lifecycle_smoke}.sql`.** |
 | `feature/checkout-razorpay-wire` | **SUPERSEDED** | PR #4 OPEN. Code (CheckoutForm wiring + mock removal) lives in `feature/order-lifecycle-shipping` as commit `5ae8cd7` (cherry-pick of `413bc77`). Recommendation: **close PR #4 without merging; delete branch after the active branch lands.** |
 | `feature/payment-routes` | **MERGED** | Merged via PR #3. Zero commits ahead of `dev`. Safe to delete. |
