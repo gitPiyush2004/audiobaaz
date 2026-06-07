@@ -135,8 +135,8 @@ src/
 │   │   ├── buy/               # Buyer checkout (Person 2)
 │   │   ├── orders/            # Buyer dashboard (Person 2)
 │   │   └── merchant/          # V2 placeholder (empty)
-│   ├── admin/                 # Admin panel (Person 3)
 │   └── api/                   # Backend routes (Person 4)
+│   # Admin panel moved to github.com/audiobaaz/audiobaaz-app (app.audiobaaz.com)
 ├── components/
 │   ├── ui/                    # Base components — Button, Input, Card etc
 │   ├── listing/               # Listing-specific components
@@ -208,7 +208,7 @@ These are final. Do not suggest alternatives.
 |--------|------|---------|--------|
 | Person 1 | AI coding tool | Seller flow + dashboard | COMPLETE — onboarding, nav profile menu, rejected listings tab, resubmit flow, Google OAuth on login page (commit 15ff3f1). Magic-link OTP retained as fallback. See docs/context/seller-flow.md |
 | Person 2 | Kiro | Buyer flow + listing page | READY TO MERGE — full lifecycle tested on `feature/order-lifecycle-shipping`: checkout (dev simulator) → escrow → seller shipment → tracking → delivery → inspection → confirm receipt (completed) + dispute flow. tsc + next build clean. Pending: Vercel env var `PAYMENT_PROVIDER=dev` for dev.audiobaaz.com, Supabase CLI setup for migration tracking. See docs/context/buyer-flow.md |
-| Person 3 | - | Admin panel | MERGED to dev — core panel complete (listings review, disputes, users, payouts queue + history). Orders monitor remains a stub. Vercel build lint failures resolved in commit e0d84e4. See docs/context/admin-panel.md |
+| Person 3 | AI coding tool | Admin panel | MOVED to separate app — `github.com/audiobaaz/audiobaaz-app`, live at `app.audiobaaz.com`. Admin pages + API routes removed from this repo on `feature/admin-redesign`. See docs/context/admin-panel.md |
 | Person 4 | AI coding tool | Payments + shipping | VALIDATED — lifecycle runbook scenarios A–H all pass on `ui.audiobaaz.com` (2026-06-02). All transaction-engine code lives on `feature/order-lifecycle-shipping` (absorbed into `feature/ui-redesign`). Ready to merge. See docs/context/payments-shipping.md, docs/reviews/lifecycle-validation-results.md, and docs/V1-LAUNCH.md. |
 | Project | — | Deployment + domain + auth infrastructure | LIVE — production at audiobaaz.com, dev at dev.audiobaaz.com, both on Vercel with Cloudflare DNS + Email Routing. Magic-link + Google OAuth wired through Supabase. See docs/DEPLOYMENT.md |
 | Design | AI coding tool | UI redesign exploration | VALIDATED — lifecycle runbook scenarios A–H all pass on `ui.audiobaaz.com` (2026-06-02). Ready to merge `feature/ui-redesign → dev`. See docs/context/ui-redesign.md and docs/reviews/lifecycle-validation-results.md |
@@ -445,7 +445,7 @@ Components modified or created that affect multiple features. If you use or modi
 | `Nav` | `src/components/layout/Nav.tsx` | Person 1 | Auth-aware — shows Dashboard + New Listing when logged in, Log in + Sell With Us when logged out. Imports `createClient` from supabase/server (server component). |
 | `ListingForm` | `src/components/forms/ListingForm.tsx` | Person 1 | 6-step listing intake form. Accepts `draftId?` and `initialData?` props. Used by `/sell/new` and `/sell/draft/[id]`. |
 | `DashboardNav` | `src/components/layout/DashboardNav.tsx` | Person 1 | Seller dashboard sidebar. Client component, uses `usePathname`. |
-| `AdminNav` | `src/components/layout/AdminNav.tsx` | Person 3 | Admin panel sidebar. Used inside `src/app/admin/layout.tsx`. |
+| `AdminNav` | `components/AdminNav.tsx` in `audiobaaz-app` repo | Person 3 | Admin panel sidebar. Lives in the separate portal app. |
 | `Button` | `src/components/ui/Button.tsx` | Scaffold | Primary, secondary, ghost, danger variants. sm/md/lg sizes. |
 | `Card` | `src/components/ui/Card.tsx` | Scaffold | Basic surface card. Accepts all div props. |
 | `cn` | `src/lib/utils/cn.ts` | Scaffold | Canonical class-name helper (`clsx` + `tailwind-merge`). The ONLY place to import `cn` from. Do not duplicate. |
