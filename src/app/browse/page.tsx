@@ -13,7 +13,6 @@ import {
 } from "@/lib/listings/browse";
 import type { BrowseSort, PriceBucket } from "@/lib/listings/types";
 import { ListingCard } from "@/components/listing/ListingCard";
-import { LaunchCountdown } from "@/components/browse/LaunchCountdown";
 import type { ConditionGrade, ProductCategory } from "@/types";
 
 export const dynamic = "force-dynamic";
@@ -249,9 +248,6 @@ export default async function BrowsePage({ searchParams }: BrowsePageProps) {
             </div>
           ) : (
             <>
-              {/* Launch countdown — production only */}
-              {process.env.NODE_ENV === "production" && <LaunchCountdown />}
-
               {/* Notify strip */}
               <div style={{ margin: "24px 32px", border: "1px solid #E8E8E4", padding: "20px 24px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "20px" }}>
                 <div style={{ flex: 1 }}>
