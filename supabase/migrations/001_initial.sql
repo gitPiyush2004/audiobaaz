@@ -1,0 +1,4 @@
+-- Migration 001 — Initial schema
+-- Created: 2026-05-28
+-- Run schema.sql to apply this migration
+-- See /supabase/schema.sql for the full schema

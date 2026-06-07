@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Audiobaaz — Waveform Reviews</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #FAFAF8;
+    font-family: 'Inter', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+  }
+
+  .panel {
+    width: 580px;
+    height: 520px;
+    background: transparent;
+    position: relative;
+    overflow: hidden;
+  }
+
+  canvas {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+  }
+
+  .review {
+    position: absolute;
+    background: #ffffff;
+    border: 1px solid #E8E8E4;
+    padding: 14px 16px;
+    max-width: 196px;
+    opacity: 0;
+    transform: translateY(8px);
+    transition: opacity 1.4s cubic-bezier(0.4, 0, 0.2, 1),
+                transform 1.4s cubic-bezier(0.4, 0, 0.2, 1);
+    pointer-events: none;
+  }
+  .review.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  .review.fading {
+    opacity: 0;
+    transform: translateY(-6px);
+    transition: opacity 1.6s cubic-bezier(0.4, 0, 0.2, 1),
+                transform 1.6s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* Neon accent top border */
+  .review::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: #E8FF4D;
+  }
+
+  .review-stars {
+    font-size: 10px;
+    letter-spacing: 1px;
+    color: #0a0a0a;
+    margin-bottom: 7px;
+  }
+  .review-text {
+    font-size: 11.5px;
+    font-weight: 400;
+    color: #444;
+    line-height: 1.6;
+    margin-bottom: 11px;
+    font-style: italic;
+  }
+  .review-divider {
+    height: 1px;
+    background: #F0F0EE;
+    margin-bottom: 10px;
+  }
+  .review-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .review-avatar {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: #0a0a0a;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 8px;
+    font-weight: 700;
+    color: #E8FF4D;
+    flex-shrink: 0;
+    letter-spacing: 0.04em;
+  }
+  .review-name {
+    font-size: 10px;
+    font-weight: 700;
+    color: #0a0a0a;
+    line-height: 1.2;
+    letter-spacing: 0.01em;
+  }
+  .review-product {
+    font-size: 9px;
+    color: #aaa;
+    margin-top: 2px;
+    letter-spacing: 0.02em;
+  }
+
+  /* Neon dot on waveform */
+  .dot {
+    position: absolute;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #E8FF4D;
+    box-shadow: 0 0 6px rgba(232,255,77,0.8);
+    opacity: 0;
+    transition: opacity 1.4s ease;
+    pointer-events: none;
+    transform: translate(-50%, -50%);
+  }
+  .dot.visible { opacity: 1; }
+</style>
+</head>
+<body>
+<div class="panel" id="panel">
+  <canvas id="waveCanvas"></canvas>
+
+  <!-- Reviews — asymmetric, scattered intentionally -->
+  <div class="review" id="r1" style="top:38px; left:22px;">
+    <div class="review-stars">★★★★★</div>
+    <div class="review-text">"Arrived in mint condition. Exactly as described, maybe better."</div>
+    <div class="review-divider"></div>
+    <div class="review-meta">
+      <div class="review-avatar">RK</div>
+      <div>
+        <div class="review-name">Rohan K.</div>
+        <div class="review-product">HD 800 S · Grade A</div>
+      </div>
+    </div>
+  </div>
+  <div class="dot" id="d1"></div>
+
+  <!-- Top right — pushed further right and higher -->
+  <div class="review" id="r2" style="top:28px; right:18px;">
+    <div class="review-stars">★★★★★</div>
+    <div class="review-text">"Escrow made me feel safe buying a ₹68k headphone online."</div>
+    <div class="review-divider"></div>
+    <div class="review-meta">
+      <div class="review-avatar">AT</div>
+      <div>
+        <div class="review-name">Arjun T.</div>
+        <div class="review-product">LCD-2 Classic · Grade B</div>
+      </div>
+    </div>
+  </div>
+  <div class="dot" id="d2"></div>
+
+  <!-- Mid left — not bottom, slightly off-centre -->
+  <div class="review" id="r3" style="bottom:120px; left:14px;">
+    <div class="review-stars">★★★★★</div>
+    <div class="review-text">"Sold my Mojo 2 in 3 days. Payout was faster than expected."</div>
+    <div class="review-divider"></div>
+    <div class="review-meta">
+      <div class="review-avatar">SV</div>
+      <div>
+        <div class="review-name">Siddharth V.</div>
+        <div class="review-product">Chord Mojo 2 · Sold</div>
+      </div>
+    </div>
+  </div>
+  <div class="dot" id="d3"></div>
+
+  <!-- Bottom right — low and far right -->
+  <div class="review" id="r4" style="bottom:52px; right:22px;">
+    <div class="review-stars">★★★★★</div>
+    <div class="review-text">"Grade S IEMs showed up literally sealed. Unbelievable value."</div>
+    <div class="review-divider"></div>
+    <div class="review-meta">
+      <div class="review-avatar">PM</div>
+      <div>
+        <div class="review-name">Priya M.</div>
+        <div class="review-product">Blessing 3 · Grade S</div>
+      </div>
+    </div>
+  </div>
+  <div class="dot" id="d4"></div>
+
+  <!-- Fifth review — mid right, slightly overlaps with timing -->
+  <div class="review" id="r5" style="top:48%; right:16px; transform:translateY(-50%);">
+    <div class="review-stars">★★★★★</div>
+    <div class="review-text">"The condition grading is honest. No surprises."</div>
+    <div class="review-divider"></div>
+    <div class="review-meta">
+      <div class="review-avatar">NK</div>
+      <div>
+        <div class="review-name">Nikhil K.</div>
+        <div class="review-product">Topping D90SE · Grade A</div>
+      </div>
+    </div>
+  </div>
+  <div class="dot" id="d5"></div>
+
+</div>
+
+<script>
+const canvas = document.getElementById('waveCanvas');
+const ctx    = canvas.getContext('2d');
+const panel  = document.getElementById('panel');
+let W, H;
+
+function resize() {
+  W = canvas.width  = panel.offsetWidth;
+  H = canvas.height = panel.offsetHeight;
+}
+resize();
+
+const BAR_COUNT  = 54;
+const BAR_WIDTH  = 3.5;
+const BAR_GAP    = 4.2;
+const BAR_RADIUS = 2;
+const MAX_H_FRAC = 0.36;
+
+const bars = Array.from({ length: BAR_COUNT }, (_, i) => {
+  const pos    = i / (BAR_COUNT - 1);
+  const centre = Math.exp(-Math.pow((pos - 0.5) * 2.6, 2));
+  const base   = 0.18 + centre * 0.72;
+  return {
+    current: base,
+    target:  base,
+    base,
+    phase: Math.random() * Math.PI * 2,
+    speed: 0.006 + Math.random() * 0.01,
+  };
+});
+
+let tick = 0;
+
+function roundedBar(x, y, w, h, r, top) {
+  if (h < 1) return;
+  if (h < r * 2) r = h / 2;
+  ctx.beginPath();
+  if (top) {
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + w - r, y);
+    ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+    ctx.lineTo(x + w, y + h);
+    ctx.lineTo(x, y + h);
+    ctx.lineTo(x, y + r);
+    ctx.quadraticCurveTo(x, y, x + r, y);
+  } else {
+    ctx.moveTo(x, y);
+    ctx.lineTo(x + w, y);
+    ctx.lineTo(x + w, y + h - r);
+    ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    ctx.lineTo(x + r, y + h);
+    ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+    ctx.lineTo(x, y);
+  }
+  ctx.closePath();
+  ctx.fill();
+}
+
+function drawBars() {
+  ctx.clearRect(0, 0, W, H);
+  const totalW = BAR_COUNT * BAR_WIDTH + (BAR_COUNT - 1) * BAR_GAP;
+  const startX = (W - totalW) / 2;
+  const cy     = H / 2;
+
+  bars.forEach((bar, i) => {
+    bar.target  = bar.base * (0.5 + 0.5 * Math.sin(tick * bar.speed + bar.phase));
+    bar.current += (bar.target - bar.current) * 0.05;
+    const bh = Math.max(2, bar.current * MAX_H_FRAC * H);
+    const bx = startX + i * (BAR_WIDTH + BAR_GAP);
+    const pos    = i / (BAR_COUNT - 1);
+    const centre = Math.exp(-Math.pow((pos - 0.5) * 2.4, 2));
+    const alpha  = 0.28 + centre * 0.52;
+    ctx.fillStyle = `rgba(10,10,10,${alpha})`;
+    roundedBar(bx, cy - bh, BAR_WIDTH, bh, BAR_RADIUS, true);
+    roundedBar(bx, cy,      BAR_WIDTH, bh * 0.68, BAR_RADIUS, false);
+  });
+
+  tick++;
+  requestAnimationFrame(drawBars);
+}
+drawBars();
+
+// ── DOT POSITIONS — scattered, not symmetric ──
+// Each dot anchors near the waveform at a different x position
+const dotConfig = [
+  { id: 'd1', xFrac: 0.23 },
+  { id: 'd2', xFrac: 0.72 },
+  { id: 'd3', xFrac: 0.18 },
+  { id: 'd4', xFrac: 0.78 },
+  { id: 'd5', xFrac: 0.62 },
+];
+
+function positionDots() {
+  const totalW = BAR_COUNT * BAR_WIDTH + (BAR_COUNT - 1) * BAR_GAP;
+  const startX = (panel.offsetWidth - totalW) / 2;
+  dotConfig.forEach(d => {
+    const el = document.getElementById(d.id);
+    const px = startX + d.xFrac * totalW;
+    el.style.left = px + 'px';
+    el.style.top  = (panel.offsetHeight / 2) + 'px';
+  });
+}
+positionDots();
+
+// ── REVIEW SCHEDULING — staggered, not symmetric ──
+const schedule = [
+  { card: 'r1', dot: 'd1', delay: 600,  hold: 5800, cycle: 13000 },
+  { card: 'r2', dot: 'd2', delay: 3200, hold: 6200, cycle: 14500 },
+  { card: 'r3', dot: 'd3', delay: 5800, hold: 5400, cycle: 12000 },
+  { card: 'r4', dot: 'd4', delay: 1800, hold: 6600, cycle: 15000 },
+  { card: 'r5', dot: 'd5', delay: 8200, hold: 5200, cycle: 13800 },
+];
+
+const FADE_DUR = 1600;
+
+function show(cardId, dotId) {
+  document.getElementById(cardId).classList.remove('fading');
+  document.getElementById(cardId).classList.add('visible');
+  document.getElementById(dotId).classList.add('visible');
+}
+
+function hide(cardId, dotId) {
+  document.getElementById(cardId).classList.add('fading');
+  document.getElementById(dotId).classList.remove('visible');
+  setTimeout(() => {
+    document.getElementById(cardId).classList.remove('visible', 'fading');
+  }, FADE_DUR);
+}
+
+schedule.forEach(({ card, dot, delay, hold, cycle }) => {
+  setTimeout(() => {
+    show(card, dot);
+    setTimeout(() => hide(card, dot), hold);
+    setInterval(() => {
+      show(card, dot);
+      setTimeout(() => hide(card, dot), hold);
+    }, cycle);
+  }, delay);
+});
+</script>
+</body>
+</html>

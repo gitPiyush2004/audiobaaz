@@ -1,0 +1,136 @@
+name: Phase 1 — Marketplace Core Verification
+
+# This workflow runs the database-layer acceptance scenarios and the
+# multi-connection stress test against a real PostgreSQL instance.
+# It is the verification gate for any change touching the payment /
+# escrow / refund schema or the migrations that define them.
+#
+# Scope is deliberately narrow: only payment-domain SQL triggers it.
+# Adding application-side payment routes will eventually need their
+# own CI; this workflow exists for the database core only.
+#
+# References:
+#   docs/context/payments-shipping.md — "Phase 1 acceptance criteria"
+#   supabase/tests/README.md          — runbook + what each scenario proves
+
+on:
+  push:
+    branches: [dev, main]
+    paths:
+      - 'supabase/migrations/**'
+      - 'supabase/schema.sql'
+      - 'supabase/tests/**'
+      - '.github/workflows/phase1-verification.yml'
+  pull_request:
+    paths:
+      - 'supabase/migrations/**'
+      - 'supabase/schema.sql'
+      - 'supabase/tests/**'
+      - '.github/workflows/phase1-verification.yml'
+  workflow_dispatch:
+    inputs:
+      stress_concurrency:
+        description: 'Stress harness concurrency (default 100)'
+        required: false
+        default: '100'
+
+jobs:
+  acceptance:
+    name: Five-scenario acceptance + stress
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: audiobaaz_phase1
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/audiobaaz_phase1
+      STRESS_CONCURRENCY: ${{ github.event.inputs.stress_concurrency || '100' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Verify postgres tooling is available
+        run: |
+          psql --version
+          pgbench --version
+          # Confirm we can talk to the service container
+          PGPASSWORD=postgres psql -h localhost -U postgres -d audiobaaz_phase1 -c 'SELECT 1;'
+
+      - name: Bootstrap Supabase compatibility (CI only)
+        # Production runs on Supabase, which already has service_role
+        # and auth.uid(). The bootstrap script provisions both on the
+        # vanilla postgres:15 service container so application
+        # migrations apply cleanly. Never run against real Supabase.
+        run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/ci/bootstrap_supabase_compat.sql
+
+      - name: Apply base schema
+        run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/schema.sql
+
+      - name: Apply Phase 1 migrations (002..006)
+        run: |
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/migrations/002_phase1_marketplace_core.sql
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/migrations/003_phase1_refund_lifecycle.sql
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/migrations/004_phase1_checkout_locks.sql
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/migrations/005_phase1_invariant_guards.sql
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/migrations/006_phase1_sold_order_id.sql
+
+      # ----------------------------------------------------------------
+      # Acceptance scenarios — all five must pass. Scenario B is the
+      # gate-of-gates; if atomicity is broken, nothing downstream
+      # matters. We run them inline (single psql invocation) so a
+      # failure in any scenario stops the workflow on the failing
+      # assertion.
+      # ----------------------------------------------------------------
+      - name: Scenarios A / B / C / D / E1 / E2
+        run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/tests/phase1_scenarios.sql
+
+      # ----------------------------------------------------------------
+      # Multi-connection stress at concurrency = $STRESS_CONCURRENCY.
+      # Default is 100 for PR-time runs; manual workflow_dispatch can
+      # set higher (e.g. 500) for margin testing.
+      # ----------------------------------------------------------------
+      - name: Stress harness
+        run: |
+          chmod +x supabase/tests/phase1_stress.sh
+          DATABASE_URL="$DATABASE_URL" CONCURRENCY="$STRESS_CONCURRENCY" \
+            bash supabase/tests/phase1_stress.sh
+
+      # ----------------------------------------------------------------
+      # Optional: dump key invariants on success so the workflow log
+      # records what landed. Useful during the first month of running
+      # this in CI; remove later if log noise becomes a problem.
+      # ----------------------------------------------------------------
+      - name: Post-run sanity dump
+        if: success()
+        run: |
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 <<'SQL'
+          SELECT 'finalize_winning_payment exists' AS check
+            FROM pg_proc WHERE proname = 'finalize_winning_payment';
+          SELECT 'sold_order_id is unique' AS check
+            FROM pg_constraint
+            WHERE conname LIKE '%sold_order_id%' AND contype = 'u';
+          SELECT 'sold_offer_id is unique' AS check
+            FROM pg_constraint
+            WHERE conname LIKE '%sold_offer_id%' AND contype = 'u';
+          SELECT 'invariant guard triggers attached' AS check, tgname
+            FROM pg_trigger
+            WHERE tgname IN (
+              'listings_sold_offer_id_immutable',
+              'listings_sold_order_id_immutable',
+              'listings_status_no_regression'
+            );
+          SQL
