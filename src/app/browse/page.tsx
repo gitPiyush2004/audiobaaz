@@ -13,6 +13,7 @@ import {
 } from "@/lib/listings/browse";
 import type { BrowseSort, PriceBucket } from "@/lib/listings/types";
 import { ListingCard } from "@/components/listing/ListingCard";
+import { LaunchCountdown } from "@/components/browse/LaunchCountdown";
 import type { ConditionGrade, ProductCategory } from "@/types";
 
 export const dynamic = "force-dynamic";
@@ -248,27 +249,8 @@ export default async function BrowsePage({ searchParams }: BrowsePageProps) {
             </div>
           ) : (
             <>
-              {/* Empty state */}
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "440px", gap: "20px", borderBottom: "1px solid #E8E8E4", padding: "60px 40px", textAlign: "center" }}>
-                <svg width="80" height="80" viewBox="0 0 80 80" fill="none" style={{ opacity: 0.12 }}>
-                  <circle cx="40" cy="32" r="18" stroke="#0a0a0a" strokeWidth="2.5"/>
-                  <path d="M22 32 Q22 54 40 54 Q58 54 58 32" stroke="#0a0a0a" strokeWidth="2.5" fill="none"/>
-                  <rect x="17" y="27" width="7" height="12" rx="1.5" stroke="#0a0a0a" strokeWidth="2" fill="none"/>
-                  <rect x="56" y="27" width="7" height="12" rx="1.5" stroke="#0a0a0a" strokeWidth="2" fill="none"/>
-                </svg>
-                <div style={{ fontSize: "18px", fontWeight: 800, letterSpacing: "-0.03em" }}>No listings yet.</div>
-                <div style={{ fontSize: "13px", color: "#999", lineHeight: 1.6, maxWidth: "300px" }}>
-                  Be the first to list your gear. Every listing is condition-graded and escrow-protected.
-                </div>
-                <div style={{ display: "flex", gap: "10px", marginTop: "4px" }}>
-                  <Link href="/sell/new" style={{ background: "#E8FF4D", color: "#0a0a0a", padding: "11px 24px", fontSize: "11px", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", textDecoration: "none", display: "inline-block" }}>
-                    List your gear
-                  </Link>
-                  <Link href="/how-it-works" style={{ border: "1.5px solid #E8E8E4", color: "#666", padding: "11px 24px", fontSize: "11px", fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", textDecoration: "none", display: "inline-block" }}>
-                    How it works
-                  </Link>
-                </div>
-              </div>
+              {/* Launch countdown */}
+              <LaunchCountdown />
 
               {/* Notify strip */}
               <div style={{ margin: "24px 32px", border: "1px solid #E8E8E4", padding: "20px 24px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "20px" }}>
