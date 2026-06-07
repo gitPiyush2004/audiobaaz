@@ -61,9 +61,6 @@ export default function SellPage() {
             <Link href="/sell/new" style={{ background: '#E8FF4D', color: '#0a0a0a', padding: '13px 28px', fontSize: '12px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>
               Start a listing
             </Link>
-            <Link href="/browse" style={{ background: 'transparent', border: '1.5px solid #0a0a0a', color: '#0a0a0a', padding: '13px 28px', fontSize: '12px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>
-              Browse the marketplace
-            </Link>
           </div>
         </div>
 

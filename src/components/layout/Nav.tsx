@@ -2,7 +2,6 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { ProfileMenu } from "@/components/layout/ProfileMenu";
 import { Logo } from "@/components/layout/Logo";
-import { CategoryNav } from "@/components/layout/CategoryNav";
 
 function getInitials(fullName: string): string {
   const parts = fullName.trim().split(/\s+/).filter(Boolean);
@@ -42,14 +41,6 @@ export async function Nav() {
           <Logo size={38} />
 
           <nav className="flex items-center gap-6">
-            <Link
-              href="/browse"
-              style={{ fontSize: '13px', fontWeight: 500, color: '#333' }}
-              className="transition-colors hover:text-[#0a0a0a]"
-            >
-              Browse
-            </Link>
-
             {user ? (
               <ProfileMenu
                 initials={initials}
@@ -91,8 +82,6 @@ export async function Nav() {
         </div>
       </div>
 
-      {/* Category nav strip */}
-      <CategoryNav />
     </header>
   );
 }
