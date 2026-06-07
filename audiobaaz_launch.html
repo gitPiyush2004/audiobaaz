@@ -591,17 +591,113 @@ img,svg{display:block}
 .tgDot{width:6px;height:6px;background:#229ED9;border-radius:50%;margin-top:4px;flex-shrink:0}
 .tgText{color:var(--mid)}.tgText strong{color:var(--black);font-weight:600}
 
+/* ─── INSPECTOR BENTO CELL ─── */
+.bc-inspect{display:flex;flex-direction:column;padding:28px 24px 24px;}
+.inspect-svg{width:100%;height:auto;display:block;}
+.inspect-title{font-size:15px;font-weight:800;letter-spacing:-0.02em;margin:14px 0 4px;}
+.inspect-desc{font-size:11px;color:var(--mid);line-height:1.65;}
+/* belt centre dashes scroll left — one element, stroke-dashoffset */
+.belt-dash{animation:belt-scroll 0.8s linear infinite;}
+@keyframes belt-scroll{to{stroke-dashoffset:-24;}}
+/* box: strong ease-out enter, pause, ease-in exit, invisible reset */
+.inspect-box{animation:box-journey 5.5s linear infinite;}
+@keyframes box-journey{
+  0%,100%{transform:translateX(-28px);opacity:0;}
+  5%  {transform:translateX(-28px);opacity:1;animation-timing-function:cubic-bezier(0.23,1,0.32,1);}
+  28% {transform:translateX(130px);}
+  54% {transform:translateX(130px);animation-timing-function:cubic-bezier(0.55,0,1,0.45);}
+  77% {transform:translateX(310px);opacity:1;}
+  80% {transform:translateX(310px);opacity:0;}
+}
+/* stamp: never scales from 0 — starts at 0.85, pops in with ease-out */
+.inspect-check{
+  animation:check-stamp 5.5s linear infinite;
+  transform-box:fill-box;transform-origin:center;
+}
+@keyframes check-stamp{
+  0%,29%{opacity:0;transform:scale(0.85);}
+  36%  {opacity:1;transform:scale(1.07);animation-timing-function:cubic-bezier(0.23,1,0.32,1);}
+  42%  {opacity:1;transform:scale(1);}
+  55%  {opacity:1;transform:scale(1);animation-timing-function:cubic-bezier(0.55,0,1,0.45);}
+  63%  {opacity:0;transform:scale(0.88);}
+  100% {opacity:0;transform:scale(0.85);}
+}
+@media(prefers-reduced-motion:reduce){
+  .belt-dash,.inspect-box,.inspect-check{animation:none;}
+  .inspect-check{opacity:1;transform:none;}
+}
+
 /* ─── COMMUNITY ─── */
 .communitySection{border-bottom:1px solid var(--border)}
 .communityHead{
-  padding:64px 48px 52px;border-bottom:1px solid var(--border);
+  display:grid;grid-template-columns:1fr 1fr;
+  border-bottom:1px solid var(--border);
 }
-.communityHead h2{
+.comm-left{
+  padding:64px 48px 52px;border-right:1px solid var(--border);
+}
+.comm-left h2{
   font-size:clamp(32px,4vw,52px);font-weight:900;
   letter-spacing:-0.04em;line-height:0.9;margin-bottom:16px;
 }
-.communityHead h2 em{font-family:var(--f-serif);font-style:italic;font-weight:400}
-.communityHead p{font-size:15px;color:var(--mid);line-height:1.7;max-width:480px}
+.comm-left h2 em{font-family:var(--f-serif);font-style:italic;font-weight:400}
+.comm-left p{font-size:15px;color:var(--mid);line-height:1.7;max-width:480px}
+.comm-right{
+  background:var(--black);padding:32px;
+  display:flex;flex-direction:column;min-height:320px;
+}
+.chat-header{
+  display:flex;align-items:center;gap:10px;
+  padding-bottom:18px;border-bottom:1px solid rgba(255,255,255,0.07);
+  margin-bottom:20px;flex-shrink:0;
+}
+.chat-header-tg{
+  width:32px;height:32px;border-radius:50%;background:#229ED9;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
+}
+.chat-group-name{font-size:13px;font-weight:700;color:#fff;letter-spacing:-0.01em}
+.chat-members{font-size:11px;color:rgba(255,255,255,0.32);margin-top:1px}
+.chat-window{flex:1;display:flex;flex-direction:column;gap:14px}
+.chat-row{display:flex;align-items:flex-start;gap:10px}
+.chat-row-right{flex-direction:row-reverse}
+.chat-avatar{
+  width:30px;height:30px;border-radius:50%;flex-shrink:0;
+  background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.1);
+  display:flex;align-items:center;justify-content:center;
+  font-size:8px;font-weight:700;color:rgba(255,255,255,0.4);letter-spacing:0.02em;
+}
+.chat-avatar-ab{background:rgba(232,255,77,0.1);border-color:rgba(232,255,77,0.25);color:var(--acc)}
+.chat-body{display:flex;flex-direction:column;gap:3px}
+.chat-name{font-size:10px;font-weight:600;color:rgba(255,255,255,0.32);letter-spacing:0.03em}
+.chat-name-ab{color:rgba(232,255,77,0.55)}
+.chat-bubble{
+  background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.06);
+  color:rgba(255,255,255,0.82);font-size:13px;line-height:1.55;
+  padding:10px 14px;border-radius:0 12px 12px 12px;
+  max-width:260px;min-height:18px;word-break:break-word;
+}
+.chat-bubble-ab{
+  background:rgba(232,255,77,0.07);border-color:rgba(232,255,77,0.1);
+  border-radius:12px 0 12px 12px;
+}
+.chat-row-right .chat-body{align-items:flex-end}
+.typing-row{display:flex;align-items:center;gap:10px}
+.typing-indicator{
+  background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.06);
+  border-radius:0 12px 12px 12px;padding:12px 14px;
+  display:flex;gap:4px;align-items:center;
+}
+.typing-indicator .dot{
+  width:5px;height:5px;border-radius:50%;
+  background:rgba(255,255,255,0.38);
+  animation:typing-dot 1.2s ease-in-out infinite;
+}
+.typing-indicator .dot:nth-child(2){animation-delay:0.16s}
+.typing-indicator .dot:nth-child(3){animation-delay:0.32s}
+@keyframes typing-dot{
+  0%,80%,100%{transform:scale(0.8);opacity:0.38}
+  40%{transform:scale(1.15);opacity:1}
+}
 .commCards{display:grid;grid-template-columns:1fr 1fr}
 .cc{
   display:flex;flex-direction:column;gap:20px;
@@ -825,7 +921,9 @@ footer{
   .bcStat{font-size:44px;margin:12px 0 8px}
 
   /* ── COMMUNITY ── */
-  .communityHead{padding:48px 24px 40px}
+  .communityHead{grid-template-columns:1fr}
+  .comm-left{padding:48px 24px 40px;border-right:none;border-bottom:1px solid var(--border)}
+  .comm-right{min-height:260px;padding:24px}
   .commCards{grid-template-columns:1fr}
   .cc{border-right:none;border-bottom:1px solid var(--border);padding:40px 24px}
   .cc:last-child{border-bottom:none}
@@ -1561,6 +1659,39 @@ footer{
       </div>
     </div>
 
+    <!-- ── Manual review — inspector animation ── -->
+    <div class="bc bc-inspect" data-bento>
+      <svg class="inspect-svg" viewBox="0 0 280 130" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <!-- Desk surface sits behind the belt — visible above + below it at centre -->
+        <rect x="94" y="28" width="92" height="74" fill="#f5f3ef" rx="2"/>
+        <!-- Abstract arm stubs above belt (imply human presence without illustration) -->
+        <rect x="84" y="30" width="12" height="18" fill="#dedad4" rx="6"/>
+        <rect x="184" y="30" width="12" height="18" fill="#dedad4" rx="6"/>
+        <!-- Belt fill -->
+        <rect x="0" y="50" width="280" height="24" fill="#eceae5"/>
+        <!-- Belt rails -->
+        <line x1="0" y1="50" x2="280" y2="50" stroke="#d8d4cc" stroke-width="1"/>
+        <line x1="0" y1="74" x2="280" y2="74" stroke="#d8d4cc" stroke-width="1"/>
+        <!-- Belt centre dashes — single element, stroke-dashoffset scrolls left -->
+        <line class="belt-dash" x1="0" y1="62" x2="320" y2="62"
+              stroke="#ccc8c0" stroke-width="1"
+              stroke-dasharray="12 12" stroke-dashoffset="0"/>
+        <!-- Parcel (animated) — white fill, black outline, two faint label lines -->
+        <g class="inspect-box">
+          <rect x="0" y="53" width="22" height="18" fill="#faf9f7" stroke="#0a0a0a" stroke-width="0.9" rx="1"/>
+          <line x1="3" y1="58" x2="19" y2="58" stroke="#c8c4bc" stroke-width="0.65"/>
+          <line x1="3" y1="61" x2="13" y2="61" stroke="#c8c4bc" stroke-width="0.65"/>
+        </g>
+        <!-- Approval stamp — accent yellow is the only colour in this scene -->
+        <g class="inspect-check">
+          <circle cx="140" cy="62" r="11" fill="#E8FF4D" stroke="#0a0a0a" stroke-width="1.2"/>
+          <polyline points="135,62 139,67 147,55" stroke="#0a0a0a" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+        </g>
+      </svg>
+      <div class="inspect-title">Team-verified</div>
+      <div class="inspect-desc">Every listing reviewed by our team before it goes live.</div>
+    </div>
+
     <div class="bc bcWide" data-bento>
       <div style="font-size:9px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:var(--muted);margin-bottom:18px">05</div>
       <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:20px">
@@ -1581,8 +1712,43 @@ footer{
 <!-- ─── COMMUNITY ─── -->
 <section class="communitySection reveal" id="community">
   <div class="communityHead">
-    <h2>Join the conversation<br><em>before we launch.</em></h2>
-    <p>We're building Audiobaaz with the community. Get early access, share feedback, and connect with India's audiophile buyers and sellers.</p>
+    <div class="comm-left">
+      <h2>Join the conversation<br><em>before we launch.</em></h2>
+      <p>We're building Audiobaaz with the community. Get early access, share feedback, and connect with India's audiophile buyers and sellers.</p>
+    </div>
+    <div class="comm-right" id="commRight">
+      <div class="chat-header">
+        <div class="chat-header-tg">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="8" fill="#229ED9"/><path d="M11.9 4.68L4 7.72c-.55.23-.54.56-.1.7l2.1.66L10 6.5c.23-.16.44-.07.27.09L7 9.25l-.15 2.17c.24 0 .36-.12.48-.24l1.14-1.1 2.17 1.58c.4.24.68.12.79-.4l1.37-6.44c.16-.68-.24-.95-.53-.66z" fill="white"/></svg>
+        </div>
+        <div>
+          <div class="chat-group-name">Audiobaaz Community</div>
+          <div class="chat-members">247 members</div>
+        </div>
+      </div>
+      <div class="chat-window" id="chatWindow">
+        <div class="chat-row" id="chatMsg1" style="opacity:0;transform:translateY(8px) scale(0.96)">
+          <div class="chat-avatar">RK</div>
+          <div class="chat-body">
+            <div class="chat-name">Rahul K.</div>
+            <div class="chat-bubble" id="chatBubble1"></div>
+          </div>
+        </div>
+        <div class="chat-row chat-row-right" id="chatMsg2" style="opacity:0;transform:translateY(8px) scale(0.96)">
+          <div class="chat-body">
+            <div class="chat-name chat-name-ab">Audiobaaz</div>
+            <div class="chat-bubble chat-bubble-ab" id="chatBubble2"></div>
+          </div>
+          <div class="chat-avatar chat-avatar-ab">AB</div>
+        </div>
+        <div class="typing-row" id="chatTypingRow" style="opacity:0;transform:translateY(6px)">
+          <div class="chat-avatar chat-avatar-ab">AB</div>
+          <div class="typing-indicator">
+            <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
   <div class="commCards">
     <div class="cc" id="ccWa" data-href="#">
@@ -2379,6 +2545,98 @@ setupHold('ccTg', 'barTg', 'ctaTg');
       setTimeout(() => scramble(headline, originalHeadline, 900), 380);
     }
   }, { threshold: 0.12 }).observe(section);
+})();
+
+/* ══════════════════════════════════════════
+   COMMUNITY CHAT ANIMATION
+   Sequence: msg1 typewriter → typing dots → msg2 reveal → loop
+══════════════════════════════════════════ */
+(function(){
+  const commRight = document.getElementById('commRight');
+  const msg1El    = document.getElementById('chatMsg1');
+  const msg2El    = document.getElementById('chatMsg2');
+  const typingEl  = document.getElementById('chatTypingRow');
+  const bubble1   = document.getElementById('chatBubble1');
+  const bubble2   = document.getElementById('chatBubble2');
+  if (!commRight || !msg1El) return;
+
+  const EASE_OUT = 'cubic-bezier(0.16,1,0.3,1)';
+  const TEXT1 = 'Anyone selling a Meze 99 Classics in Bangalore?';
+  const TEXT2 = 'We have one coming in next week — Grade B, full accessories. Join to get first access 👇';
+
+  function delay(ms){ return new Promise(r => setTimeout(r, ms)); }
+
+  function showEl(el, d = 0){
+    return new Promise(r => {
+      setTimeout(() => {
+        el.style.transition = `opacity 260ms ${EASE_OUT}, transform 260ms ${EASE_OUT}`;
+        el.style.opacity    = '1';
+        el.style.transform  = 'translateY(0) scale(1)';
+        setTimeout(r, 280);
+      }, d);
+    });
+  }
+
+  function hideEl(el){
+    el.style.transition = `opacity 180ms ease-in, transform 180ms ease-in`;
+    el.style.opacity    = '0';
+    el.style.transform  = 'translateY(6px) scale(0.96)';
+  }
+
+  function typewrite(bubble, text){
+    return new Promise(r => {
+      bubble.textContent = '';
+      let i = 0;
+      const iv = setInterval(() => {
+        if (i < text.length){ bubble.textContent += text[i++]; }
+        else { clearInterval(iv); setTimeout(r, 150); }
+      }, 28);
+    });
+  }
+
+  function reset(){
+    [msg1El, msg2El, typingEl].forEach(el => {
+      el.style.transition = 'none';
+      el.style.opacity    = '0';
+      el.style.transform  = 'translateY(8px) scale(0.96)';
+    });
+    bubble1.textContent = '';
+    bubble2.textContent = '';
+  }
+
+  async function run(){
+    reset();
+    await delay(500);
+
+    await showEl(msg1El);
+    await typewrite(bubble1, TEXT1);
+    await delay(420);
+
+    await showEl(typingEl);
+    await delay(1700);
+
+    hideEl(typingEl);
+    await delay(160);
+
+    await showEl(msg2El);
+    bubble2.textContent = TEXT2;
+
+    await delay(4000);
+
+    hideEl(msg1El);
+    hideEl(msg2El);
+    await delay(700);
+
+    run(); /* loop */
+  }
+
+  let started = false;
+  new IntersectionObserver(([entry]) => {
+    if (entry.isIntersecting && !started){
+      started = true;
+      setTimeout(run, 600);
+    }
+  }, { threshold: 0.25 }).observe(commRight);
 })();
 </script>
 </body>
