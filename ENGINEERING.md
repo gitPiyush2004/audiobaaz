@@ -235,8 +235,8 @@ These are final. Do not suggest alternatives.
 | What | Status | Notes |
 |------|--------|-------|
 | Browse redirect | **LIVE on main** | `/browse` → `/dashboard` redirect in `next.config.mjs`. Buyers cannot access the marketplace until 2026-07-07. Remove this redirect when listings go live. |
-| Browse nav link | **REMOVED** | Removed from `Nav.tsx` — CategoryNav strip also removed. Re-add both when browse opens. |
-| Launch countdown | **LIVE on main** | `src/components/browse/LaunchCountdown.tsx` — live DD:HH:MM:SS targeting 2026-07-07. Still present for when browse reopens. |
+| Browse nav link | **REMOVED from main** | Removed from `Nav.tsx` — CategoryNav strip also removed. Re-add both when browse opens. Dev retains them for testing. |
+| Launch countdown | **REMOVED from browse** | `LaunchCountdown` removed from `src/app/browse/page.tsx` empty state on both branches. Component still exists at `src/components/browse/LaunchCountdown.tsx` if needed. |
 
 ### Production database
 
@@ -265,8 +265,8 @@ awaiting merge to dev.
 
 | Branch | State | Notes |
 |--------|-------|-------|
-| `main` | release | Production. Auto-deploys to audiobaaz.com. Tip: `819f300`. Has full V1 + all launch features + production DB live. Browse restricted pre-launch. |
-| `dev` | integration | Auto-deploys to dev.audiobaaz.com. Tip: `688f592`. In sync with main for launch page + browse restriction. |
+| `main` | release | Production. Auto-deploys to audiobaaz.com. Tip: `b8c3cce`. Pre-launch: root→launch.html, browse blocked, no Browse in nav. |
+| `dev` | integration | Auto-deploys to dev.audiobaaz.com. Tip: `2c42f99`. Full app: browse open, no redirects, dev payment + sign-in bypass enabled. |
 | `feature/order-lifecycle-shipping` | **ACTIVE** | All remaining V1 transaction-engine work lands here. Tip: `d2f9bc6`. Branched off `dev`; cherry-picked the CheckoutForm wiring from PR #4. **Migration 007 + RPC paths validated against real local Postgres 16; smoke tests at `supabase/tests/{lifecycle_smoke,refund_lifecycle_smoke}.sql`.** |
 | `feature/checkout-razorpay-wire` | **SUPERSEDED** | PR #4 OPEN. Code (CheckoutForm wiring + mock removal) lives in `feature/order-lifecycle-shipping` as commit `5ae8cd7` (cherry-pick of `413bc77`). Recommendation: **close PR #4 without merging; delete branch after the active branch lands.** |
 | `feature/payment-routes` | **MERGED** | Merged via PR #3. Zero commits ahead of `dev`. Safe to delete. |
