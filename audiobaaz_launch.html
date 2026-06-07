@@ -6,7 +6,7 @@
 <title>Audiobaaz — The market for audio obsessives</title>
 <meta name="description" content="India's first managed secondhand marketplace for headphones, IEMs, speakers, DACs, and amps. Condition-graded. Escrow-protected.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;700;800&display=swap" rel="stylesheet">
 <style>
 /* ─── TOKENS ─── */
 :root {
@@ -281,7 +281,9 @@ img,svg{display:block}
   background:#0a0a09;border:1px solid #1e1e1c;
   display:flex;flex-direction:column;padding:20px;
   will-change:transform,opacity;flex-shrink:0;
+  transition:border-color 0.35s,box-shadow 0.35s;
 }
+.curated-card:hover{border-color:rgba(232,255,77,0.28);box-shadow:0 0 28px rgba(232,255,77,0.06)}
 .cc-img{
   width:100%;aspect-ratio:1/1;overflow:hidden;
   background:#111;margin-bottom:24px;flex-shrink:0;
@@ -316,7 +318,8 @@ img,svg{display:block}
   padding:96px 64px 96px 48px;
   border-right:1px solid var(--border);
 }
-.mani-rule{width:36px;height:2px;background:var(--acc);margin-bottom:36px}
+.mani-rule{width:0;height:2px;background:var(--acc);margin-bottom:36px;transition:width 1.1s var(--ease)}
+.mani-left.in .mani-rule{width:36px}
 .mani-h{
   font-size:clamp(38px,5vw,68px);font-weight:900;
   letter-spacing:-0.055em;line-height:0.88;text-wrap:balance;
@@ -838,6 +841,244 @@ footer{
   .foot-links{justify-content:center}
 }
 
+/* ─── LISTINGS OVERLAY ─── */
+.curated{position:relative}
+
+.curated-head,
+#curatedTrack{
+  filter:blur(5px) brightness(0.45) saturate(0.15);
+  pointer-events:none;user-select:none;-webkit-user-select:none;
+}
+
+.listings-overlay{
+  position:absolute;inset:0;z-index:20;
+  display:flex;align-items:center;justify-content:center;
+  background:rgba(10,10,9,0.8);
+  opacity:0;
+  transition:opacity 1s cubic-bezier(0.16,1,0.3,1);
+}
+.listings-overlay.lo-visible{opacity:1}
+
+.listings-overlay::before{
+  content:'';position:absolute;inset:0;pointer-events:none;z-index:0;
+  background:repeating-linear-gradient(
+    0deg,transparent,transparent 2px,
+    rgba(0,0,0,0.06) 2px,rgba(0,0,0,0.06) 4px
+  );
+}
+
+.lo-inner{
+  position:relative;z-index:1;
+  text-align:center;padding:52px 32px;max-width:580px;width:100%;
+}
+
+@keyframes acc-glow{
+  0%,100%{text-shadow:0 0 8px rgba(232,255,77,0.2)}
+  50%{text-shadow:0 0 22px rgba(232,255,77,0.7),0 0 8px rgba(232,255,77,0.4)}
+}
+
+.lo-eyebrow{
+  font-size:9px;font-weight:700;letter-spacing:0.22em;text-transform:uppercase;
+  color:var(--acc);margin-bottom:14px;
+  opacity:0;transform:translateY(10px);
+  transition:opacity 0.55s var(--ease),transform 0.55s var(--ease);
+}
+.lo-visible .lo-eyebrow{opacity:1;transform:translateY(0);animation:acc-glow 2.5s ease-in-out infinite}
+
+.lo-headline{
+  font-size:clamp(11px,1.3vw,14px);font-weight:700;letter-spacing:0.2em;
+  text-transform:uppercase;color:rgba(255,255,255,0.32);margin-bottom:20px;
+  opacity:0;transform:translateY(10px);
+  transition:opacity 0.55s var(--ease),transform 0.55s var(--ease);
+  transition-delay:0.07s;
+}
+.lo-visible .lo-headline{opacity:1;transform:translateY(0)}
+
+.lo-countdown{
+  display:flex;align-items:flex-start;justify-content:center;gap:0;
+  margin-bottom:30px;
+  opacity:0;transform:translateY(18px);
+  transition:opacity 0.65s var(--ease),transform 0.65s var(--ease);
+  transition-delay:0.16s;
+}
+.lo-visible .lo-countdown{opacity:1;transform:translateY(0)}
+
+.cd-unit{display:flex;flex-direction:column;align-items:center;min-width:clamp(60px,9vw,94px)}
+
+.cd-num{
+  font-family:'JetBrains Mono',monospace;
+  font-size:clamp(46px,7.5vw,84px);
+  font-weight:800;letter-spacing:-0.02em;line-height:1;
+  color:#fff;display:block;font-variant-numeric:tabular-nums;
+  transition:transform 0.11s ease-out,opacity 0.11s ease-out;
+}
+.cd-num.flip{transform:translateY(-10px) scale(0.9);opacity:0}
+
+.cd-label{
+  font-size:7px;font-weight:700;letter-spacing:0.22em;text-transform:uppercase;
+  color:rgba(255,255,255,0.2);margin-top:7px;
+}
+
+.cd-sep{
+  font-family:'JetBrains Mono',monospace;
+  font-size:clamp(38px,6vw,70px);
+  font-weight:800;color:rgba(255,255,255,0.1);line-height:1;
+  padding:0 2px;align-self:flex-start;
+}
+
+.lo-divider{
+  width:28px;height:1px;background:rgba(255,255,255,0.12);
+  margin:0 auto 24px;
+  transform:scaleX(0);transform-origin:center;
+  transition:transform 0.45s var(--ease);transition-delay:0.3s;
+}
+.lo-visible .lo-divider{transform:scaleX(1)}
+
+.lo-sell{
+  opacity:0;transform:translateY(14px);
+  transition:opacity 0.6s var(--ease),transform 0.6s var(--ease);
+  transition-delay:0.38s;
+}
+.lo-visible .lo-sell{opacity:1;transform:translateY(0)}
+
+.lo-sell-headline{
+  font-size:clamp(17px,2.4vw,24px);font-weight:900;letter-spacing:-0.03em;
+  color:#fff;margin-bottom:9px;line-height:1.15;
+}
+.lo-acc{color:var(--acc);animation:acc-glow 2.5s ease-in-out infinite}
+
+.lo-sell-sub{
+  font-size:13px;color:rgba(255,255,255,0.35);line-height:1.65;
+  margin-bottom:22px;max-width:320px;margin-left:auto;margin-right:auto;
+}
+
+.lo-sell-btn{
+  display:inline-flex;align-items:center;gap:9px;
+  background:var(--acc);color:#0a0a09;
+  font-size:10px;font-weight:700;letter-spacing:0.13em;text-transform:uppercase;
+  padding:14px 32px;text-decoration:none;position:relative;overflow:hidden;
+  transition:transform 160ms ease-out;
+}
+.lo-sell-btn::after{
+  content:'';position:absolute;inset:0;
+  background:rgba(0,0,0,0.1);transform:scaleX(0);transform-origin:left;
+  transition:transform 0.3s var(--ease);
+}
+.lo-sell-btn:hover::after{transform:scaleX(1)}
+.lo-sell-btn:active{transform:scale(0.97)}
+.lo-sell-btn>*{position:relative;z-index:1}
+
+.lo-free-note{
+  font-size:10px;color:rgba(255,255,255,0.2);margin-top:12px;letter-spacing:0.06em;
+}
+
+@media(max-width:860px){
+  .lo-inner{padding:28px 20px}
+  .cd-num{font-size:clamp(32px,8.5vw,48px)}
+  .cd-sep{font-size:clamp(26px,6.5vw,40px)}
+  .cd-unit{min-width:clamp(42px,17vw,62px)}
+  .lo-sell-headline{font-size:16px}
+  .lo-sell-sub{font-size:12px}
+}
+
+/* ─── CUSTOM CURSOR ─── */
+#ab-cursor{
+  position:fixed;top:0;left:0;
+  width:14px;height:14px;
+  background:#fff;border-radius:50%;
+  pointer-events:none;z-index:9999;
+  mix-blend-mode:exclusion;
+  opacity:0;
+  will-change:transform;
+  transition:width 0.35s var(--ease),height 0.35s var(--ease),border-radius 0.35s var(--ease),opacity 0.4s;
+}
+#ab-cursor.cur-big{width:44px;height:44px;border-radius:0}
+#ab-cursor.cur-visible{opacity:0.95}
+
+/* ─── GLASS CURSOR (link hover) ─── */
+#ab-glass{
+  position:fixed;top:0;left:0;
+  width:64px;height:64px;
+  pointer-events:none;z-index:9998;
+  opacity:0;will-change:transform,opacity;
+  transition:opacity 0.38s var(--ease);
+}
+#ab-glass.gl-active{opacity:1}
+#ab-glass::before{
+  content:'';position:absolute;inset:0;z-index:1;
+  background:rgba(255,255,255,0.18);
+  border-top:2px solid rgba(232,255,77,0.92);
+  border-right:1px solid rgba(0,0,0,0.09);
+  border-bottom:1px solid rgba(0,0,0,0.09);
+  border-left:1px solid rgba(0,0,0,0.09);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,0.65), 0 8px 32px rgba(0,0,0,0.07);
+}
+#ab-glass::after{
+  content:'';position:absolute;inset:0;z-index:-1;
+  backdrop-filter:blur(14px) saturate(170%);
+  -webkit-backdrop-filter:blur(14px) saturate(170%);
+}
+
+/* ─── HERO CURSOR SPOTLIGHT ─── */
+.hero-spotlight{
+  position:absolute;inset:0;pointer-events:none;z-index:2;
+  opacity:0;transition:opacity 0.6s ease;
+  background:radial-gradient(600px circle at 58% 50%,rgba(232,255,77,0.09) 0%,transparent 65%);
+  will-change:background;
+}
+.hero-spotlight.sp-active{opacity:1}
+
+/* ─── SLIDE-UP CTA BUTTON ─── */
+.btn-slide .fill{display:none}
+/* .btn-texts is the direct span child (gets position:relative from .btn-primary > span — that's fine) */
+.btn-texts{overflow:hidden;display:block}
+/* .btn-top/.btn-bot are nested under .btn-texts, so .btn-primary > span doesn't reach them */
+.btn-top{display:block;transition:transform 0.45s var(--ease)}
+.btn-bot{
+  position:absolute;top:0;left:0;right:0;bottom:0;
+  display:flex;align-items:center;justify-content:center;
+  transform:translateY(110%);
+  transition:transform 0.45s var(--ease);
+}
+.btn-slide:hover .btn-top{transform:translateY(-110%)}
+.btn-slide:hover .btn-bot{transform:translateY(0)}
+
+/* ─── VIDEO CLIP-PATH WIPE ─── */
+.video-frame{
+  clip-path:inset(0 100% 0 0);
+  transition:clip-path 1.3s var(--ease-io);
+}
+.video-section.in .video-frame{clip-path:inset(0 0% 0 0)}
+
+/* Grain canvas fill */
+.grain canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+
+/* ─── MICRO-ANIMATIONS ─── */
+
+/* howRow: step number bounce on hover */
+@keyframes num-bounce{0%{transform:scale(1)}40%{transform:scale(1.18)}75%{transform:scale(0.96)}100%{transform:scale(1)}}
+
+/* Play ring idle pulse */
+@keyframes ring-pulse{0%,100%{box-shadow:0 0 0 0 rgba(255,255,255,0.24)}55%{box-shadow:0 0 0 16px rgba(255,255,255,0)}}
+.play-ring{animation:ring-pulse 2.6s ease-in-out infinite}
+.play-ring:hover{animation:none;border-color:rgba(255,255,255,0.7)}
+
+/* Input error shake */
+@keyframes shake{0%,100%{transform:translateX(0)}18%{transform:translateX(-8px)}36%{transform:translateX(8px)}54%{transform:translateX(-5px)}72%{transform:translateX(5px)}90%{transform:translateX(-2px)}}
+.notifyInput.error{animation:shake 0.45s ease}
+
+/* Ticker item hover highlight */
+.ticker-item{transition:background 0.2s}
+.ticker-item:hover{background:rgba(255,255,255,0.025)}
+.ticker-item:hover .ti-name{color:#c8c8c0;transition:color 0.2s}
+.ticker-item:hover .ti-price{text-shadow:0 0 20px rgba(232,255,77,0.6)}
+
+/* Tonearm — JS drives transform, CSS smooths it */
+.stage-tonearm{transition:transform 1.2s cubic-bezier(0.34,1.56,0.64,1)}
+
+/* Magnetic CTA reset transition */
+.nav-btn,.lo-sell-btn{will-change:transform}
+
 /* ─── REDUCED MOTION ─── */
 @media(prefers-reduced-motion:reduce){
   .hero-badge,.hero-sub,.hero-ctas,.reveal{opacity:1;transform:none;filter:none}
@@ -850,11 +1091,26 @@ footer{
   .curated-track{animation:none}
   .curated-card{transform:none !important;opacity:1 !important}
   .curated-card .cc-img img{filter:grayscale(0%) !important}
+  .listings-overlay,.lo-eyebrow,.lo-headline,.lo-countdown,.lo-sell{opacity:1;transform:none}
+  .lo-divider{transform:scaleX(1)}
+  .lo-eyebrow,.lo-acc{animation:none}
+  /* new microanimation resets */
+  .mani-rule{width:36px !important;transition:none !important}
+  .play-ring{animation:none !important}
+  .notifyInput.error{animation:none !important}
+  .stage-tonearm{transition:none !important}
+  /* 21st.dev additions */
+  #ab-cursor{display:none !important}
+  #ab-glass{display:none !important}
+  .video-frame{clip-path:inset(0 0% 0 0) !important;transition:none !important}
+  .word-reveal{opacity:1 !important;filter:none !important;transform:none !important;transition:none !important}
 }
 </style>
 </head>
 <body>
 <div class="grain"></div>
+<div id="ab-cursor"></div>
+<div id="ab-glass"></div>
 
 <!-- ─── NAV ─── -->
 <nav class="nav" id="mainNav">
@@ -885,7 +1141,7 @@ footer{
     <a class="nav-link" href="#how">How it works</a>
     <a class="nav-link" href="#community">Community</a>
   </div>
-  <a class="nav-btn" href="#notify">Get early access</a>
+  <a class="nav-btn" href="#curatedSection">Get early access</a>
 </nav>
 
 <!-- ─── HERO ─── -->
@@ -986,15 +1242,19 @@ footer{
         India's first managed secondhand marketplace for headphones, IEMs, speakers, DACs, and amps. Condition-graded. Escrow-protected.
       </p>
       <div class="hero-ctas" id="hctas">
-        <a class="btn-primary" href="#notify">
+        <a class="btn-primary btn-slide" href="#curatedSection">
           <span class="fill"></span>
-          <span>Get early access</span>
+          <span class="btn-texts">
+            <span class="btn-top">Get early access</span>
+            <span class="btn-bot" aria-hidden="true">Get early access</span>
+          </span>
         </a>
         <a class="btn-ghost" href="#community">Join the community</a>
       </div>
     </div>
   </div>
 
+  <div class="hero-spotlight" id="heroSpot"></div>
   <div class="hero-dissolve" id="heroDis"></div>
 </section>
 
@@ -1004,7 +1264,7 @@ footer{
 </div>
 
 <!-- ─── CURATED ─── -->
-<section class="curated reveal">
+<section class="curated reveal" id="curatedSection">
   <div class="curated-head">
     <h2>Curated for the <span class="serif">connoisseur</span></h2>
   </div>
@@ -1033,6 +1293,45 @@ footer{
         <span class="cc-cat">IEMs</span>
         <h3 class="cc-name">Moondrop Blessing 3</h3>
         <div class="cc-footer"><span class="cc-grade grade-s">Grade S</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Listings overlay -->
+  <div class="listings-overlay" id="listingsOverlay">
+    <div class="lo-inner">
+      <div class="lo-eyebrow">Early Access — Sellers Only</div>
+      <div class="lo-headline" id="loHeadline">Listings go live in</div>
+      <div class="lo-countdown">
+        <div class="cd-unit">
+          <span class="cd-num" id="cd-days">30</span>
+          <span class="cd-label">Days</span>
+        </div>
+        <div class="cd-sep">:</div>
+        <div class="cd-unit">
+          <span class="cd-num" id="cd-hours">00</span>
+          <span class="cd-label">Hrs</span>
+        </div>
+        <div class="cd-sep">:</div>
+        <div class="cd-unit">
+          <span class="cd-num" id="cd-mins">00</span>
+          <span class="cd-label">Min</span>
+        </div>
+        <div class="cd-sep">:</div>
+        <div class="cd-unit">
+          <span class="cd-num" id="cd-secs">00</span>
+          <span class="cd-label">Sec</span>
+        </div>
+      </div>
+      <div class="lo-divider"></div>
+      <div class="lo-sell">
+        <h3 class="lo-sell-headline">List before everyone else.<br><span class="lo-acc">Zero commission.</span></h3>
+        <p class="lo-sell-sub">Submit your gear now — your listing goes live the moment we open to buyers.</p>
+        <a class="lo-sell-btn" href="/login">
+          <span>List Your Gear</span>
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 10L10 2M10 2H5M10 2v6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </a>
+        <p class="lo-free-note">Free to list — we only take 10% when your gear sells</p>
       </div>
     </div>
   </div>
@@ -1277,7 +1576,7 @@ footer{
           <div class="bcDesc" style="max-width:300px">We only charge 10% when your gear sells. If it doesn't sell, you pay absolutely nothing. No risk to list.</div>
         </div>
         <div style="text-align:right;flex-shrink:0">
-          <div style="font-size:56px;font-weight:900;letter-spacing:-0.05em;line-height:1">10%</div>
+          <div id="bentoFee" style="font-size:56px;font-weight:900;letter-spacing:-0.05em;line-height:1">10%</div>
           <div style="font-size:9px;color:var(--muted);letter-spacing:0.12em;text-transform:uppercase;margin-top:6px">Only when sold</div>
         </div>
       </div>
@@ -1334,10 +1633,10 @@ footer{
 <section class="notifySection" id="notify">
   <div class="notifyInner reveal">
     <h2 class="notifyH">
-      Be first
-      <em>when we launch.</em>
+      Know first
+      <em>when we open.</em>
     </h2>
-    <p class="notifySub">Drop your email. Early listing credits and priority access, before we open to everyone.</p>
+    <p class="notifySub">Drop your email. Be the first to browse when Audiobaaz opens to buyers.</p>
     <div class="notifyForm">
       <input class="notifyInput" type="email" id="notifyEmail" placeholder="you@example.com" autocomplete="email"/>
       <button class="notifySubmit" id="notifySubmit">
@@ -1348,7 +1647,7 @@ footer{
     <div class="notifyPromises">
       <div class="np"><span class="np-dot"></span>No spam, ever</div>
       <div class="np"><span class="np-dot"></span>One email at launch</div>
-      <div class="np"><span class="np-dot"></span>Early listing credits included</div>
+      <div class="np"><span class="np-dot"></span>First access to listings</div>
     </div>
   </div>
 </section>
@@ -1587,6 +1886,337 @@ function setupHold(cardId, barId, ctaId) {
   card.addEventListener('touchstart', startHold, { passive: true });
   card.addEventListener('touchend',   cancelHold);
 }
+/* ══════════════════════════════════════════
+   21ST.DEV — CUSTOM EXCLUSION CURSOR
+══════════════════════════════════════════ */
+(function(){
+  const cur = document.getElementById('ab-cursor');
+  if (!cur) return;
+  const isMouse = window.matchMedia('(hover:hover) and (pointer:fine)').matches;
+  if (!isMouse) return;
+
+  let tx = -80, ty = -80, cx = -80, cy = -80;
+
+  document.addEventListener('mousemove', e => {
+    tx = e.clientX; ty = e.clientY;
+    cur.classList.add('cur-visible');
+  });
+  document.addEventListener('mouseleave', () => cur.classList.remove('cur-visible'));
+
+  /* Expand to square on interactive elements */
+  const targets = 'a, button, [data-bento], .howRow, .cc, .curated-card, .nav-btn, .lo-sell-btn, .play-ring';
+  document.querySelectorAll(targets).forEach(el => {
+    el.addEventListener('mouseenter', () => cur.classList.add('cur-big'));
+    el.addEventListener('mouseleave', () => cur.classList.remove('cur-big'));
+  });
+
+  (function tick() {
+    cx += (tx - cx) * 0.13;
+    cy += (ty - cy) * 0.13;
+    cur.style.transform = `translate(${cx.toFixed(1)}px,${cy.toFixed(1)}px) translate(-50%,-50%)`;
+    requestAnimationFrame(tick);
+  })();
+})();
+
+/* ══════════════════════════════════════════
+   GLASS CURSOR — follows with lag on link hover
+══════════════════════════════════════════ */
+(function(){
+  const glass = document.getElementById('ab-glass');
+  if (!glass) return;
+  if (!window.matchMedia('(hover:hover) and (pointer:fine)').matches) return;
+
+  let tx = -80, ty = -80, gx = -80, gy = -80;
+
+  document.addEventListener('mousemove', e => { tx = e.clientX; ty = e.clientY; });
+
+  const sel = 'a, button, .nav-btn, .lo-sell-btn, .curated-card, .play-ring, [data-bento], .cc, .howRow';
+  document.querySelectorAll(sel).forEach(el => {
+    el.addEventListener('mouseenter', () => glass.classList.add('gl-active'));
+    el.addEventListener('mouseleave', () => glass.classList.remove('gl-active'));
+  });
+
+  (function tick() {
+    gx += (tx - gx) * 0.07;
+    gy += (ty - gy) * 0.07;
+    glass.style.transform = `translate(${gx.toFixed(1)}px,${gy.toFixed(1)}px) translate(-50%,-50%)`;
+    requestAnimationFrame(tick);
+  })();
+})();
+
+/* ══════════════════════════════════════════
+   HERO CURSOR SPOTLIGHT
+══════════════════════════════════════════ */
+(function(){
+  const hero = document.getElementById('heroSection');
+  const spot = document.getElementById('heroSpot');
+  if (!hero || !spot) return;
+  if (!window.matchMedia('(hover:hover) and (pointer:fine)').matches) return;
+
+  let tx = 58, ty = 50, cx = 58, cy = 50;
+  let active = false;
+
+  hero.addEventListener('mousemove', e => {
+    const r = hero.getBoundingClientRect();
+    tx = ((e.clientX - r.left) / r.width  * 100);
+    ty = ((e.clientY - r.top)  / r.height * 100);
+    if (!active) { spot.classList.add('sp-active'); active = true; }
+  });
+  hero.addEventListener('mouseleave', () => {
+    spot.classList.remove('sp-active'); active = false;
+  });
+
+  (function tick() {
+    cx += (tx - cx) * 0.07;
+    cy += (ty - cy) * 0.07;
+    spot.style.background = `radial-gradient(600px circle at ${cx.toFixed(1)}% ${cy.toFixed(1)}%, rgba(232,255,77,0.10) 0%, transparent 65%)`;
+    requestAnimationFrame(tick);
+  })();
+})();
+
+/* ══════════════════════════════════════════
+   21ST.DEV — ANIMATED CANVAS GRAIN
+══════════════════════════════════════════ */
+(function(){
+  const grainDiv = document.querySelector('.grain');
+  if (!grainDiv) return;
+
+  const canvas = document.createElement('canvas');
+  grainDiv.appendChild(canvas);
+  grainDiv.style.backgroundImage = 'none'; /* disable SVG fallback */
+
+  const ctx = canvas.getContext('2d');
+  let W = 0, H = 0;
+
+  function resize() {
+    /* half-resolution for perf; CSS scales it up */
+    W = canvas.width  = Math.ceil(window.innerWidth  / 3);
+    H = canvas.height = Math.ceil(window.innerHeight / 3);
+    canvas.style.imageRendering = 'pixelated';
+  }
+
+  function drawGrain() {
+    const img = ctx.createImageData(W, H);
+    const d = img.data;
+    for (let i = 0; i < d.length; i += 4) {
+      const v = Math.random() * 255 | 0;
+      d[i] = d[i+1] = d[i+2] = v;
+      d[i+3] = 28; /* alpha — controls grain opacity */
+    }
+    ctx.putImageData(img, 0, 0);
+  }
+
+  let frame = 0;
+  function tick() {
+    if (frame % 4 === 0) drawGrain(); /* ~15fps grain refresh */
+    frame++;
+    requestAnimationFrame(tick);
+  }
+
+  resize();
+  window.addEventListener('resize', resize, { passive: true });
+  tick();
+})();
+
+/* ══════════════════════════════════════════
+   21ST.DEV — 3D SPRING TILT ON BENTO CELLS
+══════════════════════════════════════════ */
+(function(){
+  if (!window.matchMedia('(hover:hover) and (pointer:fine)').matches) return;
+
+  const cells = document.querySelectorAll('[data-bento]');
+  cells.forEach(cell => {
+    /* Inner wrapper: tilt lives here so it doesn't fight the stagger outer transform */
+    const inner = document.createElement('div');
+    inner.style.cssText = 'position:relative;width:100%;height:100%;transform-style:preserve-3d;will-change:transform;transition:transform 0.6s var(--ease)';
+
+    /* Shine layer: moves opposite to tilt — looks like a specular highlight */
+    const shine = document.createElement('div');
+    shine.style.cssText = 'position:absolute;inset:0;pointer-events:none;opacity:0;transition:opacity 0.3s';
+    inner.appendChild(shine);
+
+    while (cell.firstChild) inner.appendChild(cell.firstChild);
+    cell.appendChild(inner);
+    cell.style.perspective = '480px'; /* shorter = more dramatic 3D */
+
+    let rx = 0, ry = 0, trx = 0, try_ = 0, vrx = 0, vry = 0;
+    let hovering = false, rafId = null;
+
+    function spring() {
+      const stiff = 0.12, damp = 0.65;
+      vrx += (trx - rx) * stiff; vrx *= damp; rx += vrx;
+      vry += (try_ - ry) * stiff; vry *= damp; ry += vry;
+      inner.style.transition = 'none';
+      inner.style.transform = `rotateX(${rx.toFixed(2)}deg) rotateY(${ry.toFixed(2)}deg)`;
+      if (hovering || Math.abs(rx) > 0.06 || Math.abs(ry) > 0.06) {
+        rafId = requestAnimationFrame(spring);
+      } else {
+        inner.style.transition = 'transform 0.6s var(--ease)';
+        inner.style.transform = '';
+        rafId = null;
+      }
+    }
+
+    cell.addEventListener('mousemove', e => {
+      const r = cell.getBoundingClientRect();
+      const nx = (e.clientX - r.left) / r.width;
+      const ny = (e.clientY - r.top)  / r.height;
+      trx = -(ny - 0.5) * 18; /* up to ±9° */
+      try_ =  (nx - 0.5) * 26; /* up to ±13° */
+      /* Shine follows mouse — opposite direction to tilt for realism */
+      shine.style.background = `radial-gradient(circle at ${(nx*100).toFixed(0)}% ${(ny*100).toFixed(0)}%, rgba(255,255,255,0.13) 0%, transparent 58%)`;
+      shine.style.opacity = '1';
+      if (!rafId) { hovering = true; rafId = requestAnimationFrame(spring); }
+    });
+    cell.addEventListener('mouseleave', () => {
+      hovering = false; trx = 0; try_ = 0;
+      shine.style.opacity = '0';
+      if (!rafId) rafId = requestAnimationFrame(spring);
+    });
+  });
+})();
+
+/* ══════════════════════════════════════════
+   21ST.DEV — CINEMATIC WORD REVEAL (MANIFESTO)
+══════════════════════════════════════════ */
+(function(){
+  const heading = document.querySelector('.mani-h');
+  if (!heading || window.matchMedia('(prefers-reduced-motion:reduce)').matches) return;
+
+  /* Wrap every word (not whitespace, not BR) in a .word-reveal span */
+  function wrapWords(node) {
+    if (node.nodeType === 3) {
+      const parts = node.textContent.split(/(\s+)/);
+      if (parts.length <= 1 && /^\s*$/.test(parts[0])) return;
+      const frag = document.createDocumentFragment();
+      parts.forEach(part => {
+        if (/^\s+$/.test(part) || part === '') {
+          frag.appendChild(document.createTextNode(part));
+        } else {
+          const span = document.createElement('span');
+          span.className = 'word-reveal';
+          span.textContent = part;
+          span.style.cssText = [
+            'display:inline-block',
+            'opacity:0',
+            'filter:blur(8px)',
+            'transform:translateY(22%)',
+            'transition:opacity 0.75s var(--ease),filter 0.75s var(--ease),transform 0.75s var(--ease)',
+          ].join(';');
+          frag.appendChild(span);
+        }
+      });
+      node.parentNode.replaceChild(frag, node);
+    } else if (node.nodeType === 1 && node.tagName !== 'BR') {
+      Array.from(node.childNodes).forEach(wrapWords);
+    }
+  }
+  wrapWords(heading);
+
+  new IntersectionObserver(([e]) => {
+    if (!e.isIntersecting) return;
+    const words = heading.querySelectorAll('.word-reveal');
+    words.forEach((w, i) => {
+      setTimeout(() => {
+        w.style.opacity = '1';
+        w.style.filter = 'blur(0)';
+        w.style.transform = 'translateY(0)';
+      }, 320 + i * 68); /* 320ms base lets the parent reveal start first */
+    });
+  }, { threshold: 0.15 }).observe(heading);
+})();
+
+/* ── Magnetic CTA buttons ── */
+if (window.matchMedia('(hover:hover) and (pointer:fine)').matches) {
+  document.querySelectorAll('.nav-btn, .lo-sell-btn').forEach(btn => {
+    let leaveTimer = null;
+    btn.addEventListener('mousemove', e => {
+      if (leaveTimer) { clearTimeout(leaveTimer); leaveTimer = null; }
+      const r = btn.getBoundingClientRect();
+      const x = ((e.clientX - r.left) / r.width  - 0.5) * 11;
+      const y = ((e.clientY - r.top)  / r.height - 0.5) * 8;
+      btn.style.transition = 'transform 120ms ease-out';
+      btn.style.transform = `translate(${x.toFixed(1)}px,${y.toFixed(1)}px)`;
+    });
+    btn.addEventListener('mouseleave', () => {
+      btn.style.transition = 'transform 400ms var(--ease)';
+      btn.style.transform = '';
+      leaveTimer = setTimeout(() => { btn.style.transition = ''; leaveTimer = null; }, 400);
+    });
+  });
+}
+
+/* ── howRow step-number bounce on hover ── */
+if (!window.matchMedia('(prefers-reduced-motion:reduce)').matches) {
+  document.querySelectorAll('.howRow').forEach(row => {
+    row.addEventListener('mouseenter', () => {
+      const num = row.querySelector('.hrNum');
+      if (!num) return;
+      num.style.animation = 'none';
+      void num.offsetHeight;
+      num.style.animation = 'num-bounce 0.4s var(--ease) forwards';
+    });
+  });
+}
+
+/* ── Bento: stagger cells + grade pill pop-in + counter-up ── */
+(function(){
+  const grid = document.getElementById('bentoGrid');
+  if (!grid) return;
+  const reduced = window.matchMedia('(prefers-reduced-motion:reduce)').matches;
+
+  /* stagger cells */
+  const cells = Array.from(grid.querySelectorAll('[data-bento]'));
+  if (!reduced) {
+    cells.forEach((c, i) => {
+      c.style.opacity = '0';
+      c.style.transform = 'translateY(22px)';
+      c.style.transition = `opacity 0.65s var(--ease) ${(0.05 + i * 0.1).toFixed(2)}s, transform 0.65s var(--ease) ${(0.05 + i * 0.1).toFixed(2)}s`;
+    });
+  }
+
+  /* grade pills */
+  const pills = Array.from(grid.querySelectorAll('.gradePill'));
+  if (!reduced) {
+    pills.forEach(p => { p.style.opacity = '0'; p.style.transform = 'translateY(7px)'; });
+  }
+
+  /* counter-up */
+  const stat100 = grid.querySelector('.bcStat.bcStatAcc');
+  const stat10  = document.getElementById('bentoFee');
+
+  function countUp(el, to, suffix, dur) {
+    if (!el || reduced) return;
+    const start = performance.now();
+    (function step(now) {
+      const t = Math.min((now - start) / dur, 1);
+      const ease = t < 0.5 ? 2*t*t : -1+(4-2*t)*t;
+      el.textContent = Math.round(ease * to) + suffix;
+      if (t < 1) requestAnimationFrame(step);
+    })(start);
+  }
+
+  let fired = false;
+  new IntersectionObserver(([e]) => {
+    if (!e.isIntersecting || fired) return;
+    fired = true;
+    if (!reduced) {
+      cells.forEach(c => { c.style.opacity = '1'; c.style.transform = 'none'; });
+      setTimeout(() => {
+        pills.forEach((p, i) => {
+          setTimeout(() => {
+            p.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
+            p.style.opacity = '1';
+            p.style.transform = 'none';
+          }, i * 85);
+        });
+      }, 320);
+    }
+    setTimeout(() => countUp(stat100, 100, '%', 1200), 250);
+    setTimeout(() => countUp(stat10,  10,  '%', 950),  550);
+  }, { threshold: 0.12 }).observe(grid);
+})();
+
 /* TODO: replace '#' with real WhatsApp + Telegram links before launch */
 setupHold('ccWa', 'barWa', 'ctaWa');
 setupHold('ccTg', 'barTg', 'ctaTg');
@@ -1670,6 +2300,8 @@ setupHold('ccTg', 'barTg', 'ctaTg');
 
   const stmts = ['stmt0','stmt1','stmt2'].map(id => document.getElementById(id));
   const dots  = ['dot0','dot1','dot2'].map(id => document.getElementById(id));
+  const tonearm = document.querySelector('.stage-tonearm');
+  const toneAngles = [-9, -2, 5];
   let current = 0;
 
   function setActive(idx) {
@@ -1682,6 +2314,7 @@ setupHold('ccTg', 'barTg', 'ctaTg');
     current = idx;
     stmts[current].classList.add('active');
     dots[current].classList.add('active');
+    if (tonearm) tonearm.style.transform = `rotate(${toneAngles[idx]}deg)`;
   }
 
   function onScroll() {
@@ -1697,6 +2330,69 @@ setupHold('ccTg', 'barTg', 'ctaTg');
 
   window.addEventListener('scroll', onScroll, { passive: true });
   onScroll();
+})();
+
+/* ── Listings overlay: countdown + text scramble + staggered entrance ── */
+(function(){
+  const overlay  = document.getElementById('listingsOverlay');
+  const section  = document.getElementById('curatedSection');
+  const headline = document.getElementById('loHeadline');
+  if (!overlay || !section) return;
+
+  /* Target: 30 days from publish date */
+  const TARGET = new Date('2026-07-07T00:00:00+05:30');
+  const cdDays  = document.getElementById('cd-days');
+  const cdHours = document.getElementById('cd-hours');
+  const cdMins  = document.getElementById('cd-mins');
+  const cdSecs  = document.getElementById('cd-secs');
+
+  function pad(n){ return String(n).padStart(2,'0'); }
+
+  function flipDigit(el, val){
+    if (!el || el.textContent === val) return;
+    el.classList.add('flip');
+    setTimeout(() => { el.textContent = val; el.classList.remove('flip'); }, 110);
+  }
+
+  function tickCountdown(){
+    const diff = Math.max(0, TARGET - Date.now());
+    flipDigit(cdDays,  pad(Math.floor(diff / 86400000)));
+    flipDigit(cdHours, pad(Math.floor((diff % 86400000) / 3600000)));
+    flipDigit(cdMins,  pad(Math.floor((diff % 3600000) / 60000)));
+    flipDigit(cdSecs,  pad(Math.floor((diff % 60000) / 1000)));
+  }
+  tickCountdown();
+  setInterval(tickCountdown, 1000);
+
+  /* Text scramble — data-decrypt reveal */
+  const CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789▓▒░█';
+  function scramble(el, finalText, ms){
+    if (!el) return;
+    const steps = 22;
+    let i = 0;
+    const iv = setInterval(() => {
+      const progress = i / steps;
+      el.textContent = finalText.split('').map((ch, idx) => {
+        if (ch === ' ') return ' ';
+        return idx / finalText.length < progress
+          ? ch
+          : CHARS[Math.floor(Math.random() * CHARS.length)];
+      }).join('');
+      if (++i > steps){ clearInterval(iv); el.textContent = finalText; }
+    }, ms / steps);
+  }
+
+  /* Entrance: fire once when section enters viewport */
+  const originalHeadline = headline ? headline.textContent.trim() : '';
+  let fired = false;
+
+  new IntersectionObserver(([e]) => {
+    if (e.isIntersecting && !fired){
+      fired = true;
+      overlay.classList.add('lo-visible');
+      setTimeout(() => scramble(headline, originalHeadline, 900), 380);
+    }
+  }, { threshold: 0.12 }).observe(section);
 })();
 </script>
 </body>
