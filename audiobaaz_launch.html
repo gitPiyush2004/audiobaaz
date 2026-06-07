@@ -591,41 +591,8 @@ img,svg{display:block}
 .tgDot{width:6px;height:6px;background:#229ED9;border-radius:50%;margin-top:4px;flex-shrink:0}
 .tgText{color:var(--mid)}.tgText strong{color:var(--black);font-weight:600}
 
-/* ─── INSPECTOR BENTO CELL ─── */
-.bc-inspect{display:flex;flex-direction:column;padding:28px 24px 24px;}
-.inspect-svg{width:100%;height:auto;display:block;}
-.inspect-title{font-size:15px;font-weight:800;letter-spacing:-0.02em;margin:14px 0 4px;}
-.inspect-desc{font-size:11px;color:var(--mid);line-height:1.65;}
-/* belt centre dashes scroll left — one element, stroke-dashoffset */
-.belt-dash{animation:belt-scroll 0.8s linear infinite;}
-@keyframes belt-scroll{to{stroke-dashoffset:-24;}}
-/* box: strong ease-out enter, pause, ease-in exit, invisible reset */
-.inspect-box{animation:box-journey 5.5s linear infinite;}
-@keyframes box-journey{
-  0%,100%{transform:translateX(-28px);opacity:0;}
-  5%  {transform:translateX(-28px);opacity:1;animation-timing-function:cubic-bezier(0.23,1,0.32,1);}
-  28% {transform:translateX(130px);}
-  54% {transform:translateX(130px);animation-timing-function:cubic-bezier(0.55,0,1,0.45);}
-  77% {transform:translateX(310px);opacity:1;}
-  80% {transform:translateX(310px);opacity:0;}
-}
-/* stamp: never scales from 0 — starts at 0.85, pops in with ease-out */
-.inspect-check{
-  animation:check-stamp 5.5s linear infinite;
-  transform-box:fill-box;transform-origin:center;
-}
-@keyframes check-stamp{
-  0%,29%{opacity:0;transform:scale(0.85);}
-  36%  {opacity:1;transform:scale(1.07);animation-timing-function:cubic-bezier(0.23,1,0.32,1);}
-  42%  {opacity:1;transform:scale(1);}
-  55%  {opacity:1;transform:scale(1);animation-timing-function:cubic-bezier(0.55,0,1,0.45);}
-  63%  {opacity:0;transform:scale(0.88);}
-  100% {opacity:0;transform:scale(0.85);}
-}
-@media(prefers-reduced-motion:reduce){
-  .belt-dash,.inspect-box,.inspect-check{animation:none;}
-  .inspect-check{opacity:1;transform:none;}
-}
+/* ─── BENTO FULL-WIDTH CELL ─── */
+.bcFull{grid-column:1/-1;}
 
 /* ─── COMMUNITY ─── */
 .communitySection{border-bottom:1px solid var(--border)}
@@ -644,7 +611,8 @@ img,svg{display:block}
 .comm-left p{font-size:15px;color:var(--mid);line-height:1.7;max-width:480px}
 .comm-right{
   background:var(--black);padding:32px;
-  display:flex;flex-direction:column;min-height:320px;
+  display:flex;flex-direction:column;
+  height:340px;overflow:hidden;
 }
 .chat-header{
   display:flex;align-items:center;gap:10px;
@@ -916,7 +884,7 @@ footer{
   .bentoGrid{grid-template-columns:1fr 1fr}
   .bcTall{grid-column:span 2;grid-row:span 1}
   .bcWide{grid-column:span 2;grid-row:span 1}
-  .bentoGrid>.bc:nth-child(4){grid-column:span 2}
+  .bcFull{grid-column:span 2}
   .bc{padding:24px 20px}
   .bcStat{font-size:44px;margin:12px 0 8px}
 
@@ -1649,7 +1617,7 @@ footer{
       </svg>
     </div>
 
-    <div class="bc" style="background:var(--off)" data-bento>
+    <div class="bc bcWide" style="background:var(--off)" data-bento>
       <div style="font-size:9px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:var(--muted);margin-bottom:18px">04</div>
       <div class="bcTitle">Telegram notifications</div>
       <div class="tgRows">
@@ -1659,40 +1627,7 @@ footer{
       </div>
     </div>
 
-    <!-- ── Manual review — inspector animation ── -->
-    <div class="bc bc-inspect" data-bento>
-      <svg class="inspect-svg" viewBox="0 0 280 130" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-        <!-- Desk surface sits behind the belt — visible above + below it at centre -->
-        <rect x="94" y="28" width="92" height="74" fill="#f5f3ef" rx="2"/>
-        <!-- Abstract arm stubs above belt (imply human presence without illustration) -->
-        <rect x="84" y="30" width="12" height="18" fill="#dedad4" rx="6"/>
-        <rect x="184" y="30" width="12" height="18" fill="#dedad4" rx="6"/>
-        <!-- Belt fill -->
-        <rect x="0" y="50" width="280" height="24" fill="#eceae5"/>
-        <!-- Belt rails -->
-        <line x1="0" y1="50" x2="280" y2="50" stroke="#d8d4cc" stroke-width="1"/>
-        <line x1="0" y1="74" x2="280" y2="74" stroke="#d8d4cc" stroke-width="1"/>
-        <!-- Belt centre dashes — single element, stroke-dashoffset scrolls left -->
-        <line class="belt-dash" x1="0" y1="62" x2="320" y2="62"
-              stroke="#ccc8c0" stroke-width="1"
-              stroke-dasharray="12 12" stroke-dashoffset="0"/>
-        <!-- Parcel (animated) — white fill, black outline, two faint label lines -->
-        <g class="inspect-box">
-          <rect x="0" y="53" width="22" height="18" fill="#faf9f7" stroke="#0a0a0a" stroke-width="0.9" rx="1"/>
-          <line x1="3" y1="58" x2="19" y2="58" stroke="#c8c4bc" stroke-width="0.65"/>
-          <line x1="3" y1="61" x2="13" y2="61" stroke="#c8c4bc" stroke-width="0.65"/>
-        </g>
-        <!-- Approval stamp — accent yellow is the only colour in this scene -->
-        <g class="inspect-check">
-          <circle cx="140" cy="62" r="11" fill="#E8FF4D" stroke="#0a0a0a" stroke-width="1.2"/>
-          <polyline points="135,62 139,67 147,55" stroke="#0a0a0a" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-        </g>
-      </svg>
-      <div class="inspect-title">Team-verified</div>
-      <div class="inspect-desc">Every listing reviewed by our team before it goes live.</div>
-    </div>
-
-    <div class="bc bcWide" data-bento>
+    <div class="bc bcFull" data-bento>
       <div style="font-size:9px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:var(--muted);margin-bottom:18px">05</div>
       <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:20px">
         <div>
@@ -2618,8 +2553,8 @@ setupHold('ccTg', 'barTg', 'ctaTg');
     hideEl(typingEl);
     await delay(160);
 
-    await showEl(msg2El);
     bubble2.textContent = TEXT2;
+    await showEl(msg2El);
 
     await delay(4000);
 
