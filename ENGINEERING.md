@@ -54,7 +54,7 @@
 ### Security
 - `floor_price` on listings is NEVER exposed to buyers — server-side only
 - `seller_score` and `buyer_score` are internal — never shown publicly
-- Admin routes (`/admin/*`) check for `role === 'admin'` in middleware
+- Admin panel lives at `app.audiobaaz.com` (separate `audiobaaz-app` repo) — not in this codebase
 
 ### Listing Status Flow
 ```
@@ -246,7 +246,7 @@ These are final. Do not suggest alternatives.
 
 ---
 
-## CURRENT REPOSITORY STATE — 2026-06-07
+## CURRENT REPOSITORY STATE — 2026-06-08
 
 ### Active development branch
 
@@ -270,6 +270,7 @@ awaiting merge to dev.
 | `feature/payments-shipping` | **MERGED** | Merged via PR #2. Zero commits ahead of `dev`. Safe to delete. |
 | `feature/buyer-flow` | **MERGED** | Earlier merge. Zero commits ahead of `dev`. Safe to delete. |
 | `feature/ui-redesign` | **READY TO MERGE** | Superset of `feature/order-lifecycle-shipping`. Lifecycle validation complete (2026-06-02). Merge to `dev` as single PR. |
+| `feature/admin-redesign` | **MERGED to dev** | Admin pages + API routes removed from this repo (2026-06-08). Admin panel moved to `audiobaaz-app`. Cleanup PR merged to dev. |
 | `feature/admin-panel`, `feature/seller-flow` | historical | Remote-only. Pre-V1 history; defer cleanup. |
 
 ### Status by capability
@@ -292,7 +293,7 @@ awaiting merge to dev.
 | Real Razorpay validation | ❌ blocked on credentials | Not on critical path — `DevPaymentProvider` covers the gap |
 | Real Shiprocket validation | ❌ blocked on credentials | Not on critical path — `MockShippingProvider` covers the gap |
 | `ShiprocketProvider` impl | ❌ deferred until credentials land | Slot exists in factory; throws on selection |
-| Admin operations (refund button, payout reference, orders monitor) | ❌ not started | Next implementation task on the active branch |
+| Admin operations (refund button, payout reference, orders monitor) | ❌ in `audiobaaz-app` | Admin panel extracted to separate app 2026-06-08. Orders monitor is a stub in `audiobaaz-app`. |
 | Closed beta | ❌ not started | After admin ops |
 
 ### Build status
