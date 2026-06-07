@@ -95,13 +95,13 @@ export function LaunchCountdown() {
         fontSize: "13px", color: "#666", lineHeight: 1.7,
         maxWidth: "340px", marginBottom: "28px",
       }}>
-        We&apos;re onboarding early sellers and curating the first batch of listings.
-        List your gear now — it goes live the moment we launch.
+        Your listing is under review. It goes live the moment we launch —
+        you&apos;ll be among the first sellers on Audiobaaz.
       </p>
 
       {/* CTA */}
       <a
-        href="/sell"
+        href="/dashboard"
         style={{
           background: "#E8FF4D", color: "#0a0a0a",
           padding: "13px 32px",
@@ -110,7 +110,7 @@ export function LaunchCountdown() {
           display: "inline-flex", alignItems: "center", gap: "8px",
         }}
       >
-        List your gear early
+        Go to your dashboard
         <span style={{ fontSize: "14px" }}>↗</span>
       </a>
     </div>
