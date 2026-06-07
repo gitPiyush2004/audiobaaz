@@ -924,21 +924,32 @@ export function ListingForm({ draftId, initialData }: Props) {
                     {[
                       { key: 'floorPricePaise'  as const, label: "Floor price (₹) — lowest offer you'll consider" },
                       { key: 'autoAcceptPaise'  as const, label: 'Auto-accept threshold (₹) — offers at or above this auto-accept' },
-                    ].map(({ key, label }) => (
-                      <div key={key}>
-                        <label style={labelSt}>{label}</label>
-                        <div style={{ position: 'relative' }}>
-                          <span style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', fontFamily: '"JetBrains Mono", monospace', color: MUTED }}>₹</span>
-                          <input
-                            type="number" min={0} placeholder="0"
-                            onChange={e => update(key, parseRupees(e.target.value))}
-                            style={{ ...inputSt, paddingLeft: 32, fontFamily: '"JetBrains Mono", monospace' }}
-                            onFocus={e => (e.currentTarget.style.borderColor = BLACK)}
-                            onBlur={e => (e.currentTarget.style.borderColor = B)}
-                          />
+                    ].map(({ key, label }) => {
+                      const floorAboveAsking = key === 'floorPricePaise'
+                        && draft.floorPricePaise
+                        && draft.askingPricePaise
+                        && draft.floorPricePaise >= draft.askingPricePaise;
+                      return (
+                        <div key={key}>
+                          <label style={labelSt}>{label}</label>
+                          <div style={{ position: 'relative' }}>
+                            <span style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', fontFamily: '"JetBrains Mono", monospace', color: MUTED }}>₹</span>
+                            <input
+                              type="number" min={0} placeholder="0"
+                              onChange={e => update(key, parseRupees(e.target.value))}
+                              style={{ ...inputSt, paddingLeft: 32, fontFamily: '"JetBrains Mono", monospace', borderColor: floorAboveAsking ? '#FF4D4D' : undefined }}
+                              onFocus={e => (e.currentTarget.style.borderColor = floorAboveAsking ? '#FF4D4D' : BLACK)}
+                              onBlur={e => (e.currentTarget.style.borderColor = floorAboveAsking ? '#FF4D4D' : B)}
+                            />
+                          </div>
+                          {floorAboveAsking && (
+                            <p style={{ marginTop: 6, fontSize: 12, color: '#FF4D4D' }}>
+                              Floor price must be less than the asking price ({formatPrice(draft.askingPricePaise!)}).
+                            </p>
+                          )}
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>

@@ -15,14 +15,15 @@ const nextConfig = {
         protocol: "https",
         hostname: "picsum.photos",
       },
+      {
+        protocol: "https",
+        hostname: "placehold.co",
+      },
     ],
   },
 
   async redirects() {
-    return [
-      // Temporary: redirect root to launch page until full app is ready
-      { source: '/', destination: '/launch.html', permanent: false },
-    ];
+    return [];
   },
 };
 
