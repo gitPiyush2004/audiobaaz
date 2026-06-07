@@ -1,8 +1,8 @@
 # Seller Flow — Context File
 **Owner:** Person 1
 **Tool:** AI coding tool
-**Branch:** feature/seller-flow (merged); seller dashboard order detail + shipment flow on `feature/ui-redesign`
-**Last updated:** 2026-06-03
+**Branch:** merged to `main` (2026-06-07) — seller flow is LIVE on production
+**Last updated:** 2026-06-08
 
 ---
 
@@ -199,7 +199,7 @@ src/app/auth/callback/route.ts                             ✓ updated (handles 
 
 ## Next Session Starts Here
 
-**Seller flow is COMPLETE for V1.** All features including onboarding and nav are done.
+**Seller flow is COMPLETE and LIVE on production (audiobaaz.com).** Full V1 app merged to `main` 2026-06-07. Production Supabase schema applied (schema.sql + migration 008). Env vars live in Dokploy. Auth: magic-link OTP + Google OAuth both working.
 
 Remaining items (V1.5 / nice-to-have, not blocking launch):
 1. Wire TELEGRAM_BOT_TOKEN once the bot is set up — the lib and calls are in place, just needs the token
