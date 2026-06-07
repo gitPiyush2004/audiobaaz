@@ -992,7 +992,6 @@ footer{
   will-change:transform;
   transition:width 0.35s var(--ease),height 0.35s var(--ease),border-radius 0.35s var(--ease),opacity 0.4s;
 }
-#ab-cursor.cur-big{width:44px;height:44px;border-radius:0}
 #ab-cursor.cur-visible{opacity:0.95}
 
 /* ─── GLASS CURSOR (link hover) ─── */
@@ -1896,13 +1895,6 @@ function setupHold(cardId, barId, ctaId) {
     cur.classList.add('cur-visible');
   });
   document.addEventListener('mouseleave', () => cur.classList.remove('cur-visible'));
-
-  /* Expand to square on interactive elements */
-  const targets = 'a, button, [data-bento], .howRow, .cc, .curated-card, .nav-btn, .lo-sell-btn, .play-ring';
-  document.querySelectorAll(targets).forEach(el => {
-    el.addEventListener('mouseenter', () => cur.classList.add('cur-big'));
-    el.addEventListener('mouseleave', () => cur.classList.remove('cur-big'));
-  });
 
   (function tick() {
     cx += (tx - cx) * 0.13;
