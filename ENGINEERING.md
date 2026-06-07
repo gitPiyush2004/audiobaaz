@@ -54,7 +54,7 @@
 ### Security
 - `floor_price` on listings is NEVER exposed to buyers — server-side only
 - `seller_score` and `buyer_score` are internal — never shown publicly
-- Admin panel lives at `app.audiobaaz.com` (separate `audiobaaz-app` repo) — not in this codebase
+- Admin routes (`/admin/*`) check for `role === 'admin'` in middleware
 
 ### Listing Status Flow
 ```
@@ -135,8 +135,8 @@ src/
 │   │   ├── buy/               # Buyer checkout (Person 2)
 │   │   ├── orders/            # Buyer dashboard (Person 2)
 │   │   └── merchant/          # V2 placeholder (empty)
+│   ├── admin/                 # Admin panel (Person 3)
 │   └── api/                   # Backend routes (Person 4)
-│   # Admin panel moved to github.com/audiobaaz/audiobaaz-app (app.audiobaaz.com)
 ├── components/
 │   ├── ui/                    # Base components — Button, Input, Card etc
 │   ├── listing/               # Listing-specific components
@@ -208,7 +208,7 @@ These are final. Do not suggest alternatives.
 |--------|------|---------|--------|
 | Person 1 | AI coding tool | Seller flow + dashboard | COMPLETE — onboarding, nav profile menu, rejected listings tab, resubmit flow, Google OAuth on login page (commit 15ff3f1). Magic-link OTP retained as fallback. See docs/context/seller-flow.md |
 | Person 2 | Kiro | Buyer flow + listing page | READY TO MERGE — full lifecycle tested on `feature/order-lifecycle-shipping`: checkout (dev simulator) → escrow → seller shipment → tracking → delivery → inspection → confirm receipt (completed) + dispute flow. tsc + next build clean. Pending: Vercel env var `PAYMENT_PROVIDER=dev` for dev.audiobaaz.com, Supabase CLI setup for migration tracking. See docs/context/buyer-flow.md |
-| Person 3 | AI coding tool | Admin panel | MOVED to separate app — `github.com/audiobaaz/audiobaaz-app`, live at `app.audiobaaz.com`. Admin pages + API routes removed from this repo on `feature/admin-redesign`. See docs/context/admin-panel.md |
+| Person 3 | - | Admin panel | MERGED to dev — core panel complete (listings review, disputes, users, payouts queue + history). Orders monitor remains a stub. Vercel build lint failures resolved in commit e0d84e4. See docs/context/admin-panel.md |
 | Person 4 | AI coding tool | Payments + shipping | VALIDATED — lifecycle runbook scenarios A–H all pass on `ui.audiobaaz.com` (2026-06-02). All transaction-engine code lives on `feature/order-lifecycle-shipping` (absorbed into `feature/ui-redesign`). Ready to merge. See docs/context/payments-shipping.md, docs/reviews/lifecycle-validation-results.md, and docs/V1-LAUNCH.md. |
 | Project | — | Deployment + domain + auth infrastructure | LIVE — production at audiobaaz.com, dev at dev.audiobaaz.com, both on Vercel with Cloudflare DNS + Email Routing. Magic-link + Google OAuth wired through Supabase. See docs/DEPLOYMENT.md |
 | Design | AI coding tool | UI redesign exploration | VALIDATED — lifecycle runbook scenarios A–H all pass on `ui.audiobaaz.com` (2026-06-02). Ready to merge `feature/ui-redesign → dev`. See docs/context/ui-redesign.md and docs/reviews/lifecycle-validation-results.md |
@@ -235,8 +235,8 @@ These are final. Do not suggest alternatives.
 | What | Status | Notes |
 |------|--------|-------|
 | Browse redirect | **LIVE on main** | `/browse` → `/dashboard` redirect in `next.config.mjs`. Buyers cannot access the marketplace until 2026-07-07. Remove this redirect when listings go live. |
-| Browse nav link | **REMOVED** | Removed from `Nav.tsx` — CategoryNav strip also removed. Re-add both when browse opens. |
-| Launch countdown | **LIVE on main** | `src/components/browse/LaunchCountdown.tsx` — live DD:HH:MM:SS targeting 2026-07-07. Still present for when browse reopens. |
+| Browse nav link | **REMOVED from main** | Removed from `Nav.tsx` — CategoryNav strip also removed. Re-add both when browse opens. Dev retains them for testing. |
+| Launch countdown | **REMOVED from browse** | `LaunchCountdown` removed from `src/app/browse/page.tsx` empty state on both branches. Component still exists at `src/components/browse/LaunchCountdown.tsx` if needed. |
 
 ### Production database
 
@@ -249,7 +249,7 @@ These are final. Do not suggest alternatives.
 
 ---
 
-## CURRENT REPOSITORY STATE — 2026-06-08
+## CURRENT REPOSITORY STATE — 2026-06-07
 
 ### Active development branch
 
@@ -265,15 +265,14 @@ awaiting merge to dev.
 
 | Branch | State | Notes |
 |--------|-------|-------|
-| `main` | release | Production. Auto-deploys to audiobaaz.com. Tip: `819f300`. Has full V1 + all launch features + production DB live. Browse restricted pre-launch. |
-| `dev` | integration | Auto-deploys to dev.audiobaaz.com. Tip: `688f592`. In sync with main for launch page + browse restriction. |
+| `main` | release | Production. Auto-deploys to audiobaaz.com. Tip: `b8c3cce`. Pre-launch: root→launch.html, browse blocked, no Browse in nav. |
+| `dev` | integration | Auto-deploys to dev.audiobaaz.com. Tip: `2c42f99`. Full app: browse open, no redirects, dev payment + sign-in bypass enabled. |
 | `feature/order-lifecycle-shipping` | **ACTIVE** | All remaining V1 transaction-engine work lands here. Tip: `d2f9bc6`. Branched off `dev`; cherry-picked the CheckoutForm wiring from PR #4. **Migration 007 + RPC paths validated against real local Postgres 16; smoke tests at `supabase/tests/{lifecycle_smoke,refund_lifecycle_smoke}.sql`.** |
 | `feature/checkout-razorpay-wire` | **SUPERSEDED** | PR #4 OPEN. Code (CheckoutForm wiring + mock removal) lives in `feature/order-lifecycle-shipping` as commit `5ae8cd7` (cherry-pick of `413bc77`). Recommendation: **close PR #4 without merging; delete branch after the active branch lands.** |
 | `feature/payment-routes` | **MERGED** | Merged via PR #3. Zero commits ahead of `dev`. Safe to delete. |
 | `feature/payments-shipping` | **MERGED** | Merged via PR #2. Zero commits ahead of `dev`. Safe to delete. |
 | `feature/buyer-flow` | **MERGED** | Earlier merge. Zero commits ahead of `dev`. Safe to delete. |
 | `feature/ui-redesign` | **READY TO MERGE** | Superset of `feature/order-lifecycle-shipping`. Lifecycle validation complete (2026-06-02). Merge to `dev` as single PR. |
-| `feature/admin-redesign` | **MERGED to dev** | Admin pages + API routes removed from this repo (2026-06-08). Admin panel moved to `audiobaaz-app`. Cleanup PR merged to dev. |
 | `feature/admin-panel`, `feature/seller-flow` | historical | Remote-only. Pre-V1 history; defer cleanup. |
 
 ### Status by capability
@@ -296,7 +295,7 @@ awaiting merge to dev.
 | Real Razorpay validation | ❌ blocked on credentials | Not on critical path — `DevPaymentProvider` covers the gap |
 | Real Shiprocket validation | ❌ blocked on credentials | Not on critical path — `MockShippingProvider` covers the gap |
 | `ShiprocketProvider` impl | ❌ deferred until credentials land | Slot exists in factory; throws on selection |
-| Admin operations (refund button, payout reference, orders monitor) | ❌ in `audiobaaz-app` | Admin panel extracted to separate app 2026-06-08. Orders monitor is a stub in `audiobaaz-app`. |
+| Admin operations (refund button, payout reference, orders monitor) | ❌ not started | Next implementation task on the active branch |
 | Closed beta | ❌ not started | After admin ops |
 
 ### Build status
@@ -449,7 +448,7 @@ Components modified or created that affect multiple features. If you use or modi
 | `Nav` | `src/components/layout/Nav.tsx` | Person 1 | Auth-aware — shows Dashboard + New Listing when logged in, Log in + Sell With Us when logged out. Imports `createClient` from supabase/server (server component). |
 | `ListingForm` | `src/components/forms/ListingForm.tsx` | Person 1 | 6-step listing intake form. Accepts `draftId?` and `initialData?` props. Used by `/sell/new` and `/sell/draft/[id]`. |
 | `DashboardNav` | `src/components/layout/DashboardNav.tsx` | Person 1 | Seller dashboard sidebar. Client component, uses `usePathname`. |
-| `AdminNav` | `components/AdminNav.tsx` in `audiobaaz-app` repo | Person 3 | Admin panel sidebar. Lives in the separate portal app. |
+| `AdminNav` | `src/components/layout/AdminNav.tsx` | Person 3 | Admin panel sidebar. Used inside `src/app/admin/layout.tsx`. |
 | `Button` | `src/components/ui/Button.tsx` | Scaffold | Primary, secondary, ghost, danger variants. sm/md/lg sizes. |
 | `Card` | `src/components/ui/Card.tsx` | Scaffold | Basic surface card. Accepts all div props. |
 | `cn` | `src/lib/utils/cn.ts` | Scaffold | Canonical class-name helper (`clsx` + `tailwind-merge`). The ONLY place to import `cn` from. Do not duplicate. |
