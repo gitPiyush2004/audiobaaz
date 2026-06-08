@@ -163,3 +163,71 @@
 .login-row-wrap:hover .login-row-track-rev {
   animation-play-state: paused;
 }
+
+/* ── Dashboard mobile layout ────────────────────────────────── */
+.dashboard-mobile-nav {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .dashboard-layout {
+    grid-template-columns: 1fr !important;
+    padding-bottom: 64px;
+  }
+  .dashboard-sidebar {
+    display: none !important;
+  }
+  .dashboard-mobile-nav {
+    display: flex;
+  }
+}
+
+/* ── Login page mobile ──────────────────────────────────────── */
+@media (max-width: 768px) {
+  .login-two-col {
+    grid-template-columns: 1fr !important;
+  }
+  .login-left-panel {
+    display: none !important;
+  }
+  .login-nav {
+    padding: 0 16px !important;
+  }
+  .login-form-panel {
+    padding: 0 24px !important;
+  }
+}
+
+/* ── Dashboard page content — mobile ───────────────────────── */
+@media (max-width: 768px) {
+  .dash-header {
+    padding: 20px 20px 16px !important;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .dash-stat-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+  .dash-stat-card {
+    padding: 16px 18px !important;
+  }
+  .dash-content-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .dash-content-main {
+    border-right: none !important;
+    border-bottom: 1px solid #E8E8E4;
+  }
+  .dash-section-head {
+    padding: 16px 20px 12px !important;
+  }
+  .dash-list-item {
+    padding: 12px 16px !important;
+  }
+  .dash-activity-item {
+    padding: 12px 16px !important;
+  }
+  .dash-toast {
+    padding: 12px 16px !important;
+  }
+}

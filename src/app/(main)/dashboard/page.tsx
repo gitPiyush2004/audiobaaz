@@ -156,7 +156,7 @@ export default async function DashboardPage({ searchParams }: Props) {
     <>
       {/* ── Submission toast ── */}
       {searchParams.submitted === '1' && (
-        <div style={{ margin: '0', padding: '14px 40px', background: '#DCFCE7', borderBottom: '1px solid #BBF7D0', display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <div className="dash-toast" style={{ margin: '0', padding: '14px 40px', background: '#DCFCE7', borderBottom: '1px solid #BBF7D0', display: 'flex', alignItems: 'center', gap: '10px' }}>
           <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#15803D', flexShrink: 0 }} />
           <div>
             <span style={{ fontSize: '12px', fontWeight: 700, color: '#15803D' }}>Listing submitted for review</span>
@@ -166,7 +166,7 @@ export default async function DashboardPage({ searchParams }: Props) {
       )}
 
       {/* ── Header ── */}
-      <div style={{ padding: '32px 40px 24px', borderBottom: '1px solid #E8E8E4', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+      <div className="dash-header" style={{ padding: '32px 40px 24px', borderBottom: '1px solid #E8E8E4', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
         <div>
           <div style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#999', marginBottom: '6px' }}>
             Seller dashboard
@@ -182,7 +182,7 @@ export default async function DashboardPage({ searchParams }: Props) {
       </div>
 
       {/* ── Stat cards ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', borderBottom: '1px solid #E8E8E4' }}>
+      <div className="dash-stat-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', borderBottom: '1px solid #E8E8E4' }}>
         {/* Live listings */}
         <StatCard
           eyebrow="Live listings"
@@ -205,7 +205,7 @@ export default async function DashboardPage({ searchParams }: Props) {
           trend={offerCount > 0 ? { label: '↑ Respond within 24hr', green: true } : { label: '— All clear', green: false }}
         />
         {/* Total earned — accent card */}
-        <div style={{ padding: '24px 28px', background: '#0a0a0a', position: 'relative', overflow: 'hidden' }}>
+        <div className="dash-stat-card" style={{ padding: '24px 28px', background: '#0a0a0a', position: 'relative', overflow: 'hidden' }}>
           <div style={{ fontSize: '9px', fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: '#555', marginBottom: '12px' }}>Total earned</div>
           <div style={{ fontSize: '36px', fontWeight: 900, letterSpacing: '-0.04em', lineHeight: 1, color: '#E8FF4D', marginBottom: '6px' }}>
             {totalEarnings > 0 ? formatPrice(totalEarnings) : '₹0'}
@@ -220,11 +220,11 @@ export default async function DashboardPage({ searchParams }: Props) {
       </div>
 
       {/* ── Content grid ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', borderBottom: '1px solid #E8E8E4' }}>
+      <div className="dash-content-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 320px', borderBottom: '1px solid #E8E8E4' }}>
 
         {/* Recent listings panel */}
-        <div style={{ borderRight: '1px solid #E8E8E4' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 28px 16px', borderBottom: '1px solid #E8E8E4' }}>
+        <div className="dash-content-main" style={{ borderRight: '1px solid #E8E8E4' }}>
+          <div className="dash-section-head" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 28px 16px', borderBottom: '1px solid #E8E8E4' }}>
             <div style={{ fontSize: '13px', fontWeight: 700, letterSpacing: '-0.01em' }}>Recent listings</div>
             <Link href="/dashboard/listings" style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#0a0a0a', textDecoration: 'none', borderBottom: '1px solid #0a0a0a', paddingBottom: '1px' }}>
               View all
@@ -259,7 +259,7 @@ export default async function DashboardPage({ searchParams }: Props) {
                     key={l.id}
                     href={href}
                     style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '14px 28px', borderBottom: '1px solid #E8E8E4', textDecoration: 'none', color: 'inherit' }}
-                    className="hover:bg-[#FAFAF8] transition-colors"
+                    className="dash-list-item hover:bg-[#FAFAF8] transition-colors"
                   >
                     <div style={{ width: '44px', height: '44px', background: '#F5F5F2', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
                       {cover ? (
@@ -350,7 +350,7 @@ export default async function DashboardPage({ searchParams }: Props) {
 
       {/* ── Recent activity ── */}
       <div style={{ borderBottom: '1px solid #E8E8E4' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 28px 16px', borderBottom: '1px solid #E8E8E4' }}>
+        <div className="dash-section-head" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 28px 16px', borderBottom: '1px solid #E8E8E4' }}>
           <div style={{ fontSize: '13px', fontWeight: 700, letterSpacing: '-0.01em' }}>Recent activity</div>
           <Link href="/dashboard/activity" style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#0a0a0a', textDecoration: 'none', borderBottom: '1px solid #0a0a0a', paddingBottom: '1px' }}>
             All activity
@@ -363,7 +363,7 @@ export default async function DashboardPage({ searchParams }: Props) {
           </div>
         ) : (
           activity.map((item, i) => (
-            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '12px 28px', borderBottom: i < activity.length - 1 ? '1px solid #E8E8E4' : 'none' }}>
+            <div key={i} className="dash-activity-item" style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '12px 28px', borderBottom: i < activity.length - 1 ? '1px solid #E8E8E4' : 'none' }}>
               <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: DOT_COLOR[item.dot], flexShrink: 0 }} />
               <div style={{ fontSize: '12px', color: '#666', flex: 1, lineHeight: 1.4 }}>
                 {item.textParts.map((part, j) =>
@@ -390,7 +390,7 @@ function StatCard({ eyebrow, number, sub, trend }: {
   trend: { label: string; green: boolean };
 }) {
   return (
-    <div style={{ padding: '24px 28px', borderRight: '1px solid #E8E8E4', position: 'relative', overflow: 'hidden' }}>
+    <div className="dash-stat-card" style={{ padding: '24px 28px', borderRight: '1px solid #E8E8E4', position: 'relative', overflow: 'hidden' }}>
       <div style={{ fontSize: '9px', fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: '#999', marginBottom: '12px' }}>
         {eyebrow}
       </div>
