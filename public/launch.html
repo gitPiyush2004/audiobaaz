@@ -540,6 +540,51 @@ img,svg{display:block}
 .hrDescCol{padding:40px;display:flex;align-items:center;position:relative;z-index:1}
 .hrDesc{font-size:14px;color:var(--mid);line-height:1.75;max-width:380px}
 
+/* ─── ROUTE MAP (HOW IT WORKS) ─── */
+.routeSection{background:var(--black);border-top:1px solid #1a1a18;border-bottom:1px solid #1a1a18}
+.routeHead{padding:72px 48px 64px;border-bottom:1px solid #1a1a18}
+.routeEyebrow{
+  font-size:9px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;
+  color:#3c3c38;display:block;margin-bottom:18px;
+}
+.routeSection h2{
+  font-size:clamp(34px,4.8vw,66px);font-weight:900;
+  letter-spacing:-0.04em;line-height:0.9;color:#f0efe8;
+}
+.routeSection h2 em{font-family:var(--f-serif);font-style:italic;font-weight:400;color:var(--acc)}
+.routeHead-sub{font-size:14px;color:#686864;line-height:1.7;max-width:440px;margin-top:22px}
+.routeMap{position:relative;height:900px}
+.routeSvg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.rCard{
+  position:absolute;
+  opacity:0;transform:translateY(14px);
+  transition:opacity 0.55s var(--ease),transform 0.55s var(--ease);
+}
+.rCard.in{opacity:1;transform:translateY(0)}
+.rCard-L{left:4%;width:38%}
+.rCard-R{right:4%;width:38%}
+.rCard-C{left:50%;transform:translateX(-50%) translateY(14px);width:38%;text-align:center}
+.rCard-C.in{opacity:1;transform:translateX(-50%) translateY(0)}
+.rcStep{
+  font-family:'JetBrains Mono',monospace;font-size:9px;
+  letter-spacing:0.2em;text-transform:uppercase;
+  color:var(--acc);opacity:0.45;margin-bottom:8px;
+}
+.rcTitle{
+  font-size:clamp(15px,1.8vw,21px);font-weight:800;
+  letter-spacing:-0.025em;color:#e8e8e0;line-height:1.2;margin-bottom:8px;
+}
+.rcDesc{font-size:12px;color:#686864;line-height:1.72;max-width:320px}
+.rCard-C .rcDesc{margin:0 auto}
+.rcTag{
+  display:inline-flex;align-items:center;
+  font-size:8px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;
+  padding:3px 10px;margin-top:12px;border:1px solid;
+}
+.rcTag-you{background:rgba(255,255,255,0.03);color:#686864;border-color:#242420}
+.rcTag-us{background:rgba(232,255,77,0.06);color:var(--acc);border-color:rgba(232,255,77,0.18)}
+.rcTag-auto{background:transparent;color:#323230;border-color:#1a1a18}
+
 /* ─── BENTO ─── */
 .bentoSection{padding:96px 40px;border-bottom:1px solid var(--border)}
 .bentoH{
@@ -878,6 +923,18 @@ footer{
   .hrTitle{font-size:17px;font-weight:800;margin-bottom:0}
   .hrDescCol{padding:6px 20px 20px}
   .hrDesc{font-size:13px}
+
+  /* ── ROUTE MAP ── */
+  .routeHead{padding:48px 24px 44px}
+  .routeMap{height:auto;padding:0 24px 56px}
+  .routeSvg{display:none}
+  .rCard,.rCard-L,.rCard-R,.rCard-C{
+    position:static;width:100%;
+    transform:none!important;opacity:1!important;
+    padding:28px 0;border-bottom:1px solid #1a1a18;text-align:left;
+  }
+  .rCard:last-child{border-bottom:none}
+  .rcDesc{max-width:100%}
 
   /* ── BENTO: 2-col mini-grid ── */
   .bentoSection{padding:56px 16px}
@@ -1522,37 +1579,111 @@ footer{
   </div>
 </div>
 
-<!-- ─── HOW IT WORKS ─── -->
-<section class="howSection reveal" id="how">
-  <div class="howHead">
-    <h2>Five steps,<br><em>start to payout.</em></h2>
-    <p class="howHead-sub">Built for the Indian audiophile community. Simple enough to do in 10 minutes. Solid enough to trust with serious gear.</p>
+<!-- ─── HOW IT WORKS (NODE MAP) ─── -->
+<section class="routeSection" id="how">
+  <div class="routeHead">
+    <span class="routeEyebrow">The process</span>
+    <h2>From listing<br><em>to payout.</em></h2>
+    <p class="routeHead-sub">Two roles. Five steps. Most of the work is ours — we verify, hold escrow, and release payment automatically.</p>
   </div>
-  <div class="howRow reveal">
-    <div class="hrNum">01</div>
-    <div class="hrTitleCol"><div class="hrTitle">Create your listing</div><span class="hrTag">~10 min</span></div>
-    <div class="hrDescCol"><p class="hrDesc">Walk through our guided 6-step form. Product, condition, inclusions, photos, price. Simple enough that you get it right the first time.</p></div>
-  </div>
-  <div class="howRow reveal rd1">
-    <div class="hrNum">02</div>
-    <div class="hrTitleCol"><div class="hrTitle">We verify it</div><span class="hrTag">Under 24hr</span></div>
-    <div class="hrDescCol"><p class="hrDesc">Our team reviews your listing and assigns an official condition grade. S, A, B, or C. Consistent. Non-negotiable. No surprises for buyers.</p></div>
-  </div>
-  <div class="howRow reveal rd2">
-    <div class="hrNum">03</div>
-    <div class="hrTitleCol"><div class="hrTitle">Buyer pays into escrow</div><span class="hrTag">Instant hold</span></div>
-    <div class="hrDescCol"><p class="hrDesc">When an offer is accepted, payment is locked in escrow. You never touch the money until delivery is confirmed. The buyer is protected too.</p></div>
-  </div>
-  <div class="howRow reveal rd3">
-    <div class="hrNum">04</div>
-    <div class="hrTitleCol"><div class="hrTitle">Ship the gear</div><span class="hrTag">48hr inspection</span></div>
-    <div class="hrDescCol"><p class="hrDesc">Ship it. The buyer has 48 hours to inspect. If everything checks out, or if they don't respond, escrow releases to you automatically.</p></div>
-  </div>
-  <div class="howRow reveal">
-    <div class="hrNum">05</div>
-    <div class="hrTitleCol"><div class="hrTitle">Get paid via UPI</div><span class="hrTag">10% only when sold</span></div>
-    <div class="hrDescCol"><p class="hrDesc">Payment goes directly to your UPI. We take 10% only when the gear sells. No listing fee. No subscription. If it doesn't sell, you pay nothing.</p></div>
-  </div>
+
+  <div class="routeMap" id="routeMap">
+    <svg class="routeSvg" viewBox="0 0 1100 900" preserveAspectRatio="xMidYMid meet" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+
+      <!-- Topographic contour lines -->
+      <g opacity="0.04" fill="none" stroke="white" stroke-width="1.1">
+        <ellipse cx="200" cy="200" rx="480" ry="230"/>
+        <ellipse cx="200" cy="200" rx="390" ry="182"/>
+        <ellipse cx="200" cy="200" rx="300" ry="136"/>
+        <ellipse cx="900" cy="700" rx="440" ry="215"/>
+        <ellipse cx="900" cy="700" rx="355" ry="168"/>
+        <ellipse cx="900" cy="700" rx="268" ry="122"/>
+        <ellipse cx="550" cy="450" rx="560" ry="280"/>
+        <ellipse cx="550" cy="450" rx="440" ry="218"/>
+      </g>
+
+      <!-- Isometric rhombus grid -->
+      <defs>
+        <pattern id="rGrid" x="0" y="0" width="56" height="32.3" patternUnits="userSpaceOnUse">
+          <path d="M28 0L56 16.15L28 32.3L0 16.15Z" fill="none" stroke="rgba(255,255,255,0.02)" stroke-width="0.5"/>
+        </pattern>
+      </defs>
+      <rect width="1100" height="900" fill="url(#rGrid)"/>
+
+      <!-- Path ambient glow -->
+      <path fill="none" stroke="rgba(232,255,77,0.07)" stroke-width="26" stroke-linecap="round"
+        d="M480,80 C480,165 620,165 620,255 C620,340 480,340 480,430 C480,515 620,515 620,605 C620,690 550,690 550,760"/>
+
+      <!-- Winding path (drawn by JS on scroll) -->
+      <path id="routePath"
+        fill="none" stroke="#E8FF4D" stroke-width="1.6"
+        stroke-linecap="round" stroke-linejoin="round"
+        d="M480,80 C480,165 620,165 620,255 C620,340 480,340 480,430 C480,515 620,515 620,605 C620,690 550,690 550,760"
+        style="filter:drop-shadow(0 0 5px rgba(232,255,77,0.45));opacity:0.7"/>
+
+      <!-- Node halos -->
+      <circle cx="480" cy="80"  r="21" fill="none" stroke="#E8FF4D" stroke-width="0.4" opacity="0.1"/>
+      <circle cx="620" cy="255" r="21" fill="none" stroke="#E8FF4D" stroke-width="0.4" opacity="0.1"/>
+      <circle cx="480" cy="430" r="21" fill="none" stroke="#E8FF4D" stroke-width="0.4" opacity="0.1"/>
+      <circle cx="620" cy="605" r="21" fill="none" stroke="#E8FF4D" stroke-width="0.4" opacity="0.1"/>
+      <circle cx="550" cy="760" r="21" fill="none" stroke="#E8FF4D" stroke-width="0.4" opacity="0.1"/>
+
+      <!-- Node dots (lit by JS as path reaches each node) -->
+      <circle class="rDot" cx="480" cy="80"  r="5" fill="#E8FF4D" opacity="0"/>
+      <circle class="rDot" cx="620" cy="255" r="5" fill="#E8FF4D" opacity="0"/>
+      <circle class="rDot" cx="480" cy="430" r="5" fill="#E8FF4D" opacity="0"/>
+      <circle class="rDot" cx="620" cy="605" r="5" fill="#E8FF4D" opacity="0"/>
+      <circle class="rDot" cx="550" cy="760" r="5" fill="#E8FF4D" opacity="0"/>
+
+      <!-- Connector stubs: node → card edge -->
+      <line x1="480" y1="80"  x2="436" y2="80"  stroke="#E8FF4D" stroke-width="0.6" stroke-dasharray="3 4" opacity="0.18"/>
+      <line x1="620" y1="255" x2="664" y2="255" stroke="#E8FF4D" stroke-width="0.6" stroke-dasharray="3 4" opacity="0.18"/>
+      <line x1="480" y1="430" x2="436" y2="430" stroke="#E8FF4D" stroke-width="0.6" stroke-dasharray="3 4" opacity="0.18"/>
+      <line x1="620" y1="605" x2="664" y2="605" stroke="#E8FF4D" stroke-width="0.6" stroke-dasharray="3 4" opacity="0.18"/>
+      <line x1="550" y1="760" x2="550" y2="718" stroke="#E8FF4D" stroke-width="0.6" stroke-dasharray="3 4" opacity="0.18"/>
+    </svg>
+
+    <!-- Step 01 — left -->
+    <div class="rCard rCard-L" style="top:44px">
+      <div class="rcStep">01 · Create</div>
+      <div class="rcTitle">Post your listing</div>
+      <p class="rcDesc">Walk through our guided form — product, condition, inclusions, photos, price. Simple enough to get right the first time.</p>
+      <span class="rcTag rcTag-you">You · ~10 min</span>
+    </div>
+
+    <!-- Step 02 — right -->
+    <div class="rCard rCard-R" style="top:218px">
+      <div class="rcStep">02 · Verify</div>
+      <div class="rcTitle">We grade it</div>
+      <p class="rcDesc">Our team reviews and assigns an official condition grade — S, A, B, or C. Consistent, non-negotiable, published within 24 hours.</p>
+      <span class="rcTag rcTag-us">Audiobaaz · Under 24hr</span>
+    </div>
+
+    <!-- Step 03 — left -->
+    <div class="rCard rCard-L" style="top:393px">
+      <div class="rcStep">03 · Escrow</div>
+      <div class="rcTitle">Buyer pays in</div>
+      <p class="rcDesc">When an offer is accepted, payment locks automatically into escrow. You never chase anyone for money. The buyer is protected too.</p>
+      <span class="rcTag rcTag-auto">Automatic · Instant</span>
+    </div>
+
+    <!-- Step 04 — right -->
+    <div class="rCard rCard-R" style="top:568px">
+      <div class="rcStep">04 · Ship</div>
+      <div class="rcTitle">Ship the gear</div>
+      <p class="rcDesc">Pack it, ship it. The buyer has 48 hours to inspect. If they confirm — or don't respond — escrow releases to you automatically.</p>
+      <span class="rcTag rcTag-you">You · 48hr inspection</span>
+    </div>
+
+    <!-- Step 05 — centre -->
+    <div class="rCard rCard-C" style="top:718px">
+      <div class="rcStep">05 · Payout</div>
+      <div class="rcTitle">Get paid via UPI</div>
+      <p class="rcDesc">Payment lands directly in your UPI. We take 10% — only when it sells. No listing fee. No subscription. No risk.</p>
+      <span class="rcTag rcTag-auto">Automatic · Day 10–12</span>
+    </div>
+
+  </div><!-- /routeMap -->
 </section>
 
 <!-- ─── BENTO ─── -->
@@ -2189,18 +2320,41 @@ if (window.matchMedia('(hover:hover) and (pointer:fine)').matches) {
   });
 }
 
-/* ── howRow step-number bounce on hover ── */
-if (!window.matchMedia('(prefers-reduced-motion:reduce)').matches) {
-  document.querySelectorAll('.howRow').forEach(row => {
-    row.addEventListener('mouseenter', () => {
-      const num = row.querySelector('.hrNum');
-      if (!num) return;
-      num.style.animation = 'none';
-      void num.offsetHeight;
-      num.style.animation = 'num-bounce 0.4s var(--ease) forwards';
+/* ── Route map: animate path draw + card reveal on scroll ── */
+(function(){
+  const path  = document.getElementById('routePath');
+  const map   = document.getElementById('routeMap');
+  if (!path || !map) return;
+  const cards = map.querySelectorAll('.rCard');
+  const dots  = map.querySelectorAll('.rDot');
+
+  let len = 1850;
+  try { len = path.getTotalLength(); } catch(e){}
+  path.style.strokeDasharray  = len;
+  path.style.strokeDashoffset = len;
+
+  /* fraction of the 3.2s draw where each node becomes visible */
+  const nodeAt = [0.01, 0.26, 0.51, 0.75, 0.98];
+
+  let triggered = false;
+  new IntersectionObserver(([e]) => {
+    if (!e.isIntersecting || triggered) return;
+    triggered = true;
+
+    requestAnimationFrame(() => {
+      path.style.transition = 'stroke-dashoffset 3.2s cubic-bezier(0.16,1,0.3,1)';
+      path.style.strokeDashoffset = '0';
     });
-  });
-}
+
+    nodeAt.forEach((frac, i) => {
+      setTimeout(() => {
+        if (dots[i])  dots[i].setAttribute('opacity', '0.9');
+        if (cards[i]) cards[i].classList.add('in');
+      }, frac * 3200 + 60);
+    });
+
+  }, { threshold: 0.06 }).observe(map);
+})();
 
 /* ── Bento: stagger cells + grade pill pop-in + counter-up ── */
 (function(){
