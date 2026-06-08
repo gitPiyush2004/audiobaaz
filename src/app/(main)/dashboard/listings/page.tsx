@@ -261,7 +261,7 @@ export default async function ListingsPage({ searchParams }: Props) {
                       <span style={{ ...status, fontSize: '9px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', padding: '2px 8px' }}>
                         {STATUS_LABEL[l.status] ?? l.status}
                       </span>
-                      {activeKey === 'live' && l.slug && (
+                      {activeKey === 'live' && l.slug && process.env.NEXT_PUBLIC_APP_URL !== 'https://audiobaaz.com' && (
                         <Link href={`/listing/${l.slug}`} style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#666', border: '1px solid #E8E8E4', padding: '3px 10px', textDecoration: 'none' }}>
                           View
                         </Link>
