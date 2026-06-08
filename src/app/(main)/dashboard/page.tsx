@@ -75,7 +75,7 @@ export default async function DashboardPage({ searchParams }: Props) {
 
   const [profileRes, allListingsRes, pendingOffersRes, completedOrdersRes, recentListingsRes, ratingsRes] =
     await Promise.all([
-      supabase.from('users').select('full_name, upi_id').eq('id', user.id).single(),
+      supabase.from('users').select('full_name').eq('id', user.id).single(),
       supabase.from('listings').select('id, status').eq('seller_id', user.id),
       supabase.from('offers').select('id').eq('seller_id', user.id).eq('status', 'pending'),
       supabase
@@ -117,7 +117,6 @@ export default async function DashboardPage({ searchParams }: Props) {
 
   // ── Checklist ──
   const hasListing = allListings.length > 0;
-  const hasPayout  = !!profile?.upi_id;
   const hasReview  = (ratingsRes.data?.length ?? 0) > 0;
 
   const firstName = (profile?.full_name ?? 'Seller').split(' ')[0];
@@ -148,14 +147,6 @@ export default async function DashboardPage({ searchParams }: Props) {
         ' received on your listings. Respond within 24 hours.',
       ],
       time: 'Today',
-    });
-  }
-
-  if (!hasPayout) {
-    activity.push({
-      dot: 'amber',
-      textParts: ['Payout details not yet added. Add your UPI ID to receive future payouts.'],
-      time: 'Pending',
     });
   }
 
@@ -255,7 +246,9 @@ export default async function DashboardPage({ searchParams }: Props) {
               {recentListings.map(l => {
                 const grade  = GRADE_STYLE[l.condition_grade] ?? GRADE_STYLE.D;
                 const status = STATUS_STYLE[l.status] ?? STATUS_STYLE.draft;
-                const href   = `/listing/${l.slug ?? l.id}`;
+                const href   = l.status === 'draft'
+                  ? '/dashboard/listings?tab=draft'
+                  : `/listing/${l.slug ?? l.id}`;
                 const photos = l.photos as string[] | null;
                 const cover  = photos?.[0] ?? null;
                 return (
@@ -325,11 +318,6 @@ export default async function DashboardPage({ searchParams }: Props) {
             sub={hasListing
               ? `${recentListings[recentListings.length - 1]?.brand ?? ''} ${recentListings[recentListings.length - 1]?.product_name ?? ''} — listed.`.trim()
               : 'Submit your first piece of gear to get started.'}
-          />
-          <CheckItem
-            done={hasPayout}
-            label="Add payout details"
-            sub={hasPayout ? 'UPI ID saved.' : 'Required before your next payout releases.'}
           />
           <CheckItem
             done={hasReview}
