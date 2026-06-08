@@ -72,7 +72,7 @@ img,svg{display:block}
   display:inline-flex;align-items:center;background:var(--black);color:var(--white);
   font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;
   padding:9px 20px;border-radius:9999px;position:relative;overflow:hidden;
-  transition:transform 160ms ease-out,background 0.15s;
+  transition:transform 160ms ease-out,background 0.15s,opacity 0.15s;
 }
 .nav-btn::after{
   content:'';position:absolute;inset:0;background:rgba(255,255,255,0.1);
@@ -1238,7 +1238,7 @@ footer{
     <a class="nav-link" href="#how">How it works</a>
     <a class="nav-link" href="#community">Community</a>
   </div>
-  <a class="nav-btn" id="navCta" href="#curatedSection">Get early access</a>
+  <a class="nav-btn" id="navCta" href="#curatedSection" style="opacity:0">Get early access</a>
 </nav>
 
 <!-- ─── HERO ─── -->
@@ -2692,31 +2692,39 @@ setupHold('ccTg', 'barTg', 'ctaTg');
   fetch('/api/me/check', { credentials: 'same-origin' })
     .then(function(r){ return r.ok ? r.json() : null; })
     .then(function(data){
-      if (!data || !data.name) return;
-      var name = data.name;
-      var parts = name.trim().split(/\s+/);
-      var initials = (parts.length > 1
-        ? parts[0][0] + parts[parts.length - 1][0]
-        : name.slice(0, 2)
-      ).toUpperCase() || 'AB';
-
-      /* ── Nav button → profile avatar ── */
       var cta = document.getElementById('navCta');
-      if (cta) {
-        cta.href        = '/dashboard';
-        cta.textContent = initials;
-        cta.style.cssText = 'width:36px;height:36px;border-radius:50%;background:#E8FF4D;color:#0a0a0a;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;letter-spacing:0.04em;text-decoration:none;padding:0;border:none;flex-shrink:0;';
-      }
+      if (data && data.name) {
+        var name = data.name;
+        var parts = name.trim().split(/\s+/);
+        var initials = (parts.length > 1
+          ? parts[0][0] + parts[parts.length - 1][0]
+          : name.slice(0, 2)
+        ).toUpperCase() || 'AB';
 
-      /* ── Listing overlay CTA → go to sell flow ── */
-      var sellBtn = document.querySelector('.lo-sell-btn');
-      if (sellBtn) {
-        sellBtn.href = '/sell/new';
-        var span = sellBtn.querySelector('span');
-        if (span) span.textContent = 'Start your listing';
+        /* ── Nav button → profile avatar ── */
+        if (cta) {
+          cta.href        = '/dashboard';
+          cta.textContent = initials;
+          cta.style.cssText = 'opacity:1;width:36px;height:36px;border-radius:50%;background:#E8FF4D;color:#0a0a0a;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;letter-spacing:0.04em;text-decoration:none;padding:0;border:none;flex-shrink:0;';
+        }
+
+        /* ── Listing overlay CTA → go to sell flow ── */
+        var sellBtn = document.querySelector('.lo-sell-btn');
+        if (sellBtn) {
+          sellBtn.href = '/sell/new';
+          var span = sellBtn.querySelector('span');
+          if (span) span.textContent = 'Start your listing';
+        }
+      } else {
+        /* not logged in — fade in the original button */
+        if (cta) cta.style.opacity = '1';
       }
     })
-    .catch(function(){});
+    .catch(function(){
+      /* fetch failed — still show the button */
+      var cta = document.getElementById('navCta');
+      if (cta) cta.style.opacity = '1';
+    });
 })();
 </script>
 </body>
