@@ -12,8 +12,9 @@ function err(message: string, code: string, status = 400) {
 
 function generateSlug(brand: string): string {
   const clean = brand.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 20);
-  const rand = Math.floor(1000 + Math.random() * 9000);
-  return `${clean}-${rand}`;
+  const ts   = Date.now().toString(36);
+  const rand = Math.random().toString(36).slice(2, 5);
+  return `${clean}-${ts}${rand}`;
 }
 
 export async function POST(req: NextRequest) {
