@@ -246,12 +246,9 @@ export default async function DashboardPage({ searchParams }: Props) {
               {recentListings.map(l => {
                 const grade  = GRADE_STYLE[l.condition_grade] ?? GRADE_STYLE.D;
                 const status = STATUS_STYLE[l.status] ?? STATUS_STYLE.draft;
-                const STATUS_TAB: Record<string, string> = {
-                  draft: 'draft', pending: 'pending', approved: 'live',
-                  reserved: 'live', rejected: 'rejected', sold: 'sold',
-                  completed: 'sold', delisted: 'live',
-                };
-                const href = `/dashboard/listings?tab=${STATUS_TAB[l.status] ?? 'live'}`;
+                const href = l.status === 'draft'
+                  ? '/dashboard/listings?tab=draft'
+                  : `/listing/${l.slug ?? l.id}`;
                 const photos = l.photos as string[] | null;
                 const cover  = photos?.[0] ?? null;
                 return (
