@@ -2685,59 +2685,38 @@ setupHold('ccTg', 'barTg', 'ctaTg');
 })();
 
 /* ══════════════════════════════════════════
-   NAV AUTH STATE — swap CTA for profile avatar when logged in
-   Also updates the listing overlay CTA for logged-in sellers
+   NAV AUTH STATE — /api/me/check reads httpOnly session cookies server-side
+   Swaps nav CTA → avatar and overlay button → /sell/new when logged in
 ══════════════════════════════════════════ */
 (function(){
-  /* Find session in localStorage — Supabase v2 key: sb-*-auth-token */
-  let session = null;
-  try {
-    const keys = Object.keys(localStorage).filter(k => k.startsWith('sb-') && k.endsWith('-auth-token'));
-    for (const k of keys) {
-      const parsed = JSON.parse(localStorage.getItem(k) || 'null');
-      if (parsed?.access_token) { session = parsed; break; }
-    }
-  } catch(e) {}
+  fetch('/api/me/check', { credentials: 'same-origin' })
+    .then(function(r){ return r.ok ? r.json() : null; })
+    .then(function(data){
+      if (!data || !data.name) return;
+      var name = data.name;
+      var parts = name.trim().split(/\s+/);
+      var initials = (parts.length > 1
+        ? parts[0][0] + parts[parts.length - 1][0]
+        : name.slice(0, 2)
+      ).toUpperCase() || 'AB';
 
-  if (!session?.access_token) return;
+      /* ── Nav button → profile avatar ── */
+      var cta = document.getElementById('navCta');
+      if (cta) {
+        cta.href        = '/dashboard';
+        cta.textContent = initials;
+        cta.style.cssText = 'width:36px;height:36px;border-radius:50%;background:#E8FF4D;color:#0a0a0a;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;letter-spacing:0.04em;text-decoration:none;padding:0;border:none;flex-shrink:0;';
+      }
 
-  /* Check expiry */
-  const expiresAt = session.expires_at;
-  if (expiresAt && (Date.now() / 1000) > expiresAt) return;
-
-  /* Get name: prefer session.user, fall back to decoding the JWT payload */
-  let name = '';
-  const user = session.user;
-  if (user) {
-    name = user.user_metadata?.full_name || user.email || '';
-  } else {
-    try {
-      const payload = JSON.parse(atob(session.access_token.split('.')[1].replace(/-/g,'+').replace(/_/g,'/')));
-      name = payload.user_metadata?.full_name || payload.email || '';
-    } catch(e) {}
-  }
-
-  const parts   = name.trim().split(/\s+/);
-  const initials = (parts.length > 1
-    ? parts[0][0] + parts[parts.length - 1][0]
-    : name.slice(0, 2)
-  ).toUpperCase() || 'AB';
-
-  /* ── Nav button → profile avatar ── */
-  const cta = document.getElementById('navCta');
-  if (cta) {
-    cta.href        = '/dashboard';
-    cta.textContent = initials;
-    cta.style.cssText = 'width:36px;height:36px;border-radius:50%;background:#E8FF4D;color:#0a0a0a;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;letter-spacing:0.04em;text-decoration:none;padding:0;border:none;flex-shrink:0;';
-  }
-
-  /* ── Listing overlay CTA → go to sell flow ── */
-  const sellBtn = document.querySelector('.lo-sell-btn');
-  if (sellBtn) {
-    sellBtn.href = '/sell/new';
-    const span = sellBtn.querySelector('span');
-    if (span) span.textContent = 'Start your listing';
-  }
+      /* ── Listing overlay CTA → go to sell flow ── */
+      var sellBtn = document.querySelector('.lo-sell-btn');
+      if (sellBtn) {
+        sellBtn.href = '/sell/new';
+        var span = sellBtn.querySelector('span');
+        if (span) span.textContent = 'Start your listing';
+      }
+    })
+    .catch(function(){});
 })();
 </script>
 </body>
