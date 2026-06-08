@@ -2688,11 +2688,6 @@ setupHold('ccTg', 'barTg', 'ctaTg');
    NAV AUTH STATE — swap CTA for profile avatar when logged in
 ══════════════════════════════════════════ */
 (function(){
-  const SUPABASE_URL = 'https://supabase.audiobaaz.com';
-  const ANON_KEY     = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzgwMzQzODE0LCJleHAiOjE5MzgwMjM4MTR9.KGkFLmF26W8snTY3Ab2bDS1sWNZL_Twyr0e9RIQgy68';
-
-  // Supabase JS v2 stores the session in localStorage
-  // Key: sb-<hostname>-auth-token
   let session = null;
   try {
     const key = Object.keys(localStorage).find(k => k.startsWith('sb-') && k.endsWith('-auth-token'));
@@ -2701,33 +2696,32 @@ setupHold('ccTg', 'barTg', 'ctaTg');
 
   if (!session?.access_token) return;
 
-  // Verify token is still valid via /auth/v1/user
-  fetch(SUPABASE_URL + '/auth/v1/user', {
-    headers: { 'apikey': ANON_KEY, 'Authorization': 'Bearer ' + session.access_token }
-  })
-  .then(r => r.ok ? r.json() : null)
-  .then(user => {
-    if (!user) return;
-    const cta = document.getElementById('navCta');
-    if (!cta) return;
-    // Build initials from user_metadata.full_name or email
-    const name = (user.user_metadata?.full_name || user.email || '');
-    const parts = name.trim().split(/\s+/);
-    const initials = parts.length > 1
-      ? (parts[0][0] + parts[parts.length-1][0]).toUpperCase()
-      : name.slice(0, 2).toUpperCase() || 'AB';
-    // Swap button to profile avatar
-    cta.href = '/dashboard';
-    cta.textContent = initials;
-    cta.style.cssText = [
-      'width:36px','height:36px','border-radius:50%',
-      'background:#E8FF4D','color:#0a0a0a',
-      'display:inline-flex','align-items:center','justify-content:center',
-      'font-size:12px','font-weight:700','letter-spacing:0.04em',
-      'text-decoration:none','padding:0','border:none',
-    ].join(';');
-  })
-  .catch(() => {});
+  /* Check expiry locally — no network call needed */
+  const expiresAt = session.expires_at || 0;
+  if (expiresAt && (Date.now() / 1000) > expiresAt) return;
+
+  /* User data is already embedded in the stored session */
+  const user = session.user;
+  if (!user) return;
+
+  const cta = document.getElementById('navCta');
+  if (!cta) return;
+
+  const name = (user.user_metadata?.full_name || user.email || '');
+  const parts = name.trim().split(/\s+/);
+  const initials = parts.length > 1
+    ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+    : name.slice(0, 2).toUpperCase() || 'AB';
+
+  cta.href        = '/dashboard';
+  cta.textContent = initials;
+  cta.style.cssText = [
+    'width:36px','height:36px','border-radius:50%',
+    'background:#E8FF4D','color:#0a0a0a',
+    'display:inline-flex','align-items:center','justify-content:center',
+    'font-size:12px','font-weight:700','letter-spacing:0.04em',
+    'text-decoration:none','padding:0','border:none',
+  ].join(';');
 })();
 </script>
 </body>
