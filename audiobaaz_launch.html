@@ -1060,23 +1060,6 @@ footer{
 }
 #ab-cursor.cur-visible{opacity:0.95}
 
-/* ─── GLASS CURSOR (link hover) ─── */
-#ab-glass{
-  position:fixed;top:0;left:0;
-  width:72px;height:72px;
-  border-radius:18px;
-  pointer-events:none;z-index:9998;
-  opacity:0;will-change:transform,opacity;
-  transition:opacity 0.32s var(--ease);
-  /* glass: pure CSS, no backdrop-filter (avoids colour artifacts on accent) */
-  background:rgba(255,255,255,0.06);
-  border:1px solid rgba(255,255,255,0.16);
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,0.18),
-    inset 0 -1px 0 rgba(0,0,0,0.12),
-    0 4px 24px rgba(0,0,0,0.18);
-}
-#ab-glass.gl-active{opacity:1}
 
 /* ─── HERO CURSOR SPOTLIGHT ─── */
 .hero-spotlight{
@@ -1160,7 +1143,6 @@ footer{
   .stage-tonearm{transition:none !important}
   /* 21st.dev additions */
   #ab-cursor{display:none !important}
-  #ab-glass{display:none !important}
   .video-frame{clip-path:inset(0 0% 0 0) !important;transition:none !important}
   .word-reveal{opacity:1 !important;filter:none !important;transform:none !important;transition:none !important}
 }
@@ -1169,7 +1151,6 @@ footer{
 <body>
 <div class="grain"></div>
 <div id="ab-cursor"></div>
-<div id="ab-glass"></div>
 
 <!-- ─── NAV ─── -->
 <nav class="nav" id="mainNav">
@@ -1200,7 +1181,7 @@ footer{
     <a class="nav-link" href="#how">How it works</a>
     <a class="nav-link" href="#community">Community</a>
   </div>
-  <a class="nav-btn" href="#curatedSection">Get early access</a>
+  <a class="nav-btn" id="navCta" href="#curatedSection">Get early access</a>
 </nav>
 
 <!-- ─── HERO ─── -->
@@ -2005,31 +1986,6 @@ function setupHold(cardId, barId, ctaId) {
   })();
 })();
 
-/* ══════════════════════════════════════════
-   GLASS CURSOR — follows with lag on link hover
-══════════════════════════════════════════ */
-(function(){
-  const glass = document.getElementById('ab-glass');
-  if (!glass) return;
-  if (!window.matchMedia('(hover:hover) and (pointer:fine)').matches) return;
-
-  let tx = -80, ty = -80, gx = -80, gy = -80;
-
-  document.addEventListener('mousemove', e => { tx = e.clientX; ty = e.clientY; });
-
-  const sel = 'a, button, .nav-btn, .lo-sell-btn, .curated-card, .play-ring, [data-bento], .cc, .howRow';
-  document.querySelectorAll(sel).forEach(el => {
-    el.addEventListener('mouseenter', () => glass.classList.add('gl-active'));
-    el.addEventListener('mouseleave', () => glass.classList.remove('gl-active'));
-  });
-
-  (function tick() {
-    gx += (tx - gx) * 0.07;
-    gy += (ty - gy) * 0.07;
-    glass.style.transform = `translate(${gx.toFixed(1)}px,${gy.toFixed(1)}px) translate(-50%,-50%)`;
-    requestAnimationFrame(tick);
-  })();
-})();
 
 /* ══════════════════════════════════════════
    HERO CURSOR SPOTLIGHT
@@ -2572,6 +2528,52 @@ setupHold('ccTg', 'barTg', 'ctaTg');
       setTimeout(run, 600);
     }
   }, { threshold: 0.25 }).observe(commRight);
+})();
+
+/* ══════════════════════════════════════════
+   NAV AUTH STATE — swap CTA for profile avatar when logged in
+══════════════════════════════════════════ */
+(function(){
+  const SUPABASE_URL = 'https://supabase.audiobaaz.com';
+  const ANON_KEY     = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzgwMzQzODE0LCJleHAiOjE5MzgwMjM4MTR9.KGkFLmF26W8snTY3Ab2bDS1sWNZL_Twyr0e9RIQgy68';
+
+  // Supabase JS v2 stores the session in localStorage
+  // Key: sb-<hostname>-auth-token
+  let session = null;
+  try {
+    const key = Object.keys(localStorage).find(k => k.startsWith('sb-') && k.endsWith('-auth-token'));
+    if (key) session = JSON.parse(localStorage.getItem(key));
+  } catch(e) {}
+
+  if (!session?.access_token) return;
+
+  // Verify token is still valid via /auth/v1/user
+  fetch(SUPABASE_URL + '/auth/v1/user', {
+    headers: { 'apikey': ANON_KEY, 'Authorization': 'Bearer ' + session.access_token }
+  })
+  .then(r => r.ok ? r.json() : null)
+  .then(user => {
+    if (!user) return;
+    const cta = document.getElementById('navCta');
+    if (!cta) return;
+    // Build initials from user_metadata.full_name or email
+    const name = (user.user_metadata?.full_name || user.email || '');
+    const parts = name.trim().split(/\s+/);
+    const initials = parts.length > 1
+      ? (parts[0][0] + parts[parts.length-1][0]).toUpperCase()
+      : name.slice(0, 2).toUpperCase() || 'AB';
+    // Swap button to profile avatar
+    cta.href = '/dashboard';
+    cta.textContent = initials;
+    cta.style.cssText = [
+      'width:36px','height:36px','border-radius:50%',
+      'background:#E8FF4D','color:#0a0a0a',
+      'display:inline-flex','align-items:center','justify-content:center',
+      'font-size:12px','font-weight:700','letter-spacing:0.04em',
+      'text-decoration:none','padding:0','border:none',
+    ].join(';');
+  })
+  .catch(() => {});
 })();
 </script>
 </body>
