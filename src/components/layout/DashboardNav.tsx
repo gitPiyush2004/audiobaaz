@@ -75,12 +75,73 @@ function getInitials(name: string | undefined | null): string {
   return name.trim().split(/\s+/).map(w => w[0]?.toUpperCase() ?? '').join('').slice(0, 2) || 'AB';
 }
 
+export function DashboardMobileNav({ offerCount }: { offerCount: number }) {
+  const pathname = usePathname();
+
+  return (
+    <nav className="dashboard-mobile-nav" style={{
+      position: 'fixed', bottom: 0, left: 0, right: 0,
+      height: '64px',
+      background: '#fff',
+      borderTop: '1px solid #E8E8E4',
+      alignItems: 'center',
+      justifyContent: 'space-around',
+      zIndex: 200,
+      paddingBottom: 'env(safe-area-inset-bottom)',
+    }}>
+      {NAV_ITEMS.map(item => {
+        const isActive = item.exact ? pathname === item.href : pathname.startsWith(item.href);
+        const isOffers = item.href === '/dashboard/offers';
+        return (
+          <Link
+            key={item.href}
+            href={item.href}
+            style={{
+              display: 'flex', flexDirection: 'column', alignItems: 'center',
+              gap: '3px', padding: '8px 4px',
+              color: isActive ? '#0a0a0a' : '#999',
+              textDecoration: 'none',
+              position: 'relative',
+              flex: 1,
+            }}
+          >
+            <span style={{ opacity: isActive ? 1 : 0.4, display: 'flex' }}>
+              {item.icon}
+            </span>
+            <span style={{
+              fontSize: '9px',
+              fontWeight: isActive ? 700 : 400,
+              letterSpacing: '0.05em',
+              textTransform: 'uppercase',
+            }}>
+              {item.label === 'My Listings' ? 'Listings' : item.label}
+            </span>
+            {isOffers && offerCount > 0 && (
+              <span style={{
+                position: 'absolute', top: '6px', left: 'calc(50% + 4px)',
+                minWidth: '14px', height: '14px',
+                background: '#0a0a0a', color: '#fff',
+                borderRadius: '7px',
+                fontSize: '8px', fontWeight: 700,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                padding: '0 3px',
+              }}>
+                {offerCount > 9 ? '9+' : offerCount}
+              </span>
+            )}
+          </Link>
+        );
+      })}
+    </nav>
+  );
+}
+
 export function DashboardNav({ fullName, memberYear, offerCount }: Props) {
   const pathname = usePathname();
   const initials = getInitials(fullName);
 
   return (
-    <aside style={{
+    <aside className="dashboard-sidebar" style={{
       display: 'flex', flexDirection: 'column',
       borderRight: '1px solid #E8E8E4',
       padding: '32px 0',

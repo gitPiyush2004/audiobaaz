@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
-import { DashboardNav } from '@/components/layout/DashboardNav';
+import { DashboardNav, DashboardMobileNav } from '@/components/layout/DashboardNav';
 import { redirect } from 'next/navigation';
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -19,9 +19,10 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const offerCount = offersRes.data?.length ?? 0;
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '220px 1fr', minHeight: 'calc(100vh - 60px)' }}>
+    <div className="dashboard-layout" style={{ display: 'grid', gridTemplateColumns: '220px 1fr', minHeight: 'calc(100vh - 60px)' }}>
       <DashboardNav fullName={fullName} memberYear={memberYear} offerCount={offerCount} />
       <main style={{ minWidth: 0, overflow: 'hidden' }}>{children}</main>
+      <DashboardMobileNav offerCount={offerCount} />
     </div>
   );
 }

@@ -165,7 +165,7 @@ function LoginForm() {
     <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', background: '#fff', fontFamily: font }}>
 
       {/* Nav */}
-      <nav style={{
+      <nav className="login-nav" style={{
         height: '60px',
         flexShrink: 0,
         display: 'flex',
@@ -202,10 +202,10 @@ function LoginForm() {
       </nav>
 
       {/* Two-column body */}
-      <div style={{ flex: 1, minHeight: 0, display: 'grid', gridTemplateColumns: '1fr 1fr', overflow: 'hidden' }}>
+      <div className="login-two-col" style={{ flex: 1, minHeight: 0, display: 'grid', gridTemplateColumns: '1fr 1fr', overflow: 'hidden' }}>
 
         {/* Left — dark panel */}
-        <div style={{
+        <div className="login-left-panel" style={{
           background: '#0a0a0a',
           display: 'flex',
           flexDirection: 'column',
@@ -274,7 +274,7 @@ function LoginForm() {
         </div>
 
         {/* Right — form panel */}
-        <div style={{
+        <div className="login-form-panel" style={{
           borderLeft: '1px solid #E8E8E4',
           display: 'flex',
           alignItems: 'center',

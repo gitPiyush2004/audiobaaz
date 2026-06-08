@@ -146,9 +146,9 @@ src/app/auth/callback/route.ts                             ✓ updated (handles 
 - TELEGRAM_BOT_TOKEN is set in .env.local (currently empty — add real token when bot is ready)
 
 ### Slug
-- Format: {brand-lowercase-alphanum}-{4-random-digits} e.g. moondrop-2394
-- Generated server-side on listing creation
-- Unique constraint in DB — collision extremely unlikely with 4 digits
+- Format: {brand-lowercase-alphanum}-{base36-timestamp}{3-random-chars} e.g. moondrop-lz4k8af2
+- Generated server-side in `generateSlug()` in `src/app/api/listings/route.ts`
+- base-36 timestamp + 3 random chars gives astronomically low collision probability vs the old 4-digit approach which would start colliding around 90 listings per brand
 
 ---
 
@@ -200,6 +200,8 @@ src/app/auth/callback/route.ts                             ✓ updated (handles 
 ## Next Session Starts Here
 
 **Seller flow is COMPLETE and LIVE on production (audiobaaz.com).** Full V1 app merged to `main` 2026-06-07. Production Supabase schema applied (schema.sql + migration 008). Env vars live in Dokploy. Auth: magic-link OTP + Google OAuth both working.
+
+**Mobile optimization complete (2026-06-08):** Login page collapses to form-only on mobile (dark panel hidden). Dashboard sidebar replaced by a fixed bottom tab nav on mobile. Dashboard overview stat grid goes 4→2-col, content panel goes 2-col→1-col. All horizontal padding reduced. Changes committed to `main` and synced to `dev`.
 
 Remaining items (V1.5 / nice-to-have, not blocking launch):
 1. Wire TELEGRAM_BOT_TOKEN once the bot is set up — the lib and calls are in place, just needs the token
