@@ -9,7 +9,6 @@ interface Profile {
   phone:            string | null;
   city:             string | null;
   pincode:          string | null;
-  upi_id:           string | null;
   availability:     string | null;
   telegram_chat_id: string | null;
 }
@@ -25,7 +24,6 @@ export function AccountForm({ profile, email }: { profile: Profile | null; email
     phone:        profile?.phone        ?? '',
     city:         profile?.city         ?? '',
     pincode:      profile?.pincode      ?? '',
-    upi_id:       profile?.upi_id       ?? '',
     availability: profile?.availability ?? 'active',
   });
   const [saving,  setSaving]  = useState(false);
@@ -71,11 +69,6 @@ export function AccountForm({ profile, email }: { profile: Profile | null; email
           <label className="mb-1.5 block text-sm font-medium text-foreground">Phone</label>
           <input type="tel" placeholder="+91 98765 43210" value={form.phone}
             onChange={e => set('phone', e.target.value)} className={inputCls} />
-        </div>
-        <div>
-          <label className="mb-1.5 block text-sm font-medium text-foreground">UPI ID</label>
-          <input type="text" placeholder="yourname@upi" value={form.upi_id}
-            onChange={e => set('upi_id', e.target.value)} className={inputCls + ' font-mono'} />
         </div>
         <div>
           <label className="mb-1.5 block text-sm font-medium text-foreground">

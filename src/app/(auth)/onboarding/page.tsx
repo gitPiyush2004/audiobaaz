@@ -61,9 +61,12 @@ function OnboardingForm() {
   const lookupRef = useRef<AbortController | null>(null);
   useEffect(() => {
     if (pincode.length !== 6) {
+      lookupRef.current?.abort();
+      lookupRef.current = null;
       setResolvedCity('');
       setResolvedState('');
       setPincodeError('');
+      setPincodeLoading(false);
       return;
     }
     lookupRef.current?.abort();
@@ -234,8 +237,8 @@ function OnboardingForm() {
               {/* Name row */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
                 {[
-                  { label: 'First name', value: firstName, set: setFirstName, placeholder: 'Rohan', auto: 'given-name' },
-                  { label: 'Last name',  value: lastName,  set: setLastName,  placeholder: 'Kapoor', auto: 'family-name' },
+                  { label: 'First name', value: firstName, set: (v: string) => setFirstName(v.replace(/[0-9]/g, '')), placeholder: 'Rohan', auto: 'given-name' },
+                  { label: 'Last name',  value: lastName,  set: (v: string) => setLastName(v.replace(/[0-9]/g, '')),  placeholder: 'Kapoor', auto: 'family-name' },
                 ].map(({ label, value, set, placeholder, auto }) => (
                   <div key={label}>
                     <label style={{ display: 'block', fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#666', marginBottom: 7 }}>

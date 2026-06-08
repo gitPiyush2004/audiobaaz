@@ -58,19 +58,6 @@ const NAV_ITEMS = [
     ),
   },
   {
-    href: '/dashboard/payouts',
-    label: 'Payouts',
-    exact: false,
-    icon: (
-      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-        <rect x="2" y="4" width="12" height="9" stroke="currentColor" strokeWidth="1.5"/>
-        <path d="M5 4V3h6v1" stroke="currentColor" strokeWidth="1.2"/>
-        <line x1="8" y1="7" x2="8" y2="10" stroke="currentColor" strokeWidth="1.2"/>
-        <line x1="6.5" y1="8.5" x2="9.5" y2="8.5" stroke="currentColor" strokeWidth="1.2"/>
-      </svg>
-    ),
-  },
-  {
     href: '/dashboard/account',
     label: 'Account',
     exact: false,
