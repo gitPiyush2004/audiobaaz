@@ -143,8 +143,8 @@ docs/
 
 ## Hard rules — never break these
 
-- All money in paise. ₹10,000 = `1000000`. Never floats.
-- Platform fee is 10%. Seller gets 90%.
+- All money in paise. ₹10,000 = `1000000`. Never floats
+- Platform fee is 10%. Seller gets 90%
 - `floor_price` on listings never goes to the client. Server-side only.
 - `seller_score` and `buyer_score` are internal. Never displayed publicly.
 - Admin routes (`/admin/*`) check `role === 'admin'` server-side at every entry point.
