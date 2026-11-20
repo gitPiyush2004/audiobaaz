@@ -10,6 +10,14 @@
 without external Razorpay or Shiprocket credentials, behind provider
 abstractions that swap in real gateways once credentials land.
 
+## 🔗 Live demo
+
+**[audiobaaz.vercel.app](https://audiobaaz.vercel.app)**
+
+To explore the seller dashboard without signing up, open the
+[login page](https://audiobaaz.vercel.app/login) and click **Try the demo account →**.
+You can also sign in with Google or an email magic link.
+
 ---
 
 ## Where to start
