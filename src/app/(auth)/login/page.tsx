@@ -159,6 +159,23 @@ function LoginForm() {
     window.location.href = redirect;
   }
 
+  async function demoSignIn() {
+    setLoading(true); setError(null);
+    try {
+      const res  = await fetch('/api/demo/sign-in', { method: 'POST' });
+      const json = await res.json();
+      if (!res.ok || json.error) throw new Error(json.error ?? 'Demo login failed');
+      const { error: otpError } = await supabase.auth.verifyOtp({
+        email: json.email, token: json.email_otp, type: 'email',
+      });
+      if (otpError) throw otpError;
+      window.location.href = redirect;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Demo login failed');
+      setLoading(false);
+    }
+  }
+
   const font = '"Helvetica Neue", Helvetica, Arial, sans-serif';
 
   return (
@@ -310,6 +327,32 @@ function LoginForm() {
                   Continue with Google or get a magic link by email.
                 </div>
                 <div style={{ height: '1px', background: '#E8E8E4', marginBottom: '24px' }} />
+
+                {/* One-click demo account */}
+                {process.env.NEXT_PUBLIC_DEMO_LOGIN === 'true' && (
+                  <button
+                    type="button"
+                    onClick={demoSignIn}
+                    disabled={loading}
+                    style={{
+                      width: '100%',
+                      padding: '13px',
+                      background: '#0a0a0a',
+                      color: '#E8FF4D',
+                      border: 'none',
+                      fontSize: '11px',
+                      fontWeight: 700,
+                      letterSpacing: '0.1em',
+                      textTransform: 'uppercase',
+                      cursor: loading ? 'not-allowed' : 'pointer',
+                      opacity: loading ? 0.5 : 1,
+                      fontFamily: 'inherit',
+                      marginBottom: '18px',
+                    }}
+                  >
+                    {loading ? 'Signing in…' : 'Try the demo account →'}
+                  </button>
+                )}
 
                 {/* Google */}
                 <button
