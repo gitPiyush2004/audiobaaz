@@ -96,6 +96,9 @@ function CardRow({ items, reverse }: { items: Product[]; reverse?: boolean }) {
   );
 }
 
+const GOOGLE_LOGIN = process.env.NEXT_PUBLIC_GOOGLE_LOGIN !== 'false';
+const DEMO_LOGIN   = process.env.NEXT_PUBLIC_DEMO_LOGIN === 'true';
+
 // ── Form ──────────────────────────────────────────────────────────────────────
 
 function LoginForm() {
@@ -324,12 +327,12 @@ function LoginForm() {
                   Sign in
                 </div>
                 <div style={{ fontSize: '13px', color: '#999', marginBottom: '28px', lineHeight: 1.5 }}>
-                  Continue with Google or get a magic link by email.
+                  {GOOGLE_LOGIN ? 'Continue with Google or get a magic link by email.' : 'Get a magic link by email, or try the demo account.'}
                 </div>
                 <div style={{ height: '1px', background: '#E8E8E4', marginBottom: '24px' }} />
 
                 {/* One-click demo account */}
-                {process.env.NEXT_PUBLIC_DEMO_LOGIN === 'true' && (
+                {DEMO_LOGIN && (
                   <button
                     type="button"
                     onClick={demoSignIn}
@@ -355,6 +358,7 @@ function LoginForm() {
                 )}
 
                 {/* Google */}
+                {GOOGLE_LOGIN && (
                 <button
                   type="button"
                   onClick={signInWithGoogle}
@@ -386,13 +390,16 @@ function LoginForm() {
                   </svg>
                   Continue with Google
                 </button>
+                )}
 
                 {/* Divider */}
+                {(GOOGLE_LOGIN || DEMO_LOGIN) && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '18px' }}>
                   <div style={{ flex: 1, height: '1px', background: '#E8E8E4' }} />
                   <span style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#999' }}>or</span>
                   <div style={{ flex: 1, height: '1px', background: '#E8E8E4' }} />
                 </div>
+                )}
 
                 {/* Email form */}
                 <form onSubmit={sendLink}>
