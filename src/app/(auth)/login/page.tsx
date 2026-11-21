@@ -99,12 +99,15 @@ function CardRow({ items, reverse }: { items: Product[]; reverse?: boolean }) {
 
 const GOOGLE_LOGIN = process.env.NEXT_PUBLIC_GOOGLE_LOGIN !== 'false';
 const DEMO_LOGIN   = process.env.NEXT_PUBLIC_DEMO_LOGIN === 'true';
+// Shows a 'type the code from your email' box. Enable once the email template includes {{ .Token }}.
+const EMAIL_OTP    = process.env.NEXT_PUBLIC_EMAIL_OTP === 'true';
 
 // ── Form ──────────────────────────────────────────────────────────────────────
 
 function LoginForm() {
   const [email, setEmail]     = useState('');
   const [sent, setSent]       = useState(false);
+  const [code, setCode]       = useState('');
   const [remoteStatus, setRemoteStatus] = useState<'waiting' | 'signing-in' | 'expired'>('waiting');
   // Cross-device sign-in: id + secret for this tab's login request (secret never leaves memory).
   const loginRequest = useRef<{ id: string; secret: string } | null>(null);
@@ -223,6 +226,32 @@ function LoginForm() {
     let timer = setTimeout(poll, 3000);
     return () => { stopped = true; clearTimeout(timer); };
   }, [sent, supabase, redirect]);
+
+  async function goAfterSignIn() {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const { data: profile } = await supabase.from('users').select('full_name').eq('id', user.id).maybeSingle();
+      if (!profile?.full_name) {
+        window.location.href = `/onboarding?next=${encodeURIComponent(redirect)}`;
+        return;
+      }
+    }
+    window.location.href = redirect;
+  }
+
+  async function verifyCode(e: React.FormEvent) {
+    e.preventDefault();
+    const token = code.replace(/\D/g, '');
+    if (token.length < 6) { setError('Enter the code from the email'); return; }
+    setLoading(true); setError(null);
+    const { error: otpError } = await supabase.auth.verifyOtp({ email, token, type: 'email' });
+    if (otpError) {
+      setError(/expired|invalid/i.test(otpError.message) ? 'That code is wrong or has expired. Check the latest email or send a new code.' : otpError.message);
+      setLoading(false);
+      return;
+    }
+    await goAfterSignIn();
+  }
 
   async function demoSignIn() {
     setLoading(true); setError(null);
@@ -390,7 +419,7 @@ function LoginForm() {
                   Sign in
                 </div>
                 <div style={{ fontSize: '13px', color: '#999', marginBottom: '28px', lineHeight: 1.5 }}>
-                  {GOOGLE_LOGIN ? 'Continue with Google or get a magic link by email.' : 'Get a magic link by email, or try the demo account.'}
+                  {GOOGLE_LOGIN ? `Continue with Google or get a ${EMAIL_OTP ? 'sign-in code' : 'magic link'} by email.` : `Get a ${EMAIL_OTP ? 'sign-in code' : 'magic link'} by email, or try the demo account.`}
                 </div>
                 <div style={{ height: '1px', background: '#E8E8E4', marginBottom: '24px' }} />
 
@@ -533,7 +562,7 @@ function LoginForm() {
                       marginTop: '4px',
                     }}
                   >
-                    {loading ? 'Sending…' : 'Send sign-in link'}
+                    {loading ? 'Sending…' : EMAIL_OTP ? 'Email me a sign-in code' : 'Send sign-in link'}
                   </button>
 
                   {process.env.NODE_ENV === 'development' && (
@@ -574,13 +603,51 @@ function LoginForm() {
                   Check your inbox
                 </div>
                 <div style={{ fontSize: '28px', fontWeight: 900, letterSpacing: '-0.04em', lineHeight: 1, marginBottom: '12px', color: '#0a0a0a' }}>
-                  Link sent.
+                  {EMAIL_OTP ? 'Code sent.' : 'Link sent.'}
                 </div>
                 <div style={{ fontSize: '13px', color: '#999', marginBottom: '28px', lineHeight: 1.6 }}>
-                  We sent a sign-in link to{' '}
+                  We sent a sign-in {EMAIL_OTP ? 'code' : 'link'} to{' '}
                   <span style={{ color: '#0a0a0a', fontWeight: 600 }}>{email}</span>.
-                  {' '}Click it to continue — expires in 1 hour.
+                  {' '}{EMAIL_OTP ? 'Enter the code from the email below, or tap the link in it.' : 'Click it to continue — expires in 1 hour.'}
                 </div>
+                {EMAIL_OTP && (
+                  <form onSubmit={verifyCode} style={{ marginBottom: '20px' }}>
+                    <label style={{ display: 'block', fontSize: '10px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#666', marginBottom: '7px' }}>
+                      Sign-in code
+                    </label>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      autoComplete="one-time-code"
+                      autoFocus
+                      maxLength={10}
+                      placeholder="123456"
+                      value={code}
+                      onChange={e => setCode(e.target.value.replace(/\D/g, ''))}
+                      style={{
+                        width: '100%', padding: '12px 14px', border: '1.5px solid #E8E8E4', background: '#fff',
+                        fontSize: '22px', letterSpacing: '0.3em', fontWeight: 700, color: '#0a0a0a', outline: 'none',
+                        fontFamily: 'inherit', borderRadius: 0, boxSizing: 'border-box', textAlign: 'center',
+                      }}
+                    />
+                    {error && (
+                      <p style={{ marginTop: '10px', padding: '10px 14px', border: '1px solid #ffc5c5', background: '#fff5f5', fontSize: '13px', color: '#cc2222' }}>
+                        {error}
+                      </p>
+                    )}
+                    <button
+                      type="submit"
+                      disabled={loading || code.length < 6}
+                      style={{
+                        width: '100%', marginTop: '12px', padding: '13px', background: '#E8FF4D', color: '#0a0a0a', border: 'none',
+                        fontSize: '11px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', fontFamily: 'inherit',
+                        cursor: loading || code.length < 6 ? 'not-allowed' : 'pointer', opacity: loading || code.length < 6 ? 0.5 : 1,
+                      }}
+                    >
+                      {loading ? 'Verifying…' : 'Verify & sign in'}
+                    </button>
+                  </form>
+                )}
                 {loginRequest.current && (
                   <div style={{
                     display: 'flex', alignItems: 'center', gap: '10px',
@@ -598,7 +665,7 @@ function LoginForm() {
                 )}
                 <div style={{ height: '1px', background: '#E8E8E4', marginBottom: '24px' }} />
                 <button
-                  onClick={() => { setSent(false); setEmail(''); loginRequest.current = null; }}
+                  onClick={() => { setSent(false); setEmail(''); setCode(''); setError(null); loginRequest.current = null; }}
                   style={{ background: 'none', border: 'none', fontSize: '13px', color: '#999', cursor: 'pointer', fontFamily: 'inherit', padding: 0 }}
                 >
                   ← Use a different email
