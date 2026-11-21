@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useState, useMemo } from 'react';
+import { Suspense, useState, useMemo, useRef, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
@@ -105,6 +105,9 @@ const DEMO_LOGIN   = process.env.NEXT_PUBLIC_DEMO_LOGIN === 'true';
 function LoginForm() {
   const [email, setEmail]     = useState('');
   const [sent, setSent]       = useState(false);
+  const [remoteStatus, setRemoteStatus] = useState<'waiting' | 'signing-in' | 'expired'>('waiting');
+  // Cross-device sign-in: id + secret for this tab's login request (secret never leaves memory).
+  const loginRequest = useRef<{ id: string; secret: string } | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError]     = useState<string | null>(null);
 
@@ -120,13 +123,27 @@ function LoginForm() {
   async function sendLink(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true); setError(null);
+    // Register a cross-device login request so THIS device signs in too when
+    // the emailed link is opened elsewhere (e.g. on a phone).
+    loginRequest.current = null;
+    setRemoteStatus('waiting');
+    try {
+      const res = await fetch('/api/auth/login-request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      if (res.ok) loginRequest.current = await res.json();
+    } catch { /* fall back to a plain magic link */ }
+
+    const confirmUrl = new URL('/auth/confirm', window.location.origin);
+    confirmUrl.searchParams.set('next', redirect);
+    if (loginRequest.current) confirmUrl.searchParams.set('rid', loginRequest.current.id);
+
     // Implicit flow so the emailed link works on any device/browser.
     const { error } = await createImplicitClient().auth.signInWithOtp({
       email,
-      options: {
-        shouldCreateUser: true,
-        emailRedirectTo: `${window.location.origin}/auth/confirm?next=${encodeURIComponent(redirect)}`,
-      },
+      options: { shouldCreateUser: true, emailRedirectTo: confirmUrl.toString() },
     });
     if (error) setError(error.message);
     else setSent(true);
@@ -166,6 +183,46 @@ function LoginForm() {
     }
     window.location.href = redirect;
   }
+
+  // While "Check your inbox" is shown, wait for the link to be opened on any device.
+  useEffect(() => {
+    if (!sent || !loginRequest.current) return;
+    const { id, secret } = loginRequest.current;
+    let stopped = false;
+
+    async function poll() {
+      if (stopped) return;
+      try {
+        const res  = await fetch(`/api/auth/login-request?id=${id}`, { headers: { 'x-login-secret': secret }, cache: 'no-store' });
+        const json = await res.json();
+        if (json.status === 'approved') {
+          stopped = true;
+          setRemoteStatus('signing-in');
+          const { error: otpError } = await supabase.auth.verifyOtp({ email: json.email, token: json.email_otp, type: 'email' });
+          if (otpError) { setError(otpError.message); setSent(false); return; }
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+            const { data: profile } = await supabase.from('users').select('full_name').eq('id', user.id).maybeSingle();
+            if (!profile?.full_name) {
+              window.location.href = `/onboarding?next=${encodeURIComponent(redirect)}`;
+              return;
+            }
+          }
+          window.location.href = redirect;
+          return;
+        }
+        if (json.status === 'expired' || json.status === 'consumed' || res.status === 404) {
+          stopped = true;
+          setRemoteStatus('expired');
+          return;
+        }
+      } catch { /* network blip — keep polling */ }
+      if (!stopped) timer = setTimeout(poll, 3000);
+    }
+
+    let timer = setTimeout(poll, 3000);
+    return () => { stopped = true; clearTimeout(timer); };
+  }, [sent, supabase, redirect]);
 
   async function demoSignIn() {
     setLoading(true); setError(null);
@@ -524,9 +581,24 @@ function LoginForm() {
                   <span style={{ color: '#0a0a0a', fontWeight: 600 }}>{email}</span>.
                   {' '}Click it to continue — expires in 1 hour.
                 </div>
+                {loginRequest.current && (
+                  <div style={{
+                    display: 'flex', alignItems: 'center', gap: '10px',
+                    padding: '12px 14px', border: '1px solid #E8E8E4', background: '#FAFAF8',
+                    fontSize: '12px', color: '#555', lineHeight: 1.5, marginBottom: '24px',
+                  }}>
+                    <span style={{
+                      width: 8, height: 8, borderRadius: '50%', flexShrink: 0,
+                      background: remoteStatus === 'expired' ? '#B91C1C' : '#22c55e',
+                    }} />
+                    {remoteStatus === 'waiting' && 'You can open the email on any device — your phone works too. This page will sign you in automatically.'}
+                    {remoteStatus === 'signing-in' && 'Link opened — signing you in here…'}
+                    {remoteStatus === 'expired' && 'This request expired. Use a different email or request a new link.'}
+                  </div>
+                )}
                 <div style={{ height: '1px', background: '#E8E8E4', marginBottom: '24px' }} />
                 <button
-                  onClick={() => { setSent(false); setEmail(''); }}
+                  onClick={() => { setSent(false); setEmail(''); loginRequest.current = null; }}
                   style={{ background: 'none', border: 'none', fontSize: '13px', color: '#999', cursor: 'pointer', fontFamily: 'inherit', padding: 0 }}
                 >
                   ← Use a different email

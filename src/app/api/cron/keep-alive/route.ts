@@ -19,5 +19,11 @@ export async function GET(req: NextRequest) {
   if (error) {
     return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
   }
+
+  // Housekeeping: drop cross-device login requests older than a day.
+  await supabase
+    .from('login_requests')
+    .delete()
+    .lt('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString());
   return NextResponse.json({ ok: true, products: count, at: new Date().toISOString() });
 }

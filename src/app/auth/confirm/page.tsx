@@ -36,7 +36,23 @@ export default function AuthConfirmPage() {
         return;
       }
 
-      setMessage('Signed in — redirecting…');
+      // Approve the cross-device request so the device that asked for the link
+      // (e.g. a laptop) signs in too.
+      const rid = query.get('rid');
+      if (rid) {
+        const res = await fetch('/api/auth/login-request', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: rid }),
+        }).catch(() => null);
+        if (res?.ok) {
+          setMessage('Signed in. If you requested the link on another device, it is signing in now too — redirecting…');
+          await new Promise(r => setTimeout(r, 2500));
+        }
+      } else {
+        setMessage('Signed in — redirecting…');
+      }
+
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         const { data: profile } = await supabase
@@ -59,7 +75,7 @@ export default function AuthConfirmPage() {
       minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center',
       fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', color: '#0a0a0a', padding: '24px',
     }}>
-      <p style={{ fontSize: '14px', letterSpacing: '0.02em' }}>{message}</p>
+      <p style={{ fontSize: '14px', letterSpacing: '0.02em', maxWidth: 420, textAlign: 'center', lineHeight: 1.6 }}>{message}</p>
     </div>
   );
 }
