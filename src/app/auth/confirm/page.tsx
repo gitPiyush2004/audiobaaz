@@ -24,12 +24,21 @@ export default function AuthConfirmPage() {
 
       const access_token  = hash.get('access_token');
       const refresh_token = hash.get('refresh_token');
+      const supabase = createClient();
+
       if (!access_token || !refresh_token) {
-        window.location.replace('/login?error=auth');
+        // The link was already used (e.g. the user typed the code from the same
+        // email) or has expired. If this device is already signed in, just continue.
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          window.location.replace(next);
+          return;
+        }
+        const code = hash.get('error_code') ?? query.get('error_code');
+        window.location.replace(`/login?error=${code === 'otp_expired' ? 'link_used' : 'auth'}`);
         return;
       }
 
-      const supabase = createClient();
       const { error } = await supabase.auth.setSession({ access_token, refresh_token });
       if (error) {
         window.location.replace('/login?error=auth');

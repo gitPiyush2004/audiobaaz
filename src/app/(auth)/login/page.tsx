@@ -406,7 +406,9 @@ function LoginForm() {
                 fontSize: '13px',
                 color: '#cc2222',
               }}>
-                That link has expired or already been used. Request a new one below.
+                {authError === 'link_used'
+                  ? 'That sign-in link was already used (each email works once — for example, if you entered its code) or has expired. Request a new code below.'
+                  : 'That link has expired or already been used. Request a new one below.'}
               </p>
             )}
 
