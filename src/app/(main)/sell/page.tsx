@@ -39,10 +39,10 @@ export default function SellPage() {
     <div style={{ fontFamily: font, color: '#0a0a0a', background: '#fff' }}>
 
       {/* ── Hero ─────────────────────────────────────────────────────── */}
-      <section style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', minHeight: '520px', borderBottom: `1px solid ${B}` }}>
+      <section className="sell-split" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', minHeight: '520px', borderBottom: `1px solid ${B}` }}>
 
         {/* Left */}
-        <div style={{ padding: '80px 64px 80px 40px', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '28px', borderRight: `1px solid ${B}` }}>
+        <div className="sell-split-left" style={{ padding: '80px 64px 80px 40px', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '28px', borderRight: `1px solid ${B}` }}>
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', width: 'fit-content', border: `1px solid ${B}`, padding: '5px 14px', fontSize: '10px', fontWeight: 600, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#999' }}>
             <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#22c55e', flexShrink: 0, display: 'inline-block' }} />
             10% fee only when you sell
@@ -65,13 +65,13 @@ export default function SellPage() {
         </div>
 
         {/* Right — calculator */}
-        <div style={{ background: '#0a0a0a', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '60px 48px' }}>
+        <div className="sell-split-right" style={{ background: '#0a0a0a', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '60px 48px' }}>
           <PayoutCalculator />
         </div>
       </section>
 
       {/* ── Video ────────────────────────────────────────────────────── */}
-      <section style={{ padding: '72px 40px', borderBottom: `1px solid ${B}` }}>
+      <section className="sell-section" style={{ padding: '72px 40px', borderBottom: `1px solid ${B}` }}>
         <div style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '0.18em', textTransform: 'uppercase', color: '#999', marginBottom: '12px' }}>See how it works</div>
         <div style={{ fontSize: 'clamp(28px, 3.5vw, 40px)', fontWeight: 900, letterSpacing: '-0.04em', lineHeight: 0.92, marginBottom: '32px' }}>
           From listing to <em style={{ fontFamily: serif, fontStyle: 'italic', fontWeight: 400 }}>payout.</em>
@@ -90,7 +90,7 @@ export default function SellPage() {
       </section>
 
       {/* ── How it works ─────────────────────────────────────────────── */}
-      <section style={{ padding: '72px 40px', borderBottom: `1px solid ${B}` }}>
+      <section className="sell-section" style={{ padding: '72px 40px', borderBottom: `1px solid ${B}` }}>
         <div style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '0.18em', textTransform: 'uppercase', color: '#999', marginBottom: '12px' }}>Process</div>
         <div style={{ fontSize: 'clamp(32px, 4vw, 48px)', fontWeight: 900, letterSpacing: '-0.04em', lineHeight: 0.92, marginBottom: '48px' }}>
           How it works.<br />
@@ -99,7 +99,7 @@ export default function SellPage() {
 
         <div style={{ maxWidth: '780px' }}>
           {steps.map(({ n, title, tag, body }) => (
-            <div key={n} style={{ display: 'grid', gridTemplateColumns: '80px 1fr', gap: '32px', alignItems: 'start', padding: '28px 0', borderBottom: `1px solid ${B}` }}>
+            <div key={n} className="sell-step-row" style={{ display: 'grid', gridTemplateColumns: '80px 1fr', gap: '32px', alignItems: 'start', padding: '28px 0', borderBottom: `1px solid ${B}` }}>
               <div style={{ fontSize: '48px', fontWeight: 900, letterSpacing: '-0.04em', lineHeight: 1, color: B }}>{n}</div>
               <div>
                 <div style={{ fontSize: '18px', fontWeight: 800, letterSpacing: '-0.02em', marginBottom: '6px' }}>{title}</div>
@@ -112,8 +112,8 @@ export default function SellPage() {
       </section>
 
       {/* ── Fee ──────────────────────────────────────────────────────── */}
-      <section style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', borderBottom: `1px solid ${B}`, minHeight: '360px' }}>
-        <div style={{ padding: '72px 64px 72px 40px', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '20px', borderRight: `1px solid ${B}` }}>
+      <section className="sell-split" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', borderBottom: `1px solid ${B}`, minHeight: '360px' }}>
+        <div className="sell-split-left" style={{ padding: '72px 64px 72px 40px', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '20px', borderRight: `1px solid ${B}` }}>
           <div style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '0.18em', textTransform: 'uppercase', color: '#999' }}>Pricing</div>
           <div style={{ fontSize: 'clamp(36px, 4.5vw, 56px)', fontWeight: 900, letterSpacing: '-0.04em', lineHeight: 0.92 }}>One simple fee.</div>
           <p style={{ fontSize: '15px', color: '#666', lineHeight: 1.7, maxWidth: '380px' }}>
@@ -121,7 +121,7 @@ export default function SellPage() {
           </p>
         </div>
 
-        <div style={{ padding: '72px 40px', display: 'flex', flexDirection: 'column', justifyContent: 'center', background: '#FAFAF8' }}>
+        <div className="sell-split-right" style={{ padding: '72px 40px', display: 'flex', flexDirection: 'column', justifyContent: 'center', background: '#FAFAF8' }}>
           <div style={{ fontSize: '9px', fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: '#999', marginBottom: '20px' }}>Example payout</div>
           {[
             { label: 'Your listing price', val: '₹10,000', color: '#0a0a0a' },
@@ -140,14 +140,14 @@ export default function SellPage() {
       </section>
 
       {/* ── We've got your back ───────────────────────────────────────── */}
-      <section style={{ padding: '72px 40px', borderBottom: `1px solid ${B}` }}>
+      <section className="sell-section" style={{ padding: '72px 40px', borderBottom: `1px solid ${B}` }}>
         <div style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '0.18em', textTransform: 'uppercase', color: '#999', marginBottom: '12px' }}>Seller protection</div>
         <div style={{ fontSize: 'clamp(32px, 4vw, 48px)', fontWeight: 900, letterSpacing: '-0.04em', lineHeight: 0.92, marginBottom: '16px' }}>We&apos;ve got your back.</div>
         <p style={{ fontSize: '15px', color: '#666', marginBottom: '40px', maxWidth: '440px', lineHeight: 1.6 }}>Audiobaaz manages the hard parts so you don&apos;t have to.</p>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1px', background: B, border: `1px solid ${B}`, maxWidth: '860px' }}>
+        <div className="sell-grid2" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1px', background: B, border: `1px solid ${B}`, maxWidth: '860px' }}>
           {features.map(({ title, body }) => (
-            <div key={title} style={{ background: '#fff', padding: '28px 32px' }}>
+            <div key={title} className="sell-tile" style={{ background: '#fff', padding: '28px 32px' }}>
               <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#E8FF4D', marginBottom: '14px' }} />
               <div style={{ fontSize: '15px', fontWeight: 700, letterSpacing: '-0.01em', marginBottom: '8px' }}>{title}</div>
               <div style={{ fontSize: '13px', color: '#666', lineHeight: 1.65 }}>{body}</div>
@@ -157,7 +157,7 @@ export default function SellPage() {
       </section>
 
       {/* ── Timeline ─────────────────────────────────────────────────── */}
-      <section style={{ padding: '72px 40px', borderBottom: `1px solid ${B}` }}>
+      <section className="sell-section" style={{ padding: '72px 40px', borderBottom: `1px solid ${B}` }}>
         <div style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '0.18em', textTransform: 'uppercase', color: '#999', marginBottom: '12px' }}>Timeline</div>
         <div style={{ fontSize: 'clamp(32px, 4vw, 48px)', fontWeight: 900, letterSpacing: '-0.04em', lineHeight: 0.92, marginBottom: '40px' }}>What to expect, and when.</div>
 
@@ -185,7 +185,7 @@ export default function SellPage() {
       </section>
 
       {/* ── CTA ──────────────────────────────────────────────────────── */}
-      <section style={{ background: '#0a0a0a', padding: '96px 40px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '20px' }}>
+      <section className="sell-section" style={{ background: '#0a0a0a', padding: '96px 40px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '20px' }}>
         <div style={{ fontSize: 'clamp(36px, 5vw, 60px)', fontWeight: 900, letterSpacing: '-0.04em', lineHeight: 0.92, color: '#fff' }}>
           Ready to find your gear<br />
           <em style={{ fontFamily: serif, fontStyle: 'italic', fontWeight: 400, color: '#E8FF4D' }}>a new home?</em>

@@ -4,6 +4,7 @@ import { Suspense, useState, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
+import { createImplicitClient } from '@/lib/supabase/implicit';
 import { Logo } from '@/components/layout/Logo';
 
 // ── Product card data ─────────────────────────────────────────────────────────
@@ -119,9 +120,13 @@ function LoginForm() {
   async function sendLink(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true); setError(null);
-    const { error } = await supabase.auth.signInWithOtp({
+    // Implicit flow so the emailed link works on any device/browser.
+    const { error } = await createImplicitClient().auth.signInWithOtp({
       email,
-      options: { shouldCreateUser: true, emailRedirectTo: callbackUrl() },
+      options: {
+        shouldCreateUser: true,
+        emailRedirectTo: `${window.location.origin}/auth/confirm?next=${encodeURIComponent(redirect)}`,
+      },
     });
     if (error) setError(error.message);
     else setSent(true);
@@ -197,12 +202,13 @@ function LoginForm() {
         zIndex: 10,
       }}>
         <Logo size={36} />
-        <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
+        <div className="login-nav-links" style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
           <Link href="/browse" style={{ fontSize: '13px', fontWeight: 400, color: '#555', textDecoration: 'none' }}>
             Browse
           </Link>
           <Link
             href="/sell"
+            className="login-sell-btn"
             style={{
               background: '#E8FF4D',
               color: '#0a0a0a',

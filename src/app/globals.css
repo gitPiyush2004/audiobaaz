@@ -231,3 +231,102 @@
     padding: 12px 16px !important;
   }
 }
+
+/* ── Login nav — small phones ───────────────────────────────── */
+@media (max-width: 768px) {
+  .login-nav-links {
+    gap: 14px !important;
+  }
+  .login-sell-btn {
+    white-space: nowrap;
+    padding: 8px 12px !important;
+  }
+}
+
+/* ── Onboarding page mobile ─────────────────────────────────── */
+@media (max-width: 768px) {
+  .onb-nav {
+    padding: 0 16px !important;
+  }
+  .onb-step-label {
+    display: none;
+  }
+  .onb-two-col {
+    grid-template-columns: 1fr !important;
+  }
+  .onb-left-panel {
+    display: none !important;
+  }
+  .onb-form-panel {
+    border-left: none !important;
+    align-items: flex-start !important;
+    padding: 32px 20px 40px !important;
+  }
+}
+
+/* ── Listing form (sell flow) mobile ────────────────────────── */
+@media (max-width: 768px) {
+  .lf-bar {
+    padding: 0 16px !important;
+  }
+  .lf-body {
+    grid-template-columns: 1fr !important;
+    min-height: 0 !important;
+  }
+  .lf-main {
+    padding: 28px 16px 40px !important;
+    border-right: none !important;
+    min-width: 0;
+  }
+  .lf-sidebar {
+    position: static !important;
+    padding: 28px 16px !important;
+    border-top: 1px solid #E8E8E4;
+  }
+  .lf-cat-grid,
+  .lf-photo-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+  .lf-footer {
+    padding: 12px 16px !important;
+    gap: 12px;
+  }
+  .lf-footer-label {
+    display: none;
+  }
+}
+
+/* ── Sell landing page mobile ───────────────────────────────── */
+@media (max-width: 768px) {
+  .sell-split {
+    grid-template-columns: 1fr !important;
+    min-height: 0 !important;
+  }
+  .sell-split-left {
+    padding: 40px 20px !important;
+    border-right: none !important;
+    border-bottom: 1px solid #E8E8E4;
+  }
+  .sell-split-right {
+    padding: 40px 20px !important;
+  }
+  .sell-section {
+    padding: 48px 20px !important;
+  }
+  .sell-step-row {
+    grid-template-columns: 48px 1fr !important;
+    gap: 16px !important;
+  }
+  .sell-grid2 {
+    grid-template-columns: 1fr !important;
+  }
+  .sell-tile {
+    padding: 22px 20px !important;
+  }
+}
+
+@media (max-width: 420px) {
+  .login-nav-links a:not(.login-sell-btn) {
+    display: none;
+  }
+}

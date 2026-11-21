@@ -471,7 +471,7 @@ export function ListingForm({ draftId, initialData }: Props) {
     <div style={{ background: '#fff', fontFamily: font, color: BLACK }}>
 
       {/* ── Listing header bar ── */}
-      <div style={{
+      <div className="lf-bar" style={{
         position: 'sticky', top: 60, zIndex: 40,
         height: 52, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         padding: '0 40px', borderBottom: `1px solid ${B}`, background: '#fff',
@@ -493,7 +493,7 @@ export function ListingForm({ draftId, initialData }: Props) {
       </div>
 
       {/* ── Steps bar ── */}
-      <div style={{
+      <div className="lf-bar" style={{
         position: 'sticky', top: 112, zIndex: 39,
         height: 52, display: 'flex', alignItems: 'center',
         padding: '0 40px', borderBottom: `1px solid ${B}`, background: '#fff',
@@ -535,10 +535,10 @@ export function ListingForm({ draftId, initialData }: Props) {
       </div>
 
       {/* ── Body: main + sidebar ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', minHeight: 'calc(100vh - 228px)' }}>
+      <div className="lf-body" style={{ display: 'grid', gridTemplateColumns: '1fr 320px', minHeight: 'calc(100vh - 228px)' }}>
 
         {/* Main content */}
-        <div style={{ padding: '56px 64px 80px 40px', borderRight: `1px solid ${B}` }}>
+        <div className="lf-main" style={{ padding: '56px 64px 80px 40px', borderRight: `1px solid ${B}` }}>
 
           {/* ── Step 0 — Product type ── */}
           {step === 0 && (
@@ -549,7 +549,7 @@ export function ListingForm({ draftId, initialData }: Props) {
               <p style={{ fontSize: 14, color: MID, marginBottom: 36, lineHeight: 1.6 }}>
                 Select the category that best fits your item.
               </p>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 1, background: B, border: `1px solid ${B}` }}>
+              <div className="lf-cat-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 1, background: B, border: `1px solid ${B}` }}>
                 {PRODUCT_TYPES.map(pt => {
                   const selected = draft.productTypeId === pt.id;
                   return (
@@ -777,7 +777,7 @@ export function ListingForm({ draftId, initialData }: Props) {
                   <span style={{ marginLeft: 6, color: '#1D4ED8' }}>Previously uploaded photos are shown below.</span>
                 )}
               </p>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
+              <div className="lf-photo-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
                 {PHOTO_SLOTS.map((slot, i) => {
                   const photo = draft.photos[i];
                   return (
@@ -962,7 +962,7 @@ export function ListingForm({ draftId, initialData }: Props) {
         </div>
 
         {/* ── Sidebar ── */}
-        <div style={{
+        <div className="lf-sidebar" style={{
           padding: '40px 28px', background: OFF,
           position: 'sticky', top: 164, alignSelf: 'start',
         }}>
@@ -1017,13 +1017,13 @@ export function ListingForm({ draftId, initialData }: Props) {
       </div>
 
       {/* ── Footer bar ── */}
-      <div style={{
+      <div className="lf-footer" style={{
         position: 'sticky', bottom: 0, zIndex: 40,
         borderTop: `1px solid ${B}`, padding: '18px 40px',
         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
         background: '#fff',
       }}>
-        <span style={{ fontSize: 12, color: MUTED }}>
+        <span className="lf-footer-label" style={{ fontSize: 12, color: MUTED }}>
           Step {step + 1} of {STEPS.length} — <strong style={{ color: BLACK }}>{STEPS[step]}</strong>
         </span>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>

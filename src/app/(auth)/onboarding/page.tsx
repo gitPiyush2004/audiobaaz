@@ -129,7 +129,7 @@ function OnboardingForm() {
     <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', background: '#fff', fontFamily: font }}>
 
       {/* Nav */}
-      <nav style={{
+      <nav className="onb-nav" style={{
         height: 60, flexShrink: 0,
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         padding: '0 40px',
@@ -138,16 +138,16 @@ function OnboardingForm() {
         zIndex: 10,
       }}>
         <Logo size={36} />
-        <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#999' }}>
+        <span className="onb-step-label" style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#999' }}>
           Step 1 of 1 — Profile setup
         </span>
       </nav>
 
       {/* Two-column body */}
-      <div style={{ flex: 1, minHeight: 0, display: 'grid', gridTemplateColumns: '1fr 1fr', overflow: 'hidden' }}>
+      <div className="onb-two-col" style={{ flex: 1, minHeight: 0, display: 'grid', gridTemplateColumns: '1fr 1fr', overflow: 'hidden' }}>
 
         {/* Left — dark brand panel */}
-        <div style={{
+        <div className="onb-left-panel" style={{
           background: '#0a0a0a',
           display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
           padding: '64px 56px',
@@ -211,7 +211,7 @@ function OnboardingForm() {
         </div>
 
         {/* Right — form */}
-        <div style={{
+        <div className="onb-form-panel" style={{
           borderLeft: '1px solid #E8E8E4',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           padding: '0 64px',

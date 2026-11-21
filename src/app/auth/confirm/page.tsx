@@ -1,0 +1,65 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import { createClient } from '@/lib/supabase/client';
+
+// Landing page for email magic links (implicit flow). Supabase redirects here
+// with the session in the URL fragment (#access_token=…&refresh_token=…),
+// which never reaches the server, so the session is established client-side.
+export default function AuthConfirmPage() {
+  const [message, setMessage] = useState('Signing you in…');
+
+  useEffect(() => {
+    async function finish() {
+      const query = new URLSearchParams(window.location.search);
+      const hash  = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+      const rawNext = query.get('next') ?? '/dashboard';
+      const next = rawNext.startsWith('/') && !rawNext.startsWith('//') ? rawNext : '/dashboard';
+
+      // PKCE-style link (?code=…) — let the server route handle it.
+      if (query.get('code') || query.get('token_hash')) {
+        window.location.replace(`/auth/callback${window.location.search}`);
+        return;
+      }
+
+      const access_token  = hash.get('access_token');
+      const refresh_token = hash.get('refresh_token');
+      if (!access_token || !refresh_token) {
+        window.location.replace('/login?error=auth');
+        return;
+      }
+
+      const supabase = createClient();
+      const { error } = await supabase.auth.setSession({ access_token, refresh_token });
+      if (error) {
+        window.location.replace('/login?error=auth');
+        return;
+      }
+
+      setMessage('Signed in — redirecting…');
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: profile } = await supabase
+          .from('users')
+          .select('full_name')
+          .eq('id', user.id)
+          .maybeSingle();
+        if (!profile?.full_name) {
+          window.location.replace(`/onboarding?next=${encodeURIComponent(next)}`);
+          return;
+        }
+      }
+      window.location.replace(next);
+    }
+    finish();
+  }, []);
+
+  return (
+    <div style={{
+      minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center',
+      fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', color: '#0a0a0a', padding: '24px',
+    }}>
+      <p style={{ fontSize: '14px', letterSpacing: '0.02em' }}>{message}</p>
+    </div>
+  );
+}
